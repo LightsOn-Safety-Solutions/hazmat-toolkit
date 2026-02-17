@@ -25,7 +25,7 @@ This repository now includes a new local-only Phase 1 app:
 1. Start the local web server with:
    - `/Users/johnholtan/Library/CloudStorage/OneDrive-lightsonss.com/THMG/Final Files/Final Mapper Files/Launch Hazmat Map.command`
 2. Open:
-   - `http://localhost:8000/Hazmat%20Incident%20Map%20-%20Hot%20Wash%20Replay%20Phase%201/index.html`
+   - `http://localhost:8080/Final%20Mapper%20Files/Hazmat%20Incident%20Map%20-%20Hot%20Wash%20Replay%20Phase%201/index.html`
 3. Stop server with:
    - `/Users/johnholtan/Library/CloudStorage/OneDrive-lightsonss.com/THMG/Final Files/Final Mapper Files/Stop Hazmat Map Server.command`
 
