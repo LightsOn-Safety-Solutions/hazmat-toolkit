@@ -170,7 +170,7 @@ async function listWatchParticipants(pool: { query: PoolClient['query'] }, sessi
     [sessionID]
   );
 
-  return result.rows.map((row) => ({
+  return result.rows.map((row: WatchParticipantRow) => ({
     participantId: row.participant_id,
     traineeName: row.trainee_name,
     deviceType: row.device_type,
@@ -228,7 +228,7 @@ async function listWatchTracking(
     params
   );
 
-  return result.rows.map((row) => ({
+  return result.rows.map((row: WatchTrackingRow) => ({
     participantId: row.participant_id,
     recordedAt: row.recorded_at,
     receivedAt: row.received_at,
@@ -263,7 +263,7 @@ async function listLegacyTrackingByScenarioName(pool: { query: PoolClient['query
     [scenarioName]
   );
 
-  return result.rows.map((row) => ({
+  return result.rows.map((row: LegacyTrackingRow) => ({
     id: row.id,
     scenarioName: row.scenario_name,
     traineeID: row.trainee_id,

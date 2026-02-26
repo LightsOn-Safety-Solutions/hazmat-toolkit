@@ -505,13 +505,13 @@ async function insertOrUpdateShape(
 
   try {
     if (shapeID) {
-      const updated = await app.pg.query<ShapeRow>(updateShapeSQL, params);
+      const updated = await app.pg.query(updateShapeSQL, params);
       if (updated.rowCount && updated.rowCount > 0) {
         return mapShapeRow(updated.rows[0]);
       }
     }
 
-    const inserted = await app.pg.query<ShapeRow>(shapeID ? insertShapeWithIDSQL : insertShapeSQL, params);
+    const inserted = await app.pg.query(shapeID ? insertShapeWithIDSQL : insertShapeSQL, params);
     if (inserted.rowCount === 0) return null;
     return mapShapeRow(inserted.rows[0]);
   } catch (error) {
@@ -521,9 +521,7 @@ async function insertOrUpdateShape(
   }
 }
 
-function normalizeShapeBody(body: ShapeBody): Required<Pick<ShapeBody,
-  'description' | 'kind' | 'sort_order' | 'shape_geo_json'
->> & ShapeBody {
+function normalizeShapeBody(body: ShapeBody): ShapeBody {
   return {
     ...body,
     description: body.description ?? '',
