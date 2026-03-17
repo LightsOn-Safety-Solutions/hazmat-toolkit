@@ -171,6 +171,36 @@
     }).addTo(state.map);
     state.objectLayerGroup = L.layerGroup().addTo(state.map);
     state.map.on("click", onMapClick);
+    tryCenterMapOnCurrentLocation();
+  }
+
+  function tryCenterMapOnCurrentLocation() {
+    if (!navigator.geolocation || !state.map) return;
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        if (!state.map || state.snapshotLoaded || state.objects.size > 0) return;
+        const { latitude, longitude, accuracy } = position.coords;
+        state.map.setView([latitude, longitude], 16);
+        L.circleMarker([latitude, longitude], {
+          radius: 7,
+          color: "#0b7285",
+          weight: 2,
+          fillColor: "#15aabf",
+          fillOpacity: 0.9
+        })
+          .bindTooltip(`Current location${accuracy ? ` (+/- ${Math.round(accuracy)} m)` : ""}`, { direction: "top" })
+          .addTo(state.objectLayerGroup);
+        setStatus("Centered map on your current location.");
+      },
+      () => {
+        // Leave the default map extent in place when geolocation is unavailable or denied.
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 60000
+      }
+    );
   }
 
   async function hydrateAuthUI() {
