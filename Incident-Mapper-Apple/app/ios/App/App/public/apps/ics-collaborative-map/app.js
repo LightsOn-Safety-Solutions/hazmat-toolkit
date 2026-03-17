@@ -1079,7 +1079,7 @@
     state.dragTemplateType = null;
   }
 
-  function onMapClick(event) {
+  async function onMapClick(event) {
     if (!state.drawState) return;
     if (!canCreateObjects() && state.drawState.mode === "create") {
       setStatus("This session is read-only or you do not have edit access.");
@@ -1087,10 +1087,16 @@
     }
     const point = { lat: roundCoord(event.latlng.lat), lng: roundCoord(event.latlng.lng) };
     if (state.drawState.template.geometryType === "point") {
-      if (state.drawState.mode === "edit" && state.drawState.objectId) {
-        queueGeometryUpdate(state.drawState.objectId, { lat: point.lat, lng: point.lng }, true);
-      } else {
-        createObject(state.drawState.template, { lat: point.lat, lng: point.lng });
+      try {
+        if (state.drawState.mode === "edit" && state.drawState.objectId) {
+          await queueGeometryUpdate(state.drawState.objectId, { lat: point.lat, lng: point.lng }, true);
+          closeSelectedObjectEditor();
+          setStatus("Object moved and saved.");
+        } else {
+          await createObject(state.drawState.template, { lat: point.lat, lng: point.lng });
+        }
+      } catch (error) {
+        setStatus(formatError(error));
       }
       cancelGeometryDraw();
       return;
@@ -1134,10 +1140,17 @@
     const { template, points, mode, objectId } = state.drawState;
     if (template.geometryType === "line" && points.length < 2) return;
     if (template.geometryType === "polygon" && points.length < 3) return;
-    if (mode === "edit" && objectId) {
-      queueGeometryUpdate(objectId, { points: points.slice() }, true);
-    } else {
-      createObject(template, { points: points.slice() });
+    try {
+      if (mode === "edit" && objectId) {
+        await queueGeometryUpdate(objectId, { points: points.slice() }, true);
+        closeSelectedObjectEditor();
+        setStatus("Geometry updated.");
+      } else {
+        await createObject(template, { points: points.slice() });
+      }
+    } catch (error) {
+      setStatus(formatError(error));
+      return;
     }
     cancelGeometryDraw();
   }
@@ -1156,34 +1169,30 @@
   }
 
   async function createObject(template, geometry) {
-    try {
-      const objectId = createLocalID();
-      const result = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/mutations`, {
-        method: "POST",
-        actorType: currentActorType(),
-        body: {
-          mutations: [{
-            clientMutationId: createLocalID(),
-            objectId,
-            mutationType: "create",
-            objectType: template.objectType,
-            geometryType: template.geometryType,
-            geometry,
-            fields: buildInitialFields(template)
-          }]
-        }
-      });
-      applyMutationResponse(result);
-      setStatus(`${template.label} placed.`);
-    } catch (error) {
-      setStatus(formatError(error));
-    }
+    const objectId = createLocalID();
+    const result = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/mutations`, {
+      method: "POST",
+      actorType: currentActorType(),
+      body: {
+        mutations: [{
+          clientMutationId: createLocalID(),
+          objectId,
+          mutationType: "create",
+          objectType: template.objectType,
+          geometryType: template.geometryType,
+          geometry,
+          fields: buildInitialFields(template)
+        }]
+      }
+    });
+    applyMutationResponse(result);
+    setStatus(`${template.label} placed.`);
   }
 
   function queueGeometryUpdate(objectId, geometry, flushNow) {
     const object = state.objects.get(objectId);
-    if (!object) return;
-    queueUpdateMutation({
+    if (!object) return Promise.resolve();
+    return queueUpdateMutation({
       objectId,
       mutationType: "update",
       geometryType: object.geometryType,
@@ -1200,8 +1209,9 @@
     });
     scheduleFlush();
     if (flushNow) {
-      flushPendingMutations();
+      return flushPendingMutations();
     }
+    return Promise.resolve();
   }
 
   function scheduleFlush() {
@@ -1297,7 +1307,7 @@
         });
         layer.on("dragend", async (event) => {
           const latlng = event.target.getLatLng();
-          queueUpdateMutation({
+          await queueUpdateMutation({
             objectId: object.id,
             mutationType: "update",
             geometryType: "point",
@@ -1305,6 +1315,8 @@
             fields: object.fields,
             baseVersion: object.version
           }, true);
+          closeSelectedObjectEditor();
+          setStatus("Object moved and saved.");
           try {
             await releaseObjectLock(object.id);
           } catch (error) {
@@ -1349,7 +1361,7 @@
     inputs.forEach((input) => {
       nextFields[input.dataset.fieldKey] = input.value;
     });
-    queueUpdateMutation({
+    await queueUpdateMutation({
       objectId: object.id,
       mutationType: "update",
       geometryType: object.geometryType,
@@ -1357,6 +1369,7 @@
       fields: nextFields,
       baseVersion: object.version
     }, true);
+    setStatus("Changes saved.");
   }
 
   async function startGeometryEdit() {
@@ -1425,6 +1438,11 @@
     } catch (error) {
       setStatus(formatError(error));
     }
+  }
+
+  function closeSelectedObjectEditor() {
+    state.selectedObjectId = null;
+    renderSelectedObject();
   }
 
   async function acquireObjectLock(object) {
