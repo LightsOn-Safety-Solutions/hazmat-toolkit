@@ -94,6 +94,14 @@ body { height: 100vh; overflow: hidden; }
   border-radius: 16px;
   padding: 16px;
 }
+.landing-card.locked {
+  opacity: 0.72;
+}
+.landing-card.locked input,
+.landing-card.locked select,
+.landing-card.locked button.primary {
+  opacity: 0.7;
+}
 .landing-card-header {
   display: flex;
   align-items: flex-start;
@@ -128,6 +136,12 @@ body { height: 100vh; overflow: hidden; }
 }
 .landing-note {
   margin-top: auto;
+}
+.inline-note {
+  margin: 0;
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
 }
 .app {
   flex: 1;

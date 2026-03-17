@@ -50,7 +50,7 @@
               <div class="landing-card-header">
                 <div>
                   <h3>Account</h3>
-                  <p class="muted">Commander access is required for session creation and reopening prior sessions.</p>
+                  <p class="muted">An authenticated account is required for creating or joining any collaborative session.</p>
                 </div>
                 <button id="commanderSignOutBtn" class="secondary hidden" type="button">Sign Out</button>
               </div>
@@ -73,6 +73,7 @@
                   <p class="muted">Start a new collaborative incident map and set the first operational period.</p>
                 </div>
               </div>
+              <p id="createSessionLockedNote" class="inline-note hidden">Sign in first to unlock session creation.</p>
               <div class="stack create-session-grid">
                 <input id="incidentNameInput" type="text" placeholder="Incident name" />
                 <select id="commanderRoleSelect"></select>
@@ -107,11 +108,12 @@
             <div class="landing-panel-header">
               <div>
                 <h2>Join Session</h2>
-                <p class="muted">Operators and observers can jump in with a code or shared link, no full account required.</p>
+                <p class="muted">Operators and observers still need an authenticated account before joining a live session.</p>
               </div>
             </div>
 
             <div class="landing-card stack">
+              <p id="joinLockedNote" class="inline-note hidden">Sign in with an account first, then join with the session code.</p>
               <div class="join-grid">
                 <input id="joinCodeInput" type="text" placeholder="Join code" />
                 <input id="joinDisplayNameInput" type="text" placeholder="Display name" />

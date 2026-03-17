@@ -67,6 +67,7 @@
     commanderEmailInput: document.getElementById("commanderEmailInput"),
     commanderPasswordInput: document.getElementById("commanderPasswordInput"),
     createSessionPanel: document.getElementById("createSessionPanel"),
+    createSessionLockedNote: document.getElementById("createSessionLockedNote"),
     sessionListPanel: document.getElementById("sessionListPanel"),
     commanderSessionList: document.getElementById("commanderSessionList"),
     commanderRoleSelect: document.getElementById("commanderRoleSelect"),
@@ -80,6 +81,7 @@
     joinPermissionSelect: document.getElementById("joinPermissionSelect"),
     joinRoleSelect: document.getElementById("joinRoleSelect"),
     joinSessionBtn: document.getElementById("joinSessionBtn"),
+    joinLockedNote: document.getElementById("joinLockedNote"),
     paletteContainer: document.getElementById("paletteContainer"),
     participantList: document.getElementById("participantList"),
     guidedSteps: document.getElementById("guidedSteps"),
@@ -380,12 +382,8 @@
     const email = elements.commanderEmailInput.value.trim();
     const password = elements.commanderPasswordInput.value;
     const displayName = elements.commanderNameInput.value.trim();
-    if (!email || !password) {
-      setStatus("Enter a commander email and password.");
-      return;
-    }
-    if (state.authTab === "signup" && !displayName) {
-      setStatus("Enter a commander display name before creating an account.");
+    if (!displayName || !email || !password) {
+      setStatus("Enter a commander display name, email, and password.");
       return;
     }
 
@@ -544,6 +542,10 @@
   }
 
   async function onJoinSession() {
+    if (!state.commanderAuth?.accessToken) {
+      setStatus("Sign in with an account before joining a session.");
+      return;
+    }
     const joinCode = elements.joinCodeInput.value.trim().toUpperCase();
     const displayName = elements.joinDisplayNameInput.value.trim();
     const permissionTier = elements.joinPermissionSelect.value;
@@ -556,6 +558,7 @@
     try {
       const result = await apiFetch("/v1/ics-collab/sessions/join", {
         method: "POST",
+        actorType: "commander",
         body: { joinCode, displayName, permissionTier, icsRole }
       });
       state.participantAuth = {
@@ -902,12 +905,40 @@
 
   function renderCommanderAuthPanels() {
     const signedIn = Boolean(state.commanderAuth?.accessToken);
-    elements.createSessionPanel.classList.toggle("hidden", !signedIn);
+    elements.createSessionPanel.classList.toggle("hidden", false);
+    elements.createSessionPanel.classList.toggle("locked", !signedIn);
+    elements.createSessionLockedNote.classList.toggle("hidden", signedIn);
     elements.sessionListPanel.classList.toggle("hidden", !signedIn);
     elements.commanderSignOutBtn.classList.toggle("hidden", !signedIn);
     elements.sessionSignOutBtn.classList.toggle("hidden", !signedIn || !state.activeSession);
     elements.leaveSessionBtn.classList.toggle("hidden", !state.activeSession);
     elements.showViewerQrBtn.classList.toggle("hidden", !isCommander() || !state.activeSession || state.viewerMode);
+    elements.joinLockedNote.classList.toggle("hidden", signedIn);
+    toggleLandingCardAccess(signedIn);
+  }
+
+  function toggleLandingCardAccess(signedIn) {
+    const createControls = [
+      elements.incidentNameInput,
+      elements.commanderRoleSelect,
+      elements.opStartInput,
+      elements.opEndInput,
+      elements.guidedSetupDefaultInput,
+      elements.createSessionBtn
+    ];
+    const joinControls = [
+      elements.joinCodeInput,
+      elements.joinDisplayNameInput,
+      elements.joinPermissionSelect,
+      elements.joinRoleSelect,
+      elements.joinSessionBtn
+    ];
+    createControls.forEach((element) => {
+      if (element) element.disabled = !signedIn;
+    });
+    joinControls.forEach((element) => {
+      if (element) element.disabled = !signedIn;
+    });
   }
 
   function renderCommanderSessions(sessions) {

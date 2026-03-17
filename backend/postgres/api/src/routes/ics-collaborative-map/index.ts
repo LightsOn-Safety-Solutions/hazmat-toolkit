@@ -379,6 +379,7 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
     const client = await app.pg.connect();
     try {
       await client.query('BEGIN');
+      const identity = await requireTrainerIdentity(app, request.headers);
       const session = await fetchSessionByJoinCode(client, joinCode);
       if (!session) {
         throw new NotFoundError('Session not found for join code.');
@@ -390,6 +391,7 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
         `
           insert into collab_map_participants (
             session_id,
+            trainer_ref,
             display_name,
             permission_tier,
             ics_role,
@@ -397,9 +399,10 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
             token_expires_at,
             last_seen_at
           )
-          values ($1::uuid, $2, $3, $4, $5, $6::timestamptz, now())
-          on conflict (session_id, display_name)
+          values ($1::uuid, $2, $3, $4, $5, $6, $7::timestamptz, now())
+          on conflict (session_id, trainer_ref)
           do update set
+            display_name = excluded.display_name,
             permission_tier = excluded.permission_tier,
             ics_role = excluded.ics_role,
             session_token_hash = excluded.session_token_hash,
@@ -417,7 +420,7 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
             session_token_hash,
             token_expires_at
         `,
-        [refreshedSession.id, displayName, effectivePermission, icsRole, token.hash, token.expiresAt]
+        [refreshedSession.id, identity.trainerRef, displayName, effectivePermission, icsRole, token.hash, token.expiresAt]
       );
       const snapshot = await buildSessionSnapshot(client, refreshedSession.id);
       await client.query('COMMIT');
