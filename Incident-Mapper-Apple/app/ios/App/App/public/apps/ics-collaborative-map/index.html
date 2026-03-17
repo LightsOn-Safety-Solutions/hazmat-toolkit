@@ -100,8 +100,11 @@
           </div>
 
           <div id="sessionPeriodPanel" class="panel compact hidden">
-            <h3>Operational Period</h3>
-            <div class="stack">
+            <button id="sessionPeriodPanelToggle" class="panel-section-toggle" type="button" aria-expanded="true">
+              <span>Operational Period</span>
+              <span class="toggle-symbol">−</span>
+            </button>
+            <div id="sessionPeriodPanelBody" class="panel-section-body">
               <label>
                 Start
                 <input id="sessionOpStartInput" type="datetime-local" />

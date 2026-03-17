@@ -99,6 +99,7 @@
     endSessionBtn: document.getElementById("endSessionBtn"),
     sessionMeta: document.getElementById("sessionMeta"),
     sessionPeriodPanel: document.getElementById("sessionPeriodPanel"),
+    sessionPeriodPanelToggle: document.getElementById("sessionPeriodPanelToggle"),
     sessionOpStartInput: document.getElementById("sessionOpStartInput"),
     sessionOpEndInput: document.getElementById("sessionOpEndInput"),
     updateOperationalPeriodBtn: document.getElementById("updateOperationalPeriodBtn"),
@@ -177,6 +178,7 @@
     elements.leaveSessionBtn.addEventListener("click", leaveCurrentSession);
     elements.sessionSignOutBtn.addEventListener("click", signOutCommander);
     elements.sessionPanelToggle.addEventListener("click", () => togglePanel("session"));
+    elements.sessionPeriodPanelToggle.addEventListener("click", () => togglePanel("sessionPeriod"));
     elements.participantsPanelToggle.addEventListener("click", () => togglePanel("participants"));
     elements.palettesPanelToggle.addEventListener("click", () => togglePanel("palettes"));
     elements.copyJoinLinkBtn.addEventListener("click", copyJoinLink);
@@ -818,6 +820,7 @@
 
   function renderPanelCollapses() {
     syncPanelCollapse(elements.sessionPanel, elements.sessionPanelToggle, "session");
+    syncPanelCollapse(elements.sessionPeriodPanel, elements.sessionPeriodPanelToggle, "sessionPeriod");
     syncPanelCollapse(elements.participantsPanel, elements.participantsPanelToggle, "participants");
     syncPanelCollapse(elements.palettesPanel, elements.palettesPanelToggle, "palettes");
   }
