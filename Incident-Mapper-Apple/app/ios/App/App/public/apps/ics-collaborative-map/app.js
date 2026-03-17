@@ -86,6 +86,7 @@
     guidedModeBtn: document.getElementById("guidedModeBtn"),
     guidedSetupToggle: document.getElementById("guidedSetupToggle"),
     mapStyleSelect: document.getElementById("mapStyleSelect"),
+    quickFlowPanel: document.getElementById("quickFlowPanel"),
     copyJoinLinkBtn: document.getElementById("copyJoinLinkBtn"),
     endSessionBtn: document.getElementById("endSessionBtn"),
     sessionMeta: document.getElementById("sessionMeta"),
@@ -204,18 +205,27 @@
 
   function createBaseLayers() {
     return {
-      road: L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      road: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}", {
         maxZoom: 20,
-        attribution: "&copy; OpenStreetMap contributors"
+        attribution: "Tiles &copy; Esri",
+        crossOrigin: true,
+        updateWhenIdle: true,
+        keepBuffer: 4
       }),
       satellite: L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
         maxZoom: 20,
-        attribution: "Tiles &copy; Esri"
+        attribution: "Tiles &copy; Esri",
+        crossOrigin: true,
+        updateWhenIdle: true,
+        keepBuffer: 4
       }),
       topo: L.tileLayer("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png", {
         maxZoom: 17,
         subdomains: ["a", "b", "c"],
-        attribution: "Map data &copy; OpenStreetMap contributors, SRTM | Map style &copy; OpenTopoMap"
+        attribution: "Map data &copy; OpenStreetMap contributors, SRTM | Map style &copy; OpenTopoMap",
+        crossOrigin: true,
+        updateWhenIdle: true,
+        keepBuffer: 4
       })
     };
   }
@@ -237,11 +247,21 @@
     requestAnimationFrame(() => {
       if (!state.map) return;
       state.map.invalidateSize(false);
+      refreshActiveBaseLayer();
       window.setTimeout(() => {
         if (!state.map) return;
         state.map.invalidateSize(false);
+        refreshActiveBaseLayer();
       }, 200);
     });
+  }
+
+  function refreshActiveBaseLayer() {
+    const activeLayer = state.baseLayers?.[state.activeBaseLayerKey];
+    if (!activeLayer) return;
+    if (typeof activeLayer.redraw === "function") {
+      activeLayer.redraw();
+    }
   }
 
   function tryCenterMapOnCurrentLocation() {
@@ -678,6 +698,8 @@
   function renderGuidedControls() {
     elements.guidedSetupToggle.checked = state.guidedMode;
     elements.guidedModeBtn.textContent = state.guidedMode ? "Hide Guided Setup" : "10-Minute Setup";
+    elements.quickFlowPanel.classList.toggle("collapsed", !state.guidedMode);
+    elements.appView.classList.toggle("guided-collapsed", !state.guidedMode);
   }
 
   function renderCommanderAuthPanels() {
