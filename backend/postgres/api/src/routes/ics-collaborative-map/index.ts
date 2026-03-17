@@ -175,6 +175,51 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
     }
   }));
 
+  app.get<{ Params: { joinCode: string } }>('/v1/ics-collab/view/:joinCode', async (request, reply) => {
+    try {
+      const joinCode = normalizeJoinCode(request.params.joinCode);
+      if (!joinCode) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'Valid join code is required.' });
+      }
+      const session = await fetchSessionByJoinCode(app.pg, joinCode);
+      if (!session) {
+        throw new NotFoundError('Collaborative session not found for viewer link.');
+      }
+      const refreshed = await refreshSessionStatusIfExpired(app.pg, session.id);
+      const snapshot = await buildSessionSnapshot(app.pg, refreshed.id);
+      return reply.send({
+        session: mapSession(refreshed, app.config.icsCollabPublicBaseUrl ?? request.headers.origin),
+        snapshot
+      });
+    } catch (error) {
+      return sendRouteError(reply, request, error, 'Failed to fetch collaborative viewer session.');
+    }
+  });
+
+  app.get<{ Params: { joinCode: string }; Querystring: { sinceVersion?: string } }>('/v1/ics-collab/view/:joinCode/deltas', async (request, reply) => {
+    try {
+      const joinCode = normalizeJoinCode(request.params.joinCode);
+      if (!joinCode) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'Valid join code is required.' });
+      }
+      const sinceVersion = clampNonNegativeInt(request.query?.sinceVersion ?? '0');
+      const session = await fetchSessionByJoinCode(app.pg, joinCode);
+      if (!session) {
+        throw new NotFoundError('Collaborative session not found for viewer link.');
+      }
+      const refreshed = await refreshSessionStatusIfExpired(app.pg, session.id);
+      const deltas = await listMutationsSince(app.pg, refreshed.id, sinceVersion);
+      return reply.send({
+        session: mapSession(refreshed, app.config.icsCollabPublicBaseUrl ?? request.headers.origin),
+        sinceVersion,
+        currentVersion: Number(refreshed.last_mutation_version),
+        deltas: deltas.map(mapMutation)
+      });
+    } catch (error) {
+      return sendRouteError(reply, request, error, 'Failed to fetch collaborative viewer deltas.');
+    }
+  });
+
   app.get('/v1/ics-collab/sessions', async (request, reply) => {
     try {
       const trainer = await requireTrainerIdentity(app, request.headers);

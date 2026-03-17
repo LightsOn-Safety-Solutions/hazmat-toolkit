@@ -20,6 +20,7 @@
         <button id="leaveSessionBtn" class="secondary hidden" type="button">Leave Session</button>
         <button id="sessionSignOutBtn" class="secondary hidden" type="button">Sign Out</button>
         <button id="copyJoinLinkBtn" class="secondary hidden" type="button">Copy Join Link</button>
+        <button id="showViewerQrBtn" class="secondary hidden" type="button">Show Viewer QR</button>
         <button id="endSessionBtn" class="danger hidden" type="button">End Session</button>
       </div>
     </header>
@@ -176,7 +177,7 @@
             <div id="selectedObjectPanel" class="stack hidden">
               <div id="selectedObjectMeta" class="meta-list"></div>
               <div id="selectedObjectFields" class="stack"></div>
-              <div class="row">
+              <div id="selectedObjectActions" class="row">
                 <button id="saveFieldsBtn" class="primary" type="button">Save Changes</button>
                 <button id="editGeometryBtn" class="secondary" type="button">Edit Geometry</button>
                 <button id="deleteObjectBtn" class="danger" type="button">Delete</button>
@@ -186,6 +187,22 @@
         </aside>
       </section>
     </main>
+  </div>
+
+  <div id="viewerQrModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="viewerQrTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="viewerQrTitle">Viewer QR</h2>
+        <button id="closeViewerQrBtn" class="secondary" type="button">Close</button>
+      </div>
+      <p class="muted">This QR opens a read-only map view. People can see the map and tap items to inspect their properties.</p>
+      <img id="viewerQrImage" class="qr-image" alt="Viewer QR code" />
+      <label>
+        Viewer Link
+        <input id="viewerQrLink" type="text" readonly />
+      </label>
+      <button id="copyViewerLinkBtn" class="secondary" type="button">Copy Viewer Link</button>
+    </div>
   </div>
 
   <script src="./vendor/leaflet-1.9.4.js"></script>

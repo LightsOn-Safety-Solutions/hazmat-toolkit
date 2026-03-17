@@ -55,6 +55,7 @@
 
   const templateByType = Object.fromEntries(OBJECT_TEMPLATES.map((template) => [template.objectType, template]));
   const elements = {
+    shell: document.querySelector(".shell"),
     landingView: document.getElementById("landingView"),
     appView: document.getElementById("appView"),
     statusBar: document.getElementById("statusBar"),
@@ -88,6 +89,7 @@
     mapStyleSelect: document.getElementById("mapStyleSelect"),
     leaveSessionBtn: document.getElementById("leaveSessionBtn"),
     sessionSignOutBtn: document.getElementById("sessionSignOutBtn"),
+    showViewerQrBtn: document.getElementById("showViewerQrBtn"),
     quickFlowPanel: document.getElementById("quickFlowPanel"),
     sessionPanel: document.getElementById("sessionPanel"),
     sessionPanelToggle: document.getElementById("sessionPanelToggle"),
@@ -107,13 +109,19 @@
     selectedObjectPanel: document.getElementById("selectedObjectPanel"),
     selectedObjectMeta: document.getElementById("selectedObjectMeta"),
     selectedObjectFields: document.getElementById("selectedObjectFields"),
+    selectedObjectActions: document.getElementById("selectedObjectActions"),
     saveFieldsBtn: document.getElementById("saveFieldsBtn"),
     editGeometryBtn: document.getElementById("editGeometryBtn"),
     deleteObjectBtn: document.getElementById("deleteObjectBtn"),
     drawControls: document.getElementById("drawControls"),
     drawHintText: document.getElementById("drawHintText"),
     finishGeometryBtn: document.getElementById("finishGeometryBtn"),
-    cancelGeometryBtn: document.getElementById("cancelGeometryBtn")
+    cancelGeometryBtn: document.getElementById("cancelGeometryBtn"),
+    viewerQrModal: document.getElementById("viewerQrModal"),
+    closeViewerQrBtn: document.getElementById("closeViewerQrBtn"),
+    viewerQrImage: document.getElementById("viewerQrImage"),
+    viewerQrLink: document.getElementById("viewerQrLink"),
+    copyViewerLinkBtn: document.getElementById("copyViewerLinkBtn")
   };
 
   const state = {
@@ -145,7 +153,9 @@
     sessionRefreshNonce: 0,
     dragTemplateType: null,
     collapsedPaletteCategories: new Set(),
-    collapsedPanels: new Set()
+    collapsedPanels: new Set(),
+    viewerMode: false,
+    viewerJoinCode: null
   };
 
   async function init() {
@@ -154,12 +164,19 @@
     await hydrateAuthUI();
     wireEvents();
     initMap();
-    const joinCode = new URL(window.location.href).searchParams.get("join");
+    const url = new URL(window.location.href);
+    const joinCode = url.searchParams.get("join");
+    state.viewerMode = url.searchParams.get("view") === "1";
+    state.viewerJoinCode = state.viewerMode && joinCode ? joinCode.toUpperCase() : null;
     if (joinCode) {
       elements.joinCodeInput.value = joinCode.toUpperCase();
-      setStatus("Join code loaded from share link.");
+      setStatus(state.viewerMode ? "Viewer link loaded." : "Join code loaded from share link.");
     }
     setDefaultOperationalPeriodInputs();
+    if (state.viewerMode && state.viewerJoinCode) {
+      await openViewerSession(state.viewerJoinCode);
+      return;
+    }
     await restorePersistedSession();
     renderAll();
   }
@@ -177,11 +194,14 @@
     elements.mapStyleSelect.addEventListener("change", (event) => setBaseLayer(event.target.value));
     elements.leaveSessionBtn.addEventListener("click", leaveCurrentSession);
     elements.sessionSignOutBtn.addEventListener("click", signOutCommander);
+    elements.showViewerQrBtn.addEventListener("click", showViewerQrModal);
     elements.sessionPanelToggle.addEventListener("click", () => togglePanel("session"));
     elements.sessionPeriodPanelToggle.addEventListener("click", () => togglePanel("sessionPeriod"));
     elements.participantsPanelToggle.addEventListener("click", () => togglePanel("participants"));
     elements.palettesPanelToggle.addEventListener("click", () => togglePanel("palettes"));
     elements.copyJoinLinkBtn.addEventListener("click", copyJoinLink);
+    elements.closeViewerQrBtn.addEventListener("click", hideViewerQrModal);
+    elements.copyViewerLinkBtn.addEventListener("click", copyViewerLink);
     elements.endSessionBtn.addEventListener("click", endSession);
     elements.updateOperationalPeriodBtn.addEventListener("click", updateOperationalPeriod);
     elements.saveFieldsBtn.addEventListener("click", saveSelectedObjectFields);
@@ -466,6 +486,26 @@
     elements.commanderSignOutBtn.classList.remove("hidden");
   }
 
+  async function openViewerSession(joinCode) {
+    try {
+      const response = await apiFetch(`/v1/ics-collab/view/${encodeURIComponent(joinCode)}`, {
+        actorType: "public"
+      });
+      state.viewerMode = true;
+      state.viewerJoinCode = joinCode;
+      state.actor = {
+        id: "viewer",
+        displayName: "Viewer",
+        permissionTier: "observer",
+        icsRole: "Viewer"
+      };
+      await openSession(response.session, state.actor, "viewer", response.snapshot);
+      setStatus(`Viewing ${response.session.incidentName} in read-only mode.`);
+    } catch (error) {
+      setStatus(formatError(error));
+    }
+  }
+
   async function onCreateSession() {
     if (!state.commanderAuth?.accessToken) {
       setStatus("Sign in as commander before creating a session.");
@@ -545,10 +585,15 @@
     state.qrPayload = state.qrPayload || JSON.stringify({ type: "ics_collab_join", joinCode: session.joinCode });
     elements.landingView.classList.add("hidden");
     elements.appView.classList.remove("hidden");
+    elements.shell.classList.toggle("viewer-mode", state.viewerMode);
     if (actorType === "participant") {
       persistJSON(STORAGE_KEYS.participantAuth, state.participantAuth);
     }
-    const resolvedSnapshot = snapshot || (await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(session.id)}/snapshot`, { actorType }));
+    const resolvedSnapshot = snapshot || (
+      state.viewerMode && state.viewerJoinCode
+        ? await apiFetch(`/v1/ics-collab/view/${encodeURIComponent(state.viewerJoinCode)}`, { actorType: "public" })
+        : await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(session.id)}/snapshot`, { actorType })
+    );
     const payload = resolvedSnapshot.snapshot || resolvedSnapshot;
     if (resolvedSnapshot.actor && !state.actor) {
       state.actor = resolvedSnapshot.actor;
@@ -587,9 +632,13 @@
       if (!state.activeSession) return;
       try {
         const previousStatus = effectiveSessionStatus(state.activeSession);
-        const deltas = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/deltas?sinceVersion=${encodeURIComponent(String(state.lastVersion))}`, {
-          actorType: currentActorType()
-        });
+        const deltas = state.viewerMode && state.viewerJoinCode
+          ? await apiFetch(`/v1/ics-collab/view/${encodeURIComponent(state.viewerJoinCode)}/deltas?sinceVersion=${encodeURIComponent(String(state.lastVersion))}`, {
+            actorType: "public"
+          })
+          : await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/deltas?sinceVersion=${encodeURIComponent(String(state.lastVersion))}`, {
+            actorType: currentActorType()
+          });
         if (deltas.session) {
           state.activeSession = deltas.session;
           state.lastVersion = Number(deltas.currentVersion || state.lastVersion);
@@ -603,14 +652,16 @@
           renderAll();
         }
         if (Array.isArray(deltas.deltas) && deltas.deltas.length > 0) {
-          const snapshotResponse = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/snapshot`, {
-            actorType: currentActorType()
-          });
+          const snapshotResponse = state.viewerMode
+            ? await apiFetch(`/v1/ics-collab/view/${encodeURIComponent(state.viewerJoinCode)}`, { actorType: "public" })
+            : await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/snapshot`, {
+              actorType: currentActorType()
+            });
           if (snapshotResponse.session) state.activeSession = snapshotResponse.session;
           if (snapshotResponse.actor) state.actor = snapshotResponse.actor;
           applySnapshot(snapshotResponse.snapshot || snapshotResponse);
           renderAll();
-        } else if (state.sessionRefreshNonce % 3 === 0) {
+        } else if (!state.viewerMode && state.sessionRefreshNonce % 3 === 0) {
           const participants = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/participants`, {
             actorType: currentActorType()
           });
@@ -698,11 +749,15 @@
     state.drawState = null;
     state.guidedMode = false;
     state.qrPayload = null;
+    state.viewerMode = false;
+    state.viewerJoinCode = null;
     cancelGeometryPreviewOnly();
     syncMapObjects();
     updateDrawControls();
+    hideViewerQrModal();
     elements.landingView.classList.remove("hidden");
     elements.appView.classList.add("hidden");
+    elements.shell.classList.remove("viewer-mode");
     scheduleMapResizeRefresh();
   }
 
@@ -852,6 +907,7 @@
     elements.commanderSignOutBtn.classList.toggle("hidden", !signedIn);
     elements.sessionSignOutBtn.classList.toggle("hidden", !signedIn || !state.activeSession);
     elements.leaveSessionBtn.classList.toggle("hidden", !state.activeSession);
+    elements.showViewerQrBtn.classList.toggle("hidden", !isCommander() || !state.activeSession || state.viewerMode);
   }
 
   function renderCommanderSessions(sessions) {
@@ -1088,6 +1144,7 @@
     elements.editGeometryBtn.disabled = !canUseGeometryButton;
     elements.editGeometryBtn.classList.toggle("hidden", object.geometryType === "point");
     elements.deleteObjectBtn.disabled = !editable;
+    elements.selectedObjectActions.classList.toggle("hidden", state.viewerMode || !editable);
   }
 
   function selectTemplate(objectType) {
@@ -1591,7 +1648,46 @@
     }
   }
 
+  function buildViewerLink(session = state.activeSession) {
+    if (!session?.joinCode) return "";
+    const baseUrl = runtimeConfig.publicBaseUrl || `${window.location.origin}${window.location.pathname}`;
+    try {
+      const url = new URL(baseUrl);
+      url.searchParams.set("join", session.joinCode);
+      url.searchParams.set("view", "1");
+      return url.toString();
+    } catch (_error) {
+      return `${baseUrl.replace(/\/$/, "")}?join=${encodeURIComponent(session.joinCode)}&view=1`;
+    }
+  }
+
+  function showViewerQrModal() {
+    if (!state.activeSession?.joinCode) return;
+    const viewerLink = buildViewerLink();
+    elements.viewerQrLink.value = viewerLink;
+    elements.viewerQrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(viewerLink)}`;
+    elements.viewerQrModal.classList.remove("hidden");
+  }
+
+  function hideViewerQrModal() {
+    elements.viewerQrModal.classList.add("hidden");
+  }
+
+  async function copyViewerLink() {
+    const viewerLink = buildViewerLink();
+    if (!viewerLink) return;
+    try {
+      await writeToClipboard(viewerLink);
+      setStatus("Viewer link copied.");
+    } catch (_error) {
+      setStatus("Unable to copy viewer link.");
+    }
+  }
+
   function currentActorType() {
+    if (state.viewerMode) {
+      return "public";
+    }
     if (state.actor?.permissionTier === "commander" && state.commanderAuth?.accessToken) {
       return "commander";
     }
@@ -1684,6 +1780,8 @@
     };
     if (options.actorType === "participant" && state.participantAuth?.accessToken) {
       headers.Authorization = `Bearer ${state.participantAuth.accessToken}`;
+    } else if (options.actorType === "public") {
+      // Public viewer requests are intentionally unauthenticated.
     } else if (state.commanderAuth?.accessToken) {
       await refreshCommanderTokenIfNeeded();
       headers.Authorization = `Bearer ${state.commanderAuth.accessToken}`;

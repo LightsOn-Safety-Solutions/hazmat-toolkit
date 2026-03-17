@@ -59,6 +59,18 @@ body { height: 100vh; overflow: hidden; }
 .app.guided-collapsed {
   grid-template-columns: 280px minmax(0, 1fr) 240px;
 }
+.shell.viewer-mode .topbar-actions,
+.shell.viewer-mode .sidebar.left,
+.shell.viewer-mode #quickFlowPanel {
+  display: none;
+}
+.shell.viewer-mode .app,
+.shell.viewer-mode .app.guided-collapsed {
+  grid-template-columns: minmax(0, 1fr) 320px;
+}
+.shell.viewer-mode .sidebar.right {
+  overflow: hidden;
+}
 
 .sidebar { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow: auto; }
 .map-stage { position: relative; min-height: 0; display: flex; }
@@ -144,6 +156,43 @@ button:disabled { cursor: not-allowed; opacity: .55; transform: none; }
 button.primary { background: var(--accent); color: #1d1d1d; font-weight: 700; }
 button.secondary { background: rgba(255,255,255,0.08); color: var(--text); border-color: var(--stroke); }
 button.danger { background: rgba(178,58,72,0.14); color: #f4c9ce; border-color: rgba(178,58,72,0.35); }
+.modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 3000;
+}
+.modal-card {
+  width: min(420px, 100%);
+  background: var(--panel);
+  border: 1px solid var(--stroke);
+  border-radius: 20px;
+  padding: 18px;
+  box-shadow: 0 24px 54px rgba(0,0,0,0.35);
+  display: grid;
+  gap: 14px;
+}
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.modal-header h2 {
+  margin: 0;
+}
+.qr-image {
+  width: min(280px, 100%);
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  border-radius: 18px;
+  background: #fff;
+  padding: 10px;
+}
 
 .segmented {
   display: inline-flex;
