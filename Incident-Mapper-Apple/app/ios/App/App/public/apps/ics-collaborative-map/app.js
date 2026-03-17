@@ -586,12 +586,20 @@
     state.pollTimer = window.setInterval(async () => {
       if (!state.activeSession) return;
       try {
+        const previousStatus = effectiveSessionStatus(state.activeSession);
         const deltas = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/deltas?sinceVersion=${encodeURIComponent(String(state.lastVersion))}`, {
           actorType: currentActorType()
         });
         if (deltas.session) {
           state.activeSession = deltas.session;
           state.lastVersion = Number(deltas.currentVersion || state.lastVersion);
+        }
+        const nextStatus = effectiveSessionStatus(state.activeSession);
+        if (previousStatus !== nextStatus) {
+          if (nextStatus !== "active") {
+            cancelGeometryDraw();
+          }
+          renderAll();
         }
         if (Array.isArray(deltas.deltas) && deltas.deltas.length > 0) {
           const snapshotResponse = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/snapshot`, {
@@ -909,9 +917,10 @@
       return;
     }
     const session = state.activeSession;
+    const visibleStatus = effectiveSessionStatus(session);
     appendMetaRow(elements.sessionMeta, "Incident", session.incidentName);
     appendMetaRow(elements.sessionMeta, "Commander", `${session.commanderName} · ${session.commanderICSRole}`);
-    appendMetaRow(elements.sessionMeta, "Status", session.status);
+    appendMetaRow(elements.sessionMeta, "Status", visibleStatus);
     appendMetaRow(elements.sessionMeta, "Join Code", session.joinCode);
     appendMetaRow(elements.sessionMeta, "Period", `${formatDateTime(session.operationalPeriodStart)} → ${formatDateTime(session.operationalPeriodEnd)}`);
     elements.copyJoinLinkBtn.classList.toggle("hidden", !session.joinCode);
@@ -1578,7 +1587,17 @@
   }
 
   function sessionIsActive() {
-    return state.activeSession?.status === "active";
+    return effectiveSessionStatus(state.activeSession) === "active";
+  }
+
+  function effectiveSessionStatus(session) {
+    if (!session) return "ended";
+    if (session.status && session.status !== "active") return session.status;
+    const operationalPeriodEnd = session.operationalPeriodEnd ? new Date(session.operationalPeriodEnd) : null;
+    if (operationalPeriodEnd && !Number.isNaN(operationalPeriodEnd.getTime()) && operationalPeriodEnd.getTime() <= Date.now()) {
+      return "expired";
+    }
+    return session.status || "active";
   }
 
   function appendMetaRow(container, label, value) {
