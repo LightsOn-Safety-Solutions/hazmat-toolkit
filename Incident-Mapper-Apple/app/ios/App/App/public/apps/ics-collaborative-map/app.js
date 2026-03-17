@@ -3,7 +3,8 @@
   const API_BASE_URL = (config.apiBaseUrl || "").replace(/\/$/, "");
   const runtimeConfig = {
     supabaseUrl: (config.supabaseUrl || "").replace(/\/$/, ""),
-    supabaseAnonKey: config.supabaseAnonKey || ""
+    supabaseAnonKey: config.supabaseAnonKey || "",
+    publicBaseUrl: (config.publicBaseUrl || "").replace(/\/$/, "")
   };
   const STORAGE_KEYS = {
     commanderAuth: "icsCollabCommanderAuth",
@@ -252,14 +253,23 @@
   }
 
   async function supabaseSignUp(email, password, displayName) {
+    const emailRedirectTo = getAuthRedirectUrl();
     const response = await fetch(`${runtimeConfig.supabaseUrl}/auth/v1/signup`, {
       method: "POST",
       headers: supabaseHeaders(),
       body: JSON.stringify({
         email,
         password,
+        emailRedirectTo,
+        redirect_to: emailRedirectTo,
         data: {
           display_name: displayName
+        },
+        options: {
+          data: {
+            display_name: displayName
+          },
+          emailRedirectTo
         }
       })
     });
@@ -1288,6 +1298,9 @@
       if (!runtimeConfig.supabaseAnonKey && payload?.runtimeConfig?.supabaseAnonKey) {
         runtimeConfig.supabaseAnonKey = String(payload.runtimeConfig.supabaseAnonKey);
       }
+      if (!runtimeConfig.publicBaseUrl && payload?.runtimeConfig?.publicBaseUrl) {
+        runtimeConfig.publicBaseUrl = String(payload.runtimeConfig.publicBaseUrl).replace(/\/$/, "");
+      }
     } catch (_error) {
       // Non-fatal: join still works without commander auth bootstrap.
     }
@@ -1295,6 +1308,11 @@
 
   function hasSupabaseAuthConfig() {
     return Boolean(runtimeConfig.supabaseUrl && runtimeConfig.supabaseAnonKey);
+  }
+
+  function getAuthRedirectUrl() {
+    if (runtimeConfig.publicBaseUrl) return runtimeConfig.publicBaseUrl;
+    return `${window.location.origin}${window.location.pathname}`;
   }
 
   async function parseSupabaseAuthResponse(response) {
