@@ -6,6 +6,7 @@ import { scenariosRoutes } from './routes/scenarios.js';
 import { sessionRoutes } from './routes/sessions.js';
 import { watchRoutes } from './routes/watch.js';
 import { trackingRoutes } from './routes/tracking.js';
+import { collabRoutes } from './routes/ics-collaborative-map/index.js';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -39,6 +40,7 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
   await app.register(sessionRoutes);
   await app.register(watchRoutes);
   await app.register(trackingRoutes);
+  await app.register(collabRoutes);
 
   return app;
 }

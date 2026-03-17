@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>ICS Collaborative Map</title>
+  <link rel="stylesheet" href="./vendor/leaflet-1.9.4.css" />
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div class="shell">
+    <header class="topbar">
+      <div>
+        <div class="eyebrow">Hazmat ToolK.I.T.</div>
+        <h1>ICS Collaborative Map</h1>
+        <p class="subtitle">Commander-owned, browser-friendly operational map for shared incident command.</p>
+      </div>
+      <div class="topbar-actions">
+        <button id="guidedModeBtn" class="secondary hidden" type="button">10-Minute Setup</button>
+        <button id="copyJoinLinkBtn" class="secondary hidden" type="button">Copy Join Link</button>
+        <button id="endSessionBtn" class="danger hidden" type="button">End Session</button>
+      </div>
+    </header>
+
+    <div id="statusBar" class="status-bar">Ready.</div>
+
+    <main class="layout">
+      <section id="landingView" class="landing">
+        <div class="panel">
+          <h2>Commander Session</h2>
+          <p class="muted">Sign in with a commander account to create or reopen a collaborative map session.</p>
+
+          <div class="segmented">
+            <button id="signInTabBtn" class="active" type="button">Sign In</button>
+            <button id="signUpTabBtn" type="button">Create Account</button>
+          </div>
+
+          <div id="authFields" class="stack">
+            <input id="commanderNameInput" type="text" placeholder="Commander display name" />
+            <input id="commanderEmailInput" type="email" placeholder="Commander email" />
+            <input id="commanderPasswordInput" type="password" placeholder="Password" />
+          </div>
+
+          <div class="row">
+            <button id="commanderAuthBtn" class="primary" type="button">Sign In</button>
+            <button id="commanderSignOutBtn" class="secondary hidden" type="button">Sign Out</button>
+          </div>
+
+          <div id="createSessionPanel" class="stack hidden">
+            <h3>Create New Session</h3>
+            <input id="incidentNameInput" type="text" placeholder="Incident name" />
+            <select id="commanderRoleSelect"></select>
+            <label>
+              Operational Period Start
+              <input id="opStartInput" type="datetime-local" />
+            </label>
+            <label>
+              Operational Period End
+              <input id="opEndInput" type="datetime-local" />
+            </label>
+            <button id="createSessionBtn" class="primary" type="button">Create Collaborative Session</button>
+          </div>
+
+          <div id="sessionListPanel" class="stack hidden">
+            <h3>Your Sessions</h3>
+            <div id="commanderSessionList" class="session-list"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h2>Join Session</h2>
+          <p class="muted">Operators and observers can join by code or share link without a full account.</p>
+          <input id="joinCodeInput" type="text" placeholder="Join code" />
+          <input id="joinDisplayNameInput" type="text" placeholder="Display name" />
+          <select id="joinPermissionSelect">
+            <option value="operator">Operator</option>
+            <option value="observer">Observer</option>
+          </select>
+          <select id="joinRoleSelect"></select>
+          <button id="joinSessionBtn" class="primary" type="button">Join Session</button>
+        </div>
+      </section>
+
+      <section id="appView" class="app hidden">
+        <aside class="sidebar left">
+          <div class="panel compact">
+            <h3>Session</h3>
+            <div id="sessionMeta" class="meta-list"></div>
+          </div>
+
+          <div id="sessionPeriodPanel" class="panel compact hidden">
+            <h3>Operational Period</h3>
+            <div class="stack">
+              <label>
+                Start
+                <input id="sessionOpStartInput" type="datetime-local" />
+              </label>
+              <label>
+                End
+                <input id="sessionOpEndInput" type="datetime-local" />
+              </label>
+              <button id="updateOperationalPeriodBtn" class="secondary" type="button">Update Period</button>
+            </div>
+          </div>
+
+          <div class="panel compact">
+            <h3>Participants</h3>
+            <div id="participantList" class="participant-list"></div>
+          </div>
+
+          <div class="panel compact">
+            <h3>Palettes</h3>
+            <div id="paletteContainer" class="palette-list"></div>
+          </div>
+        </aside>
+
+        <section class="map-stage">
+          <div id="map"></div>
+          <div id="drawControls" class="draw-controls hidden">
+            <span id="drawHintText">Click the map to place points.</span>
+            <button id="finishGeometryBtn" class="primary" type="button">Finish</button>
+            <button id="cancelGeometryBtn" class="secondary" type="button">Cancel</button>
+          </div>
+        </section>
+
+        <aside class="sidebar right">
+          <div class="panel compact">
+            <h3>Quick Flow</h3>
+            <button id="startGuidedSetupBtn" class="primary" type="button">Start 10-Minute Setup</button>
+            <div id="guidedSteps" class="guided-steps"></div>
+          </div>
+
+          <div class="panel compact">
+            <h3>Selected Item</h3>
+            <div id="selectedObjectEmpty" class="muted">Select an item to inspect or edit it.</div>
+            <div id="selectedObjectPanel" class="stack hidden">
+              <div id="selectedObjectMeta" class="meta-list"></div>
+              <div id="selectedObjectFields" class="stack"></div>
+              <div class="row">
+                <button id="saveFieldsBtn" class="primary" type="button">Save Changes</button>
+                <button id="editGeometryBtn" class="secondary" type="button">Edit Geometry</button>
+                <button id="deleteObjectBtn" class="danger" type="button">Delete</button>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <script src="./vendor/leaflet-1.9.4.js"></script>
+  <script src="./config.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>
