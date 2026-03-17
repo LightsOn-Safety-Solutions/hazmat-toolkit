@@ -256,6 +256,55 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
+  app.get('/v1/ics-collab/sessions/active', async (request, reply) => {
+    try {
+      await requireTrainerIdentity(app, request.headers);
+      const result = await app.pg.query<{
+        id: string;
+        incident_name: string;
+        join_code: string;
+        operational_period_start: string;
+        operational_period_end: string;
+        session_status: SessionStatus;
+        owner_name: string | null;
+        owner_trainer_ref: string;
+        commander_name: string;
+      }>(
+        `
+          select
+            s.id::text as id,
+            s.incident_name,
+            s.join_code,
+            s.operational_period_start,
+            s.operational_period_end,
+            s.session_status,
+            t.display_name as owner_name,
+            s.trainer_ref as owner_trainer_ref,
+            s.commander_name
+          from collab_map_sessions s
+          left join trainers t
+            on t.trainer_ref = s.trainer_ref
+          where s.session_status = 'active'
+            and s.operational_period_end > now()
+          order by s.created_at desc
+        `
+      );
+      return reply.send(result.rows.map((row) => ({
+        id: row.id,
+        incidentName: row.incident_name,
+        joinCode: row.join_code,
+        operationalPeriodStart: row.operational_period_start,
+        operationalPeriodEnd: row.operational_period_end,
+        status: row.session_status,
+        ownerName: row.owner_name ?? 'Owner',
+        ownerTrainerRef: row.owner_trainer_ref,
+        commanderName: row.commander_name
+      })));
+    } catch (error) {
+      return sendTrainerError(reply, request, error, 'Failed to list active collaborative sessions.');
+    }
+  });
+
   app.post<{ Body: CreateSessionBody }>('/v1/ics-collab/sessions', async (request, reply) => {
     const incidentName = normalizeRequiredText(request.body?.incidentName, 'incidentName');
     const commanderICSRole = 'Incident Commander';

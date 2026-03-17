@@ -74,6 +74,8 @@
     createSessionLockedNote: document.getElementById("createSessionLockedNote"),
     sessionListPanel: document.getElementById("sessionListPanel"),
     commanderSessionList: document.getElementById("commanderSessionList"),
+    activeSessionGalleryPanel: document.getElementById("activeSessionGalleryPanel"),
+    activeSessionGallery: document.getElementById("activeSessionGallery"),
     commanderRoleSelect: document.getElementById("commanderRoleSelect"),
     initialIncidentCommanderRoleInput: document.getElementById("initialIncidentCommanderRoleInput"),
     incidentNameInput: document.getElementById("incidentNameInput"),
@@ -492,10 +494,15 @@
   async function refreshCommanderSessions() {
     if (!state.commanderAuth?.accessToken) return;
     await refreshCommanderTokenIfNeeded();
-    const sessions = await apiFetch("/v1/ics-collab/sessions", { actorType: "commander" });
+    const [sessions, activeSessions] = await Promise.all([
+      apiFetch("/v1/ics-collab/sessions", { actorType: "commander" }),
+      apiFetch("/v1/ics-collab/sessions/active", { actorType: "commander" })
+    ]);
     renderCommanderSessions(Array.isArray(sessions) ? sessions : []);
+    renderActiveSessionGallery(Array.isArray(activeSessions) ? activeSessions : []);
     elements.createSessionPanel.classList.remove("hidden");
     elements.sessionListPanel.classList.remove("hidden");
+    elements.activeSessionGalleryPanel.classList.remove("hidden");
     elements.commanderSignOutBtn.classList.remove("hidden");
   }
 
@@ -739,12 +746,14 @@
     persistJSON(STORAGE_KEYS.commanderAuth, null);
     elements.createSessionPanel.classList.add("hidden");
     elements.sessionListPanel.classList.add("hidden");
+    elements.activeSessionGalleryPanel.classList.add("hidden");
     elements.commanderSignOutBtn.classList.add("hidden");
     elements.sessionSignOutBtn.classList.add("hidden");
     if (!state.participantAuth) {
       exitActiveWorkspace();
     }
     renderCommanderSessions([]);
+    renderActiveSessionGallery([]);
     renderAll();
     setStatus("Session owner signed out.");
   }
@@ -953,6 +962,7 @@
     elements.createSessionPanel.classList.toggle("locked", !signedIn);
     elements.createSessionLockedNote.classList.toggle("hidden", signedIn);
     elements.sessionListPanel.classList.toggle("hidden", !signedIn);
+    elements.activeSessionGalleryPanel.classList.toggle("hidden", !signedIn);
     elements.commanderSignOutBtn.classList.toggle("hidden", !signedIn);
     elements.sessionSignOutBtn.classList.toggle("hidden", !signedIn || !state.activeSession);
     elements.leaveSessionBtn.classList.toggle("hidden", !state.activeSession);
@@ -1036,6 +1046,43 @@
       row.append(openBtn, copyBtn);
       card.append(title, meta, row);
       elements.commanderSessionList.appendChild(card);
+    });
+  }
+
+  function renderActiveSessionGallery(sessions) {
+    elements.activeSessionGallery.innerHTML = "";
+    if (!sessions.length) {
+      const empty = document.createElement("div");
+      empty.className = "muted";
+      empty.textContent = "No live incidents right now.";
+      elements.activeSessionGallery.appendChild(empty);
+      return;
+    }
+    sessions.forEach((session) => {
+      const card = document.createElement("div");
+      card.className = "session-card";
+      const title = document.createElement("strong");
+      title.textContent = session.incidentName;
+      const meta = document.createElement("div");
+      meta.className = "muted";
+      meta.textContent = `Owner: ${session.ownerName} · ${formatDateTime(session.operationalPeriodStart)} to ${formatDateTime(session.operationalPeriodEnd)}`;
+      const role = document.createElement("div");
+      role.className = "muted";
+      role.textContent = `Incident Commander: ${session.commanderName}`;
+      const row = document.createElement("div");
+      row.className = "row";
+      const useCodeBtn = document.createElement("button");
+      useCodeBtn.className = "secondary";
+      useCodeBtn.type = "button";
+      useCodeBtn.textContent = "Use Code";
+      useCodeBtn.addEventListener("click", () => {
+        elements.joinCodeInput.value = session.joinCode;
+        elements.joinCodeInput.focus();
+        setStatus(`Loaded join code for ${session.incidentName}.`);
+      });
+      row.append(useCodeBtn);
+      card.append(title, meta, role, row);
+      elements.activeSessionGallery.appendChild(card);
     });
   }
 
