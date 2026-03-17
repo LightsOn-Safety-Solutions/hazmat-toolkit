@@ -782,7 +782,7 @@
   function toggleGuidedMode(enabled) {
     state.guidedMode = Boolean(enabled);
     renderGuidedSteps();
-    elements.guidedModeBtn.textContent = state.guidedMode ? "Hide Guided Setup" : "10-Minute Setup";
+    renderGuidedControls();
     setStatus(state.guidedMode ? "Guided setup is active." : "Guided setup hidden.");
   }
 
