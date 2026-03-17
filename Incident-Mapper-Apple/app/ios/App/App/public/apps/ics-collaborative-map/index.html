@@ -66,31 +66,31 @@
               </div>
             </div>
 
-            <div id="createSessionPanel" class="landing-card stack hidden">
+            <div id="createSessionPanel" class="landing-card stack locked">
               <div class="landing-card-header">
                 <div>
                   <h3>Create New Session</h3>
                   <p class="muted">Start a new collaborative incident map and set the first operational period.</p>
                 </div>
               </div>
-              <p id="createSessionLockedNote" class="inline-note hidden">Sign in first to unlock session creation.</p>
+              <p id="createSessionLockedNote" class="inline-note">Sign in first to unlock session creation.</p>
               <div class="stack create-session-grid">
-                <input id="incidentNameInput" type="text" placeholder="Incident name" />
-                <select id="commanderRoleSelect"></select>
+                <input id="incidentNameInput" type="text" placeholder="Incident name" disabled />
+                <select id="commanderRoleSelect" disabled></select>
                 <label>
                   Operational Period Start
-                  <input id="opStartInput" type="datetime-local" />
+                  <input id="opStartInput" type="datetime-local" disabled />
                 </label>
                 <label>
                   Operational Period End
-                  <input id="opEndInput" type="datetime-local" />
+                  <input id="opEndInput" type="datetime-local" disabled />
                 </label>
               </div>
               <label class="inline-checkbox">
-                <input id="guidedSetupDefaultInput" type="checkbox" />
+                <input id="guidedSetupDefaultInput" type="checkbox" disabled />
                 <span>Start this session with the 10-Minute Setup workflow</span>
               </label>
-              <button id="createSessionBtn" class="primary" type="button">Create Collaborative Session</button>
+              <button id="createSessionBtn" class="primary" type="button" disabled>Create Collaborative Session</button>
             </div>
 
             <div id="sessionListPanel" class="landing-card stack hidden">
@@ -113,17 +113,17 @@
             </div>
 
             <div class="landing-card stack">
-              <p id="joinLockedNote" class="inline-note hidden">Sign in with an account first, then join with the session code.</p>
+              <p id="joinLockedNote" class="inline-note">Sign in with an account first, then join with the session code.</p>
               <div class="join-grid">
-                <input id="joinCodeInput" type="text" placeholder="Join code" />
-                <input id="joinDisplayNameInput" type="text" placeholder="Display name" />
-                <select id="joinPermissionSelect">
+                <input id="joinCodeInput" type="text" placeholder="Join code" disabled />
+                <input id="joinDisplayNameInput" type="text" placeholder="Display name" disabled />
+                <select id="joinPermissionSelect" disabled>
                   <option value="operator">Operator</option>
                   <option value="observer">Observer</option>
                 </select>
-                <select id="joinRoleSelect"></select>
+                <select id="joinRoleSelect" disabled></select>
               </div>
-              <button id="joinSessionBtn" class="primary" type="button">Join Session</button>
+              <button id="joinSessionBtn" class="primary" type="button" disabled>Join Session</button>
             </div>
 
             <div class="landing-card landing-note">
