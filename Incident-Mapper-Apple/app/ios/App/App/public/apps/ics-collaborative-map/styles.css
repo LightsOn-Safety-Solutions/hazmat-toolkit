@@ -27,7 +27,23 @@ body { height: 100vh; overflow: hidden; }
 .topbar h1 { margin: 0; font-size: 28px; }
 .eyebrow { color: var(--accent); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; }
 .subtitle { margin: 6px 0 0; color: var(--muted); max-width: 720px; }
-.topbar-actions { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+.topbar-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+.topbar-action-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  width: 100%;
+}
+.topbar-action-row-secondary {
+  justify-content: flex-end;
+}
 
 .status-bar {
   padding: 10px 20px;
