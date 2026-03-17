@@ -134,7 +134,8 @@
     currentLocation: null,
     previewLayer: null,
     sessionRefreshNonce: 0,
-    dragTemplateType: null
+    dragTemplateType: null,
+    collapsedPaletteCategories: new Set()
   };
 
   async function init() {
@@ -845,10 +846,18 @@
     Object.entries(groups).forEach(([category, templates]) => {
       const group = document.createElement("div");
       group.className = "palette-group";
-      const heading = document.createElement("h4");
-      heading.textContent = category;
+      const isCollapsed = state.collapsedPaletteCategories.has(category);
+      const header = document.createElement("button");
+      header.className = "palette-group-toggle";
+      header.type = "button";
+      header.setAttribute("aria-expanded", String(!isCollapsed));
+      header.innerHTML = `
+        <span>${escapeHtml(category)}</span>
+        <span class="toggle-symbol">${isCollapsed ? "+" : "\u2212"}</span>
+      `;
+      header.addEventListener("click", () => togglePaletteCategory(category));
       const grid = document.createElement("div");
-      grid.className = "template-grid";
+      grid.className = `template-grid ${isCollapsed ? "hidden" : ""}`;
       templates.forEach((template) => {
         const button = document.createElement("button");
         button.className = `object-template ${state.selectedTemplateType === template.objectType ? "active" : ""}`;
@@ -867,9 +876,18 @@
         button.addEventListener("dragend", () => onTemplateDragEnd(button));
         grid.appendChild(button);
       });
-      group.append(heading, grid);
+      group.append(header, grid);
       elements.paletteContainer.appendChild(group);
     });
+  }
+
+  function togglePaletteCategory(category) {
+    if (state.collapsedPaletteCategories.has(category)) {
+      state.collapsedPaletteCategories.delete(category);
+    } else {
+      state.collapsedPaletteCategories.add(category);
+    }
+    renderPalettes();
   }
 
   function renderGuidedSteps() {

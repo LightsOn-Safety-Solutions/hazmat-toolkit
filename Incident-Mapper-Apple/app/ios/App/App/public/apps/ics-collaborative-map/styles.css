@@ -13,9 +13,9 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); }
-body { min-height: 100vh; }
+body { height: 100vh; overflow: hidden; }
 
-.shell { min-height: 100vh; display: flex; flex-direction: column; }
+.shell { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 .topbar {
   display: flex;
   justify-content: space-between;
@@ -37,7 +37,7 @@ body { min-height: 100vh; }
   background: rgba(255,255,255,0.02);
 }
 
-.layout { flex: 1; display: flex; min-height: 0; }
+.layout { flex: 1; display: flex; min-height: 0; overflow: hidden; }
 .landing {
   width: 100%;
   display: grid;
@@ -45,6 +45,7 @@ body { min-height: 100vh; }
   gap: 18px;
   padding: 20px;
   align-content: start;
+  overflow: auto;
 }
 .app {
   flex: 1;
@@ -53,14 +54,15 @@ body { min-height: 100vh; }
   gap: 12px;
   padding: 12px;
   min-height: 0;
+  overflow: hidden;
 }
 .app.guided-collapsed {
   grid-template-columns: 280px minmax(0, 1fr) 240px;
 }
 
 .sidebar { display: flex; flex-direction: column; gap: 12px; min-height: 0; overflow: auto; }
-.map-stage { position: relative; min-height: 0; }
-#map { height: 100%; min-height: 72vh; border: 1px solid var(--stroke); border-radius: 18px; overflow: hidden; }
+.map-stage { position: relative; min-height: 0; display: flex; }
+#map { flex: 1; min-height: 0; border: 1px solid var(--stroke); border-radius: 18px; overflow: hidden; }
 .map-stage.drag-active #map {
   border-color: rgba(243,198,19,0.85);
   box-shadow: 0 0 0 3px rgba(243,198,19,0.16);
@@ -154,9 +156,31 @@ button.danger { background: rgba(178,58,72,0.14); color: #f4c9ce; border-color: 
   padding: 12px;
 }
 
-.palette-group h4 {
-  margin: 0 0 10px;
+.palette-group-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0;
+  background: transparent;
+  border: 0;
   color: var(--accent);
+  font-weight: 700;
+}
+
+.palette-group-toggle:hover {
+  transform: none;
+}
+
+.toggle-symbol {
+  display: inline-flex;
+  width: 22px;
+  height: 22px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  color: var(--text);
 }
 
 .template-grid {
@@ -322,6 +346,10 @@ button.danger { background: rgba(178,58,72,0.14); color: #f4c9ce; border-color: 
   .app {
     display: flex;
     flex-direction: column;
+    overflow: auto;
   }
+  .map-stage { min-height: 56vh; }
   #map { min-height: 56vh; }
+  body { overflow: auto; }
+  .shell { height: auto; min-height: 100vh; }
 }
