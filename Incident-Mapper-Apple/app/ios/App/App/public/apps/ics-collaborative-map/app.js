@@ -1774,8 +1774,9 @@
   }
 
   async function apiFetch(path, options = {}) {
+    const hasBody = options.body !== undefined;
     const headers = {
-      "Content-Type": "application/json",
+      ...(hasBody ? { "Content-Type": "application/json" } : {}),
       ...(options.headers || {})
     };
     if (options.actorType === "participant" && state.participantAuth?.accessToken) {
@@ -1789,7 +1790,7 @@
     const response = await fetch(`${API_BASE_URL}${path}`, {
       method: options.method || "GET",
       headers,
-      body: options.body ? JSON.stringify(options.body) : undefined
+      body: hasBody ? JSON.stringify(options.body) : undefined
     });
     const payload = await parseJsonSafely(response);
     if (!response.ok) {

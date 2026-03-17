@@ -56,12 +56,78 @@ body { height: 100vh; overflow: hidden; }
 .layout { flex: 1; display: flex; min-height: 0; overflow: hidden; }
 .landing {
   width: 100%;
+  padding: 18px 20px 20px;
+  overflow: hidden;
+}
+.landing-shell {
+  height: 100%;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 420px));
+  grid-template-columns: minmax(0, 1.45fr) minmax(360px, 0.85fr);
   gap: 18px;
-  padding: 20px;
+  min-height: 0;
+}
+.landing-panel {
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  overflow: hidden;
+}
+.landing-panel-commander {
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+}
+.landing-panel-join {
+  display: grid;
+  grid-template-rows: auto auto auto;
   align-content: start;
+}
+.landing-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.landing-card {
+  border: 1px solid var(--stroke);
+  background: rgba(255,255,255,0.03);
+  border-radius: 16px;
+  padding: 16px;
+}
+.landing-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.landing-card-header h3,
+.landing-note h3 {
+  margin: 0 0 6px;
+}
+.landing-session-list {
+  min-height: 0;
   overflow: auto;
+  padding-right: 4px;
+}
+.auth-grid,
+.join-grid,
+.create-session-grid {
+  display: grid;
+  gap: 10px;
+}
+.create-session-grid,
+.join-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.create-session-grid > :first-child,
+.create-session-grid > :last-child,
+.join-grid > :first-child,
+.join-grid > :nth-child(2) {
+  grid-column: span 2;
+}
+.landing-note {
+  margin-top: auto;
 }
 .app {
   flex: 1;
@@ -217,6 +283,9 @@ button.danger { background: rgba(178,58,72,0.14); color: #f4c9ce; border-color: 
   border-radius: 12px;
   background: rgba(255,255,255,0.04);
   border: 1px solid var(--stroke);
+}
+.landing .segmented {
+  flex-shrink: 0;
 }
 .segmented button {
   background: transparent;
@@ -429,6 +498,30 @@ button.danger { background: rgba(178,58,72,0.14); color: #f4c9ce; border-color: 
 }
 
 @media (max-width: 1200px) {
+  .landing {
+    overflow: auto;
+  }
+  .landing-shell {
+    height: auto;
+    grid-template-columns: 1fr;
+  }
+  .landing-panel-commander,
+  .landing-panel-join {
+    display: flex;
+  }
+  .create-session-grid,
+  .join-grid {
+    grid-template-columns: 1fr;
+  }
+  .create-session-grid > :first-child,
+  .create-session-grid > :last-child,
+  .join-grid > :first-child,
+  .join-grid > :nth-child(2) {
+    grid-column: auto;
+  }
+  .landing-session-list {
+    max-height: 320px;
+  }
   .app {
     grid-template-columns: 280px minmax(0, 1fr);
   }
@@ -447,6 +540,10 @@ button.danger { background: rgba(178,58,72,0.14); color: #f4c9ce; border-color: 
 
 @media (max-width: 900px) {
   .layout { display: block; }
+  .landing-panel-header,
+  .landing-card-header {
+    flex-direction: column;
+  }
   .app {
     display: flex;
     flex-direction: column;

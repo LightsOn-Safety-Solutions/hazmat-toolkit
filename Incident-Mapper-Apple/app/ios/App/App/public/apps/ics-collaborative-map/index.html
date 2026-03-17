@@ -33,62 +33,102 @@
 
     <main class="layout">
       <section id="landingView" class="landing">
-        <div class="panel">
-          <h2>Commander Session</h2>
-          <p class="muted">Sign in with a commander account to create or reopen a collaborative map session.</p>
+        <div class="landing-shell">
+          <div class="panel landing-panel landing-panel-commander">
+            <div class="landing-panel-header">
+              <div>
+                <h2>Commander Workspace</h2>
+                <p class="muted">Sign in once, create a new map session, or reopen an existing one from the same workspace.</p>
+              </div>
+              <div class="segmented">
+                <button id="signInTabBtn" class="active" type="button">Sign In</button>
+                <button id="signUpTabBtn" type="button">Create Account</button>
+              </div>
+            </div>
 
-          <div class="segmented">
-            <button id="signInTabBtn" class="active" type="button">Sign In</button>
-            <button id="signUpTabBtn" type="button">Create Account</button>
+            <div class="landing-card">
+              <div class="landing-card-header">
+                <div>
+                  <h3>Account</h3>
+                  <p class="muted">Commander access is required for session creation and reopening prior sessions.</p>
+                </div>
+                <button id="commanderSignOutBtn" class="secondary hidden" type="button">Sign Out</button>
+              </div>
+
+              <div id="authFields" class="stack auth-grid">
+                <input id="commanderNameInput" type="text" placeholder="Commander display name" />
+                <input id="commanderEmailInput" type="email" placeholder="Commander email" />
+                <input id="commanderPasswordInput" type="password" placeholder="Password" />
+              </div>
+
+              <div class="row">
+                <button id="commanderAuthBtn" class="primary" type="button">Sign In</button>
+              </div>
+            </div>
+
+            <div id="createSessionPanel" class="landing-card stack hidden">
+              <div class="landing-card-header">
+                <div>
+                  <h3>Create New Session</h3>
+                  <p class="muted">Start a new collaborative incident map and set the first operational period.</p>
+                </div>
+              </div>
+              <div class="stack create-session-grid">
+                <input id="incidentNameInput" type="text" placeholder="Incident name" />
+                <select id="commanderRoleSelect"></select>
+                <label>
+                  Operational Period Start
+                  <input id="opStartInput" type="datetime-local" />
+                </label>
+                <label>
+                  Operational Period End
+                  <input id="opEndInput" type="datetime-local" />
+                </label>
+              </div>
+              <label class="inline-checkbox">
+                <input id="guidedSetupDefaultInput" type="checkbox" />
+                <span>Start this session with the 10-Minute Setup workflow</span>
+              </label>
+              <button id="createSessionBtn" class="primary" type="button">Create Collaborative Session</button>
+            </div>
+
+            <div id="sessionListPanel" class="landing-card stack hidden">
+              <div class="landing-card-header">
+                <div>
+                  <h3>Your Sessions</h3>
+                  <p class="muted">Jump back into an active incident quickly, or copy the latest join link.</p>
+                </div>
+              </div>
+              <div id="commanderSessionList" class="session-list landing-session-list"></div>
+            </div>
           </div>
 
-          <div id="authFields" class="stack">
-            <input id="commanderNameInput" type="text" placeholder="Commander display name" />
-            <input id="commanderEmailInput" type="email" placeholder="Commander email" />
-            <input id="commanderPasswordInput" type="password" placeholder="Password" />
-          </div>
+          <div class="panel landing-panel landing-panel-join">
+            <div class="landing-panel-header">
+              <div>
+                <h2>Join Session</h2>
+                <p class="muted">Operators and observers can jump in with a code or shared link, no full account required.</p>
+              </div>
+            </div>
 
-          <div class="row">
-            <button id="commanderAuthBtn" class="primary" type="button">Sign In</button>
-            <button id="commanderSignOutBtn" class="secondary hidden" type="button">Sign Out</button>
-          </div>
+            <div class="landing-card stack">
+              <div class="join-grid">
+                <input id="joinCodeInput" type="text" placeholder="Join code" />
+                <input id="joinDisplayNameInput" type="text" placeholder="Display name" />
+                <select id="joinPermissionSelect">
+                  <option value="operator">Operator</option>
+                  <option value="observer">Observer</option>
+                </select>
+                <select id="joinRoleSelect"></select>
+              </div>
+              <button id="joinSessionBtn" class="primary" type="button">Join Session</button>
+            </div>
 
-          <div id="createSessionPanel" class="stack hidden">
-            <h3>Create New Session</h3>
-            <input id="incidentNameInput" type="text" placeholder="Incident name" />
-            <select id="commanderRoleSelect"></select>
-            <label>
-              Operational Period Start
-              <input id="opStartInput" type="datetime-local" />
-            </label>
-            <label>
-              Operational Period End
-              <input id="opEndInput" type="datetime-local" />
-            </label>
-            <label class="inline-checkbox">
-              <input id="guidedSetupDefaultInput" type="checkbox" />
-              <span>Start this session with the 10-Minute Setup workflow</span>
-            </label>
-            <button id="createSessionBtn" class="primary" type="button">Create Collaborative Session</button>
+            <div class="landing-card landing-note">
+              <h3>What Happens Next</h3>
+              <p class="muted">Commanders create and share the incident. Operators can contribute to the map. Observers get a read-only operational picture.</p>
+            </div>
           </div>
-
-          <div id="sessionListPanel" class="stack hidden">
-            <h3>Your Sessions</h3>
-            <div id="commanderSessionList" class="session-list"></div>
-          </div>
-        </div>
-
-        <div class="panel">
-          <h2>Join Session</h2>
-          <p class="muted">Operators and observers can join by code or share link without a full account.</p>
-          <input id="joinCodeInput" type="text" placeholder="Join code" />
-          <input id="joinDisplayNameInput" type="text" placeholder="Display name" />
-          <select id="joinPermissionSelect">
-            <option value="operator">Operator</option>
-            <option value="observer">Observer</option>
-          </select>
-          <select id="joinRoleSelect"></select>
-          <button id="joinSessionBtn" class="primary" type="button">Join Session</button>
         </div>
       </section>
 
