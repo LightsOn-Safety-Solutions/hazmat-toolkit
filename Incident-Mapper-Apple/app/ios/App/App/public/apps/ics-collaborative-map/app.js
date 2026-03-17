@@ -599,6 +599,7 @@
           if (nextStatus !== "active") {
             cancelGeometryDraw();
           }
+          syncMapObjects();
           renderAll();
         }
         if (Array.isArray(deltas.deltas) && deltas.deltas.length > 0) {
@@ -1385,6 +1386,11 @@
       });
       if (canEditObject(object) && sessionIsActive()) {
         layer.on("dragstart", async () => {
+          if (!sessionIsActive()) {
+            setStatus("This session is now read-only.");
+            syncMapObjects();
+            return;
+          }
           try {
             await acquireObjectLock(object);
           } catch (error) {
@@ -1392,21 +1398,32 @@
           }
         });
         layer.on("dragend", async (event) => {
+          if (!sessionIsActive()) {
+            syncMapObjects();
+            setStatus("This session is now read-only.");
+            return;
+          }
           const latlng = event.target.getLatLng();
-          await queueUpdateMutation({
-            objectId: object.id,
-            mutationType: "update",
-            geometryType: "point",
-            geometry: { lat: roundCoord(latlng.lat), lng: roundCoord(latlng.lng) },
-            fields: object.fields,
-            baseVersion: object.version
-          }, true);
-          closeSelectedObjectEditor();
-          setStatus("Object moved and saved.");
           try {
-            await releaseObjectLock(object.id);
+            await queueUpdateMutation({
+              objectId: object.id,
+              mutationType: "update",
+              geometryType: "point",
+              geometry: { lat: roundCoord(latlng.lat), lng: roundCoord(latlng.lng) },
+              fields: object.fields,
+              baseVersion: object.version
+            }, true);
+            closeSelectedObjectEditor();
+            setStatus("Object moved and saved.");
           } catch (error) {
             setStatus(formatError(error));
+            syncMapObjects();
+          } finally {
+            try {
+              await releaseObjectLock(object.id);
+            } catch (error) {
+              setStatus(formatError(error));
+            }
           }
         });
       }
@@ -1442,6 +1459,10 @@
       setStatus("You cannot edit this object.");
       return;
     }
+    if (!sessionIsActive()) {
+      setStatus("This session is now read-only.");
+      return;
+    }
     const inputs = elements.selectedObjectFields.querySelectorAll("[data-field-key]");
     const nextFields = { ...(object.fields || {}) };
     inputs.forEach((input) => {
@@ -1462,6 +1483,10 @@
     const object = state.selectedObjectId ? state.objects.get(state.selectedObjectId) : null;
     if (!object || !canEditObject(object)) {
       setStatus("You cannot edit this geometry.");
+      return;
+    }
+    if (!sessionIsActive()) {
+      setStatus("This session is now read-only.");
       return;
     }
     try {
@@ -1501,6 +1526,10 @@
     const object = state.selectedObjectId ? state.objects.get(state.selectedObjectId) : null;
     if (!object || !canEditObject(object)) {
       setStatus("You cannot delete this object.");
+      return;
+    }
+    if (!sessionIsActive()) {
+      setStatus("This session is now read-only.");
       return;
     }
     if (!window.confirm("Delete this map object?")) return;
