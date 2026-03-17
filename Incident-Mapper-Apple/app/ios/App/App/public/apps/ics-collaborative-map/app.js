@@ -837,8 +837,6 @@
     appendMetaRow(elements.sessionMeta, "Status", session.status);
     appendMetaRow(elements.sessionMeta, "Join Code", session.joinCode);
     appendMetaRow(elements.sessionMeta, "Period", `${formatDateTime(session.operationalPeriodStart)} → ${formatDateTime(session.operationalPeriodEnd)}`);
-    appendMetaRow(elements.sessionMeta, "Current Version", String(session.currentVersion || state.lastVersion || 0));
-    if (state.qrPayload) appendMetaRow(elements.sessionMeta, "QR Payload", state.qrPayload);
     elements.copyJoinLinkBtn.classList.toggle("hidden", !session.joinCode);
     elements.endSessionBtn.classList.toggle("hidden", !isCommander());
     elements.sessionPeriodPanel.classList.toggle("hidden", !isCommander());
@@ -999,7 +997,9 @@
 
     const editable = canEditObject(object);
     elements.saveFieldsBtn.disabled = !editable;
-    elements.editGeometryBtn.disabled = !editable;
+    const canUseGeometryButton = editable && object.geometryType !== "point";
+    elements.editGeometryBtn.disabled = !canUseGeometryButton;
+    elements.editGeometryBtn.classList.toggle("hidden", object.geometryType === "point");
     elements.deleteObjectBtn.disabled = !editable;
   }
 
