@@ -19,6 +19,8 @@
       "categoryId": "access_hazards",
       "category": "Access Hazards",
       "assetPath": "./icons/access_hazards/road_sign_b7a.svg",
+      "markerSize": 32,
+      "paletteSize": 28,
       "keywords": ["road", "sign", "access", "hazard"]
     },
     {
@@ -27,6 +29,8 @@
       "categoryId": "hazard",
       "category": "Hazard",
       "assetPath": "./icons/hazard/hazard_warning_symbol.svg",
+      "markerSize": 34,
+      "paletteSize": 28,
       "keywords": ["hazard", "warning", "symbol"]
     },
     {
@@ -35,6 +39,8 @@
       "categoryId": "incident",
       "category": "Incident",
       "assetPath": "./icons/incident/ambulance_response_vehicle.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
       "keywords": ["ambulance", "ems", "medical", "vehicle"]
     },
     {
@@ -43,6 +49,8 @@
       "categoryId": "incident",
       "category": "Incident",
       "assetPath": "./icons/incident/fire_truck_ladder.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
       "keywords": ["fire", "truck", "ladder", "engine"]
     },
     {
@@ -51,6 +59,8 @@
       "categoryId": "incident",
       "category": "Incident",
       "assetPath": "./icons/incident/police_car.svg",
+      "markerSize": 42,
+      "paletteSize": 30,
       "keywords": ["police", "law", "enforcement", "vehicle"]
     },
     {
@@ -59,6 +69,8 @@
       "categoryId": "resources",
       "category": "Resources",
       "assetPath": "./icons/resources/response_truck_generic.svg",
+      "markerSize": 48,
+      "paletteSize": 34,
       "keywords": ["response", "truck", "resource", "vehicle"]
     }
   ]

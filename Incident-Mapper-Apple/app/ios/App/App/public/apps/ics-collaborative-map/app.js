@@ -1287,7 +1287,12 @@
         button.innerHTML = item.kind === "icon"
           ? `
             <span class="object-template-icon-wrap">
-              <img class="object-template-icon" src="${escapeAttribute(resolveAssetPath(item.assetPath))}" alt="${escapeAttribute(item.label)}" />
+              <img
+                class="object-template-icon"
+                src="${escapeAttribute(resolveAssetPath(item.assetPath))}"
+                alt="${escapeAttribute(item.label)}"
+                style="width:${escapeAttribute(String(item.paletteSize || 30))}px;height:${escapeAttribute(String(item.paletteSize || 30))}px"
+              />
             </span>
             <span>
               <strong>${escapeHtml(item.label)}</strong>
@@ -1733,12 +1738,7 @@
     let layer = null;
     if (object.geometryType === "point") {
       const icon = object.objectType === ICON_MARKER_OBJECT_TYPE && object.fields?.iconAssetPath
-        ? L.divIcon({
-          className: "",
-          html: `<img class="point-marker-icon" src="${escapeAttribute(resolveAssetPath(object.fields.iconAssetPath))}" alt="${escapeAttribute(object.fields.iconLabel || template?.label || "Map icon")}" />`,
-          iconSize: [34, 34],
-          iconAnchor: [17, 17]
-        })
+        ? buildIconMarkerIcon(object, template)
         : L.divIcon({
           className: "",
           html: `<div class="point-marker" style="background:${escapeAttribute(color)}"></div>`,
@@ -2132,9 +2132,21 @@
         iconId: iconDefinition.id,
         iconCategory: iconDefinition.category,
         iconLabel: iconDefinition.label,
-        iconAssetPath: iconDefinition.assetPath
+        iconAssetPath: iconDefinition.assetPath,
+        iconMarkerSize: iconDefinition.markerSize || 40
       }
     };
+  }
+
+  function buildIconMarkerIcon(object, template) {
+    const iconSize = Number(object.fields?.iconMarkerSize || 40);
+    const safeSize = Number.isFinite(iconSize) && iconSize > 0 ? iconSize : 40;
+    return L.divIcon({
+      className: "",
+      html: `<img class="point-marker-icon" style="width:${escapeAttribute(String(safeSize))}px;height:${escapeAttribute(String(safeSize))}px" src="${escapeAttribute(resolveAssetPath(object.fields.iconAssetPath))}" alt="${escapeAttribute(object.fields.iconLabel || template?.label || "Map icon")}" />`,
+      iconSize: [safeSize, safeSize],
+      iconAnchor: [safeSize / 2, safeSize / 2]
+    });
   }
 
   function findIconBySelectionKey(selectionKey) {
