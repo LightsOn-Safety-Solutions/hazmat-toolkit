@@ -860,9 +860,15 @@ async function resolveSessionActorWithClient(
   if (trainer.trainerRef !== currentSession.trainer_ref) {
     throw new TrainerForbiddenError('Commander does not have access to this collaborative session.');
   }
-  const commanderParticipant = await fetchCommanderParticipant(client, currentSession.id, trainer.trainerRef);
+  let commanderParticipant = await fetchCommanderParticipant(client, currentSession.id, trainer.trainerRef);
   if (!commanderParticipant) {
-    throw new TrainerForbiddenError('Commander participant record is missing.');
+    commanderParticipant = await upsertCommanderParticipant(
+      client,
+      currentSession.id,
+      trainer.trainerRef,
+      trainer.displayName,
+      'Incident Commander'
+    );
   }
   await touchParticipant(client, commanderParticipant.id);
   if (options.requireCommander && commanderParticipant.permission_tier !== 'commander') {
@@ -1270,6 +1276,47 @@ async function fetchCommanderParticipant(pool: { query: PoolClient['query'] }, s
       limit 1
     `,
     [sessionID, trainerRef]
+  );
+  return result.rows[0] ?? null;
+}
+
+async function upsertCommanderParticipant(
+  pool: { query: PoolClient['query'] },
+  sessionID: string,
+  trainerRef: string,
+  displayName: string,
+  icsRole: string
+) {
+  const result = await pool.query<CollabParticipantRow>(
+    `
+      insert into collab_map_participants (
+        session_id,
+        trainer_ref,
+        display_name,
+        permission_tier,
+        ics_role,
+        last_seen_at
+      )
+      values ($1::uuid, $2, $3, 'commander', $4, now())
+      on conflict (session_id, trainer_ref)
+      do update set
+        display_name = excluded.display_name,
+        permission_tier = 'commander',
+        ics_role = excluded.ics_role,
+        last_seen_at = now()
+      returning
+        id::text as id,
+        session_id::text as session_id,
+        trainer_ref,
+        display_name,
+        permission_tier,
+        ics_role,
+        joined_at,
+        last_seen_at,
+        session_token_hash,
+        token_expires_at
+    `,
+    [sessionID, trainerRef, displayName, icsRole]
   );
   return result.rows[0] ?? null;
 }
