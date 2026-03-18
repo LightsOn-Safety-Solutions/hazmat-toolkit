@@ -1657,7 +1657,7 @@
             return;
           }
           try {
-            await acquireObjectLock(object);
+            await acquireObjectLock(object, { syncUI: false });
           } catch (error) {
             setStatus(formatError(error));
           }
@@ -1669,18 +1669,30 @@
             return;
           }
           const latlng = event.target.getLatLng();
+          const previousGeometry = { ...object.geometry };
+          const nextGeometry = { lat: roundCoord(latlng.lat), lng: roundCoord(latlng.lng) };
           try {
+            state.objects.set(object.id, {
+              ...object,
+              geometry: nextGeometry
+            });
+            syncMapObjects();
+            renderSelectedObject();
             await queueUpdateMutation({
               objectId: object.id,
               mutationType: "update",
               geometryType: "point",
-              geometry: { lat: roundCoord(latlng.lat), lng: roundCoord(latlng.lng) },
+              geometry: nextGeometry,
               fields: object.fields,
               baseVersion: object.version
             }, true);
             closeSelectedObjectEditor();
             setStatus("Object moved and saved.");
           } catch (error) {
+            state.objects.set(object.id, {
+              ...object,
+              geometry: previousGeometry
+            });
             setStatus(formatError(error));
             syncMapObjects();
           } finally {
@@ -1825,7 +1837,8 @@
     renderSelectedObject();
   }
 
-  async function acquireObjectLock(object) {
+  async function acquireObjectLock(object, options = {}) {
+    const shouldSyncUI = options.syncUI !== false;
     const result = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/objects/${encodeURIComponent(object.id)}/lock`, {
       method: "POST",
       actorType: currentActorType(),
@@ -1833,8 +1846,10 @@
     });
     if (result.object) {
       state.objects.set(result.object.id, result.object);
-      syncMapObjects();
-      renderSelectedObject();
+      if (shouldSyncUI) {
+        syncMapObjects();
+        renderSelectedObject();
+      }
     }
   }
 
