@@ -130,6 +130,8 @@
     drawHintText: document.getElementById("drawHintText"),
     finishGeometryBtn: document.getElementById("finishGeometryBtn"),
     cancelGeometryBtn: document.getElementById("cancelGeometryBtn"),
+    rightSidebar: document.getElementById("rightSidebar"),
+    rightSidebarCollapseBtn: document.getElementById("rightSidebarCollapseBtn"),
     viewerQrModal: document.getElementById("viewerQrModal"),
     closeViewerQrBtn: document.getElementById("closeViewerQrBtn"),
     viewerQrImage: document.getElementById("viewerQrImage"),
@@ -168,7 +170,8 @@
     collapsedPaletteCategories: new Set(),
     collapsedPanels: new Set(),
     viewerMode: false,
-    viewerJoinCode: null
+    viewerJoinCode: null,
+    rightSidebarCollapsed: false
   };
 
   async function init() {
@@ -228,6 +231,7 @@
     elements.deleteObjectBtn.addEventListener("click", deleteSelectedObject);
     elements.finishGeometryBtn.addEventListener("click", finishGeometryDraw);
     elements.cancelGeometryBtn.addEventListener("click", cancelGeometryDraw);
+    elements.rightSidebarCollapseBtn.addEventListener("click", toggleRightSidebar);
     window.addEventListener("resize", scheduleMapResizeRefresh);
   }
 
@@ -922,6 +926,7 @@
     updateDrawControls();
     renderGuidedControls();
     renderPanelCollapses();
+    renderRightSidebarState();
   }
 
   function renderGuidedControls() {
@@ -969,6 +974,18 @@
     elements.showViewerQrBtn.classList.toggle("hidden", !isCommander() || !state.activeSession || state.viewerMode);
     elements.joinLockedNote.classList.toggle("hidden", signedIn);
     toggleLandingCardAccess(signedIn);
+  }
+
+  function toggleRightSidebar() {
+    state.rightSidebarCollapsed = !state.rightSidebarCollapsed;
+    renderRightSidebarState();
+    scheduleMapResizeRefresh();
+  }
+
+  function renderRightSidebarState() {
+    elements.appView.classList.toggle("right-sidebar-collapsed", state.rightSidebarCollapsed);
+    elements.rightSidebarCollapseBtn.setAttribute("aria-expanded", String(!state.rightSidebarCollapsed));
+    elements.rightSidebarCollapseBtn.setAttribute("aria-label", state.rightSidebarCollapsed ? "Expand right panel" : "Collapse right panel");
   }
 
   function toggleLandingCardAccess(signedIn) {
