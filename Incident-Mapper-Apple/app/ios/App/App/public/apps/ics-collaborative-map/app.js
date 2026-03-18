@@ -52,6 +52,16 @@
     { key: "division", label: "Define Divisions", objectTypes: ["Division"] },
     { key: "resources", label: "Assign Initial Resources", objectTypes: ["HoseLine", "Hydrant", "MonitoringPoint", "Rehab", "RIT", "DeconCorridor"] }
   ];
+  const QUICK_TOOL_TYPES = [
+    "IncidentCommand",
+    "Staging",
+    "HazardSource",
+    "HotZone",
+    "CollapseZone",
+    "Division",
+    "MonitoringPoint",
+    "HoseLine"
+  ];
 
   const templateByType = Object.fromEntries(OBJECT_TEMPLATES.map((template) => [template.objectType, template]));
   const elements = {
@@ -130,6 +140,10 @@
     drawHintText: document.getElementById("drawHintText"),
     finishGeometryBtn: document.getElementById("finishGeometryBtn"),
     cancelGeometryBtn: document.getElementById("cancelGeometryBtn"),
+    mapToolsLauncherBtn: document.getElementById("mapToolsLauncherBtn"),
+    mapToolsCloseBtn: document.getElementById("mapToolsCloseBtn"),
+    mapToolsTray: document.getElementById("mapToolsTray"),
+    mapToolsTrayGrid: document.getElementById("mapToolsTrayGrid"),
     rightSidebar: document.getElementById("rightSidebar"),
     rightSidebarCollapseBtn: document.getElementById("rightSidebarCollapseBtn"),
     viewerQrModal: document.getElementById("viewerQrModal"),
@@ -171,7 +185,8 @@
     collapsedPanels: new Set(),
     viewerMode: false,
     viewerJoinCode: null,
-    rightSidebarCollapsed: false
+    rightSidebarCollapsed: false,
+    quickToolTrayOpen: false
   };
 
   async function init() {
@@ -231,6 +246,8 @@
     elements.deleteObjectBtn.addEventListener("click", deleteSelectedObject);
     elements.finishGeometryBtn.addEventListener("click", finishGeometryDraw);
     elements.cancelGeometryBtn.addEventListener("click", cancelGeometryDraw);
+    elements.mapToolsLauncherBtn.addEventListener("click", toggleQuickToolTray);
+    elements.mapToolsCloseBtn.addEventListener("click", closeQuickToolTray);
     elements.rightSidebarCollapseBtn.addEventListener("click", toggleRightSidebar);
     window.addEventListener("resize", scheduleMapResizeRefresh);
   }
@@ -921,6 +938,7 @@
     renderSessionMeta();
     renderParticipants();
     renderPalettes();
+    renderQuickToolTray();
     renderGuidedSteps();
     renderSelectedObject();
     updateDrawControls();
@@ -976,10 +994,47 @@
     toggleLandingCardAccess(signedIn);
   }
 
+  function renderQuickToolTray() {
+    if (!elements.mapToolsTray || !elements.mapToolsLauncherBtn || !elements.mapToolsTrayGrid) return;
+    elements.mapToolsTray.classList.toggle("hidden", !state.quickToolTrayOpen);
+    elements.mapToolsLauncherBtn.setAttribute("aria-expanded", String(state.quickToolTrayOpen));
+    elements.mapToolsTrayGrid.innerHTML = "";
+    QUICK_TOOL_TYPES
+      .map((type) => templateByType[type])
+      .filter(Boolean)
+      .forEach((template) => {
+        const card = document.createElement("button");
+        const badgeText = template.objectType.replace(/[a-z]/g, "").slice(0, 3) || template.geometryType[0].toUpperCase();
+        card.className = `map-tool-card ${state.selectedTemplateType === template.objectType ? "active" : ""}`;
+        card.type = "button";
+        card.disabled = !canCreateObjects();
+        card.innerHTML = `
+          <span class="map-tool-card-badge" style="background:${escapeAttribute(template.color || "#f3c613")}">${escapeHtml(badgeText)}</span>
+          <span class="map-tool-card-label">${escapeHtml(template.label)}</span>
+          <span class="map-tool-card-kind">${escapeHtml(template.geometryType)}</span>
+        `;
+        card.addEventListener("click", () => {
+          selectTemplate(template.objectType);
+          closeQuickToolTray();
+        });
+        elements.mapToolsTrayGrid.appendChild(card);
+      });
+  }
+
   function toggleRightSidebar() {
     state.rightSidebarCollapsed = !state.rightSidebarCollapsed;
     renderRightSidebarState();
     scheduleMapResizeRefresh();
+  }
+
+  function toggleQuickToolTray() {
+    state.quickToolTrayOpen = !state.quickToolTrayOpen;
+    renderQuickToolTray();
+  }
+
+  function closeQuickToolTray() {
+    state.quickToolTrayOpen = false;
+    renderQuickToolTray();
   }
 
   function renderRightSidebarState() {
@@ -1314,6 +1369,7 @@
 
   function selectTemplate(objectType) {
     beginTemplatePlacement(objectType);
+    closeQuickToolTray();
   }
 
   function beginTemplatePlacement(objectType, initialPoint = null) {
