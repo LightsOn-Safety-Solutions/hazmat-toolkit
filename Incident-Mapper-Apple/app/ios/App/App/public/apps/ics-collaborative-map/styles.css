@@ -505,6 +505,9 @@ button.danger { background: rgba(178,58,72,0.14); color: #f4c9ce; border-color: 
   display: grid;
   gap: 8px;
 }
+.palette-empty {
+  padding: 8px 4px 2px;
+}
 .drag-hint {
   margin-bottom: 10px;
   font-size: 12px;
@@ -523,6 +526,26 @@ button.danger { background: rgba(178,58,72,0.14); color: #f4c9ce; border-color: 
   color: var(--text);
   font-size: 1.05rem;
   line-height: 1.15;
+}
+.object-template.icon-template {
+  justify-content: flex-start;
+  align-items: center;
+}
+.object-template-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.06);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.object-template-icon {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
 }
 .object-template .muted {
   color: #c1cfde;
@@ -655,6 +678,12 @@ button.danger { background: rgba(178,58,72,0.14); color: #f4c9ce; border-color: 
   border-radius: 50%;
   border: 2px solid rgba(255,255,255,0.75);
   box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+}
+.point-marker-icon {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(0,0,0,0.25));
 }
 
 .toast {

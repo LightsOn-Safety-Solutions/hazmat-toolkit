@@ -1,0 +1,65 @@
+{
+  "categories": [
+    { "id": "access_hazards", "label": "Access Hazards" },
+    { "id": "hazard", "label": "Hazard" },
+    { "id": "hazardous_materials", "label": "Hazardous Materials" },
+    { "id": "human_caused_hazards", "label": "Human Caused Hazards" },
+    { "id": "incident", "label": "Incident" },
+    { "id": "lifelines", "label": "Lifelines" },
+    { "id": "nims_positions", "label": "NIMS Positions" },
+    { "id": "natural_hazards", "label": "Natural Hazards" },
+    { "id": "resources", "label": "Resources" },
+    { "id": "infrastructure", "label": "Infrastructure" },
+    { "id": "preplan", "label": "Preplan" }
+  ],
+  "icons": [
+    {
+      "id": "road_sign_b7a",
+      "label": "Road Sign",
+      "categoryId": "access_hazards",
+      "category": "Access Hazards",
+      "assetPath": "./icons/access_hazards/road_sign_b7a.svg",
+      "keywords": ["road", "sign", "access", "hazard"]
+    },
+    {
+      "id": "hazard_warning_symbol",
+      "label": "Hazard Warning Symbol",
+      "categoryId": "hazard",
+      "category": "Hazard",
+      "assetPath": "./icons/hazard/hazard_warning_symbol.svg",
+      "keywords": ["hazard", "warning", "symbol"]
+    },
+    {
+      "id": "ambulance_response_vehicle",
+      "label": "Ambulance",
+      "categoryId": "incident",
+      "category": "Incident",
+      "assetPath": "./icons/incident/ambulance_response_vehicle.svg",
+      "keywords": ["ambulance", "ems", "medical", "vehicle"]
+    },
+    {
+      "id": "fire_truck_ladder",
+      "label": "Fire Truck Ladder",
+      "categoryId": "incident",
+      "category": "Incident",
+      "assetPath": "./icons/incident/fire_truck_ladder.svg",
+      "keywords": ["fire", "truck", "ladder", "engine"]
+    },
+    {
+      "id": "police_car",
+      "label": "Police Car",
+      "categoryId": "incident",
+      "category": "Incident",
+      "assetPath": "./icons/incident/police_car.svg",
+      "keywords": ["police", "law", "enforcement", "vehicle"]
+    },
+    {
+      "id": "response_truck_generic",
+      "label": "Response Truck",
+      "categoryId": "resources",
+      "category": "Resources",
+      "assetPath": "./icons/resources/response_truck_generic.svg",
+      "keywords": ["response", "truck", "resource", "vehicle"]
+    }
+  ]
+}

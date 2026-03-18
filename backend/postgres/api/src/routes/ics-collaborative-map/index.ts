@@ -36,7 +36,8 @@ const OBJECT_TYPES = [
   'HoseLine',
   'RIT',
   'SafetyHazard',
-  'EvacuationZone'
+  'EvacuationZone',
+  'IconMarker'
 ] as const;
 
 const GEOMETRY_TYPES = ['point', 'line', 'polygon'] as const;

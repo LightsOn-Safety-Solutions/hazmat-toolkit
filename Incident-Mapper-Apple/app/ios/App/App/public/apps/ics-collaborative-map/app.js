@@ -12,6 +12,8 @@
   };
   const POLL_INTERVAL_MS = 4000;
   const UPDATE_FLUSH_MS = 10000;
+  const ICON_MANIFEST_URL = "./icon-manifest.json";
+  const ICON_MARKER_OBJECT_TYPE = "IconMarker";
   const ICS_ROLES = [
     "Incident Commander",
     "Operations Section Chief",
@@ -58,7 +60,22 @@
     { key: "topo", label: "Topographic", description: "Terrain and contours", chip: "TOP", color: "#e1c26f" }
   ];
 
-  const templateByType = Object.fromEntries(OBJECT_TEMPLATES.map((template) => [template.objectType, template]));
+  const ICON_MARKER_TEMPLATE = {
+    objectType: ICON_MARKER_OBJECT_TYPE,
+    label: "Icon Marker",
+    category: "Legacy Icons",
+    geometryType: "point",
+    color: "#f3c613",
+    defaults: {
+      notes: "",
+      iconId: "",
+      iconCategory: "",
+      iconLabel: "",
+      iconAssetPath: ""
+    },
+    kind: "icon"
+  };
+  const templateByType = Object.fromEntries([...OBJECT_TEMPLATES, ICON_MARKER_TEMPLATE].map((template) => [template.objectType, template]));
   const elements = {
     shell: document.querySelector(".shell"),
     landingView: document.getElementById("landingView"),
@@ -157,6 +174,7 @@
     objects: new Map(),
     participants: [],
     layers: new Map(),
+    iconCatalog: { categories: [], icons: [] },
     selectedObjectId: null,
     selectedTemplateType: null,
     drawState: null,
@@ -184,6 +202,7 @@
   };
 
   async function init() {
+    await loadIconManifest();
     if (elements.initialIncidentCommanderRoleInput) {
       elements.initialIncidentCommanderRoleInput.value = "Incident Commander";
     }
@@ -208,6 +227,23 @@
     }
     await restorePersistedSession();
     renderAll();
+  }
+
+  async function loadIconManifest() {
+    try {
+      const response = await fetch(ICON_MANIFEST_URL, { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error(`Icon manifest request failed (${response.status})`);
+      }
+      const payload = await response.json();
+      state.iconCatalog = {
+        categories: Array.isArray(payload?.categories) ? payload.categories : [],
+        icons: Array.isArray(payload?.icons) ? payload.icons : []
+      };
+    } catch (error) {
+      console.warn("Unable to load icon manifest.", error);
+      state.iconCatalog = { categories: [], icons: [] };
+    }
   }
 
   function wireEvents() {
@@ -1219,8 +1255,8 @@
 
   function renderPalettes() {
     elements.paletteContainer.innerHTML = "";
-    const groups = groupTemplatesByCategory();
-    Object.entries(groups).forEach(([category, templates]) => {
+    const groups = buildPaletteGroups();
+    groups.forEach(({ category, items, emptyMessage }) => {
       const group = document.createElement("div");
       group.className = "palette-group";
       const isCollapsed = state.collapsedPaletteCategories.has(category);
@@ -1235,22 +1271,45 @@
       header.addEventListener("click", () => togglePaletteCategory(category));
       const grid = document.createElement("div");
       grid.className = `template-grid ${isCollapsed ? "hidden" : ""}`;
-      templates.forEach((template) => {
+      if (!items.length && emptyMessage) {
+        const empty = document.createElement("div");
+        empty.className = "palette-empty muted";
+        empty.textContent = emptyMessage;
+        grid.appendChild(empty);
+      }
+      items.forEach((item) => {
         const button = document.createElement("button");
-        button.className = `object-template ${state.selectedTemplateType === template.objectType ? "active" : ""}`;
+        const selectionKey = item.selectionKey || item.objectType;
+        button.className = `object-template ${item.kind === "icon" ? "icon-template" : ""} ${state.selectedTemplateType === selectionKey ? "active" : ""}`;
         button.type = "button";
         button.disabled = !canCreateObjects();
-        button.draggable = canCreateObjects() && template.geometryType === "point";
-        button.innerHTML = `
-          <span>
-            <strong>${escapeHtml(template.label)}</strong>
-            <div class="muted">${escapeHtml(template.geometryType)}</div>
-          </span>
-          <span class="map-badge">${escapeHtml(template.objectType.replace(/[a-z]/g, "").slice(0, 3) || template.geometryType[0].toUpperCase())}</span>
-        `;
-        button.addEventListener("click", () => selectTemplate(template.objectType));
-        if (template.geometryType === "point") {
-          button.addEventListener("dragstart", (event) => onTemplateDragStart(event, template.objectType, button));
+        button.draggable = canCreateObjects() && item.geometryType === "point";
+        button.innerHTML = item.kind === "icon"
+          ? `
+            <span class="object-template-icon-wrap">
+              <img class="object-template-icon" src="${escapeAttribute(resolveAssetPath(item.assetPath))}" alt="${escapeAttribute(item.label)}" />
+            </span>
+            <span>
+              <strong>${escapeHtml(item.label)}</strong>
+              <div class="muted">${escapeHtml(item.category)}</div>
+            </span>
+          `
+          : `
+            <span>
+              <strong>${escapeHtml(item.label)}</strong>
+              <div class="muted">${escapeHtml(item.geometryType)}</div>
+            </span>
+            <span class="map-badge">${escapeHtml(item.objectType.replace(/[a-z]/g, "").slice(0, 3) || item.geometryType[0].toUpperCase())}</span>
+          `;
+        button.addEventListener("click", () => {
+          if (item.kind === "icon") {
+            selectIconTemplate(item);
+          } else {
+            selectTemplate(item.objectType);
+          }
+        });
+        if (item.geometryType === "point") {
+          button.addEventListener("dragstart", (event) => onTemplateDragStart(event, selectionKey, button));
           button.addEventListener("dragend", () => onTemplateDragEnd(button));
         }
         grid.appendChild(button);
@@ -1313,10 +1372,13 @@
     elements.selectedObjectEmpty.classList.add("hidden");
     elements.selectedObjectPanel.classList.remove("hidden");
     elements.selectedObjectMeta.innerHTML = "";
-    const template = templateByType[object.objectType];
+    const template = resolveTemplateForObject(object);
     const author = state.participants.find((participant) => participant.id === object.createdByParticipantId);
     appendMetaRow(elements.selectedObjectMeta, "Type", template?.label || object.objectType);
     appendMetaRow(elements.selectedObjectMeta, "Geometry", object.geometryType);
+    if (object.objectType === ICON_MARKER_OBJECT_TYPE) {
+      appendMetaRow(elements.selectedObjectMeta, "Category", object.fields?.iconCategory || "Legacy Icons");
+    }
     appendMetaRow(elements.selectedObjectMeta, "Author", author ? `${author.displayName} · ${author.icsRole}` : object.createdByParticipantId);
     appendMetaRow(elements.selectedObjectMeta, "Created", formatDateTime(object.createdAt));
     appendMetaRow(elements.selectedObjectMeta, "Updated", formatDateTime(object.updatedAt));
@@ -1359,6 +1421,10 @@
     beginTemplatePlacement(objectType);
   }
 
+  function selectIconTemplate(iconDefinition) {
+    beginIconPlacement(iconDefinition);
+  }
+
   function beginTemplatePlacement(objectType, initialPoint = null) {
     const template = templateByType[objectType];
     if (!template) return;
@@ -1381,6 +1447,25 @@
         ? `Dropped ${template.label}. Add more points, then finish.`
         : `Selected ${template.label}. Draw directly on the map to add ${template.geometryType} points, then finish.`);
     }
+    redrawPreviewLayer();
+    updateDrawControls();
+  }
+
+  function beginIconPlacement(iconDefinition, initialPoint = null) {
+    if (!iconDefinition) return;
+    const template = createIconTemplate(iconDefinition);
+    state.selectedTemplateType = iconDefinition.selectionKey;
+    state.selectedObjectId = null;
+    renderPalettes();
+    renderSelectedObject();
+    if (initialPoint) {
+      createObject(template, { lat: initialPoint.lat, lng: initialPoint.lng });
+      state.drawState = null;
+      updateDrawControls();
+      return;
+    }
+    state.drawState = { mode: "create", template, points: [] };
+    setStatus(`Selected ${template.label}. Click the map to place it.`);
     redrawPreviewLayer();
     updateDrawControls();
   }
@@ -1424,10 +1509,18 @@
     const rect = state.map.getContainer().getBoundingClientRect();
     const containerPoint = L.point(event.clientX - rect.left, event.clientY - rect.top);
     const latLng = state.map.containerPointToLatLng(containerPoint);
-    beginTemplatePlacement(state.dragTemplateType, {
-      lat: roundCoord(latLng.lat),
-      lng: roundCoord(latLng.lng)
-    });
+    const iconDefinition = findIconBySelectionKey(state.dragTemplateType);
+    if (iconDefinition) {
+      beginIconPlacement(iconDefinition, {
+        lat: roundCoord(latLng.lat),
+        lng: roundCoord(latLng.lng)
+      });
+    } else {
+      beginTemplatePlacement(state.dragTemplateType, {
+        lat: roundCoord(latLng.lat),
+        lng: roundCoord(latLng.lng)
+      });
+    }
     state.dragTemplateType = null;
   }
 
@@ -1635,16 +1728,23 @@
       state.objectLayerGroup.removeLayer(existing);
       state.layers.delete(object.id);
     }
-    const template = templateByType[object.objectType];
+    const template = resolveTemplateForObject(object);
     const color = template?.color || "#f3c613";
     let layer = null;
     if (object.geometryType === "point") {
-      const icon = L.divIcon({
-        className: "",
-        html: `<div class="point-marker" style="background:${escapeAttribute(color)}"></div>`,
-        iconSize: [20, 20],
-        iconAnchor: [10, 10]
-      });
+      const icon = object.objectType === ICON_MARKER_OBJECT_TYPE && object.fields?.iconAssetPath
+        ? L.divIcon({
+          className: "",
+          html: `<img class="point-marker-icon" src="${escapeAttribute(resolveAssetPath(object.fields.iconAssetPath))}" alt="${escapeAttribute(object.fields.iconLabel || template?.label || "Map icon")}" />`,
+          iconSize: [34, 34],
+          iconAnchor: [17, 17]
+        })
+        : L.divIcon({
+          className: "",
+          html: `<div class="point-marker" style="background:${escapeAttribute(color)}"></div>`,
+          iconSize: [20, 20],
+          iconAnchor: [10, 10]
+        });
       layer = L.marker([object.geometry.lat, object.geometry.lng], {
         icon,
         draggable: canEditObject(object) && sessionIsActive()
@@ -1967,8 +2067,14 @@
   }
 
   function collectFieldEntries(object) {
-    const template = templateByType[object.objectType];
+    const template = resolveTemplateForObject(object);
     const merged = { ...(template?.defaults || {}), ...(object.fields || {}) };
+    if (object.objectType === ICON_MARKER_OBJECT_TYPE) {
+      delete merged.iconId;
+      delete merged.iconCategory;
+      delete merged.iconLabel;
+      delete merged.iconAssetPath;
+    }
     return Object.entries(merged);
   }
 
@@ -1982,19 +2088,78 @@
   }
 
   function buildObjectTooltip(object) {
-    const template = templateByType[object.objectType];
+    const template = resolveTemplateForObject(object);
     const author = state.participants.find((participant) => participant.id === object.createdByParticipantId);
     const parts = [template?.label || object.objectType];
+    if (object.objectType === ICON_MARKER_OBJECT_TYPE && object.fields?.iconCategory) {
+      parts.push(object.fields.iconCategory);
+    }
     if (author) parts.push(`${author.displayName} · ${author.icsRole}`);
     return parts.join(" | ");
   }
 
-  function groupTemplatesByCategory() {
-    return OBJECT_TEMPLATES.reduce((groups, template) => {
+  function buildPaletteGroups() {
+    const operationalGroups = OBJECT_TEMPLATES.reduce((groups, template) => {
       groups[template.category] = groups[template.category] || [];
       groups[template.category].push(template);
       return groups;
     }, {});
+    const orderedGroups = Object.entries(operationalGroups).map(([category, items]) => ({
+      category,
+      items
+    }));
+    const iconGroups = (state.iconCatalog.categories || []).map((category) => ({
+      category: category.label,
+      items: (state.iconCatalog.icons || [])
+        .filter((icon) => icon.categoryId === category.id)
+        .map((icon) => ({
+          ...icon,
+          kind: "icon",
+          geometryType: "point",
+          selectionKey: `icon:${icon.id}`
+        })),
+      emptyMessage: "No icons imported for this category yet."
+    }));
+    return [...orderedGroups, ...iconGroups];
+  }
+
+  function createIconTemplate(iconDefinition) {
+    return {
+      ...ICON_MARKER_TEMPLATE,
+      label: iconDefinition.label,
+      defaults: {
+        ...ICON_MARKER_TEMPLATE.defaults,
+        iconId: iconDefinition.id,
+        iconCategory: iconDefinition.category,
+        iconLabel: iconDefinition.label,
+        iconAssetPath: iconDefinition.assetPath
+      }
+    };
+  }
+
+  function findIconBySelectionKey(selectionKey) {
+    return (state.iconCatalog.icons || []).find((icon) => `icon:${icon.id}` === selectionKey) || null;
+  }
+
+  function resolveTemplateForObject(object) {
+    if (object?.objectType === ICON_MARKER_OBJECT_TYPE) {
+      return {
+        ...ICON_MARKER_TEMPLATE,
+        label: object.fields?.iconLabel || ICON_MARKER_TEMPLATE.label,
+        category: object.fields?.iconCategory || ICON_MARKER_TEMPLATE.category,
+        assetPath: object.fields?.iconAssetPath || ""
+      };
+    }
+    return templateByType[object?.objectType];
+  }
+
+  function resolveAssetPath(assetPath) {
+    if (!assetPath) return "";
+    try {
+      return new URL(assetPath, window.location.href).toString();
+    } catch (_error) {
+      return assetPath;
+    }
   }
 
   function toLeafletLatLngs(points) {
