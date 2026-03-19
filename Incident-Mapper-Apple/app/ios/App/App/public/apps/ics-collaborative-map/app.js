@@ -16,6 +16,11 @@
   const WEATHER_API_BASE_URL = (config.weatherApiBaseUrl || "https://api.open-meteo.com/v1/forecast").replace(/\/$/, "");
   const ICON_MANIFEST_URL = "./icon-manifest.json";
   const ICON_MARKER_OBJECT_TYPE = "IconMarker";
+  const IS_TOUCH_PREFERRED = Boolean(
+    window.matchMedia?.("(pointer: coarse)")?.matches
+    || window.navigator?.maxTouchPoints > 0
+    || "ontouchstart" in window
+  );
   const EQUIPMENT_CATEGORY = "Equipment";
   const CONSUMABLES_CATEGORY = "Consumables";
   const CUSTOM_EQUIPMENT_ID = "custom_equipment";
@@ -1744,7 +1749,7 @@
         button.className = `object-template ${item.kind === "icon" ? "icon-template" : ""} ${item.kind === "costed" ? "cost-template" : ""} ${state.selectedTemplateType === selectionKey ? "active" : ""}`;
         button.type = "button";
         button.disabled = !canCreateObjects();
-        button.draggable = canCreateObjects() && item.geometryType === "point";
+        button.draggable = canCreateObjects() && item.geometryType === "point" && !IS_TOUCH_PREFERRED;
         button.innerHTML = item.kind === "icon"
           ? `
             <span class="object-template-icon-wrap">
@@ -1776,6 +1781,7 @@
             <span class="map-badge">${escapeHtml(item.objectType.replace(/[a-z]/g, "").slice(0, 3) || item.geometryType[0].toUpperCase())}</span>
           `;
         button.addEventListener("click", () => {
+          clearBrowserSelection();
           if (item.kind === "icon") {
             selectIconTemplate(item);
           } else if (item.kind === "costed") {
@@ -1784,7 +1790,7 @@
             selectTemplate(item.objectType);
           }
         });
-        if (item.geometryType === "point") {
+        if (item.geometryType === "point" && !IS_TOUCH_PREFERRED) {
           button.addEventListener("dragstart", (event) => onTemplateDragStart(event, selectionKey, button));
           button.addEventListener("dragend", () => onTemplateDragEnd(button));
         }
@@ -2055,6 +2061,17 @@
     state.dragTemplateType = null;
     button.classList.remove("dragging");
     document.querySelector(".map-stage")?.classList.remove("drag-active");
+  }
+
+  function clearBrowserSelection() {
+    try {
+      const selection = window.getSelection?.();
+      if (selection && selection.rangeCount > 0) {
+        selection.removeAllRanges();
+      }
+    } catch (_error) {
+      // Ignore browser selection cleanup failures.
+    }
   }
 
   function onMapDragOver(event) {
