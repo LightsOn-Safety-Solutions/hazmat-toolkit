@@ -128,6 +128,8 @@
     joinSessionPanelBody: document.getElementById("joinSessionPanelBody"),
     whatHappensPanelToggle: document.getElementById("whatHappensPanelToggle"),
     whatHappensPanelBody: document.getElementById("whatHappensPanelBody"),
+    paletteSearchInput: document.getElementById("paletteSearchInput"),
+    clearPaletteSearchBtn: document.getElementById("clearPaletteSearchBtn"),
     paletteContainer: document.getElementById("paletteContainer"),
     participantList: document.getElementById("participantList"),
     guidedSteps: document.getElementById("guidedSteps"),
@@ -224,6 +226,7 @@
     dragTemplateType: null,
     collapsedPaletteCategories: new Set(),
     paletteCollapseInitialized: false,
+    paletteSearchQuery: "",
     collapsedPanels: new Set(["session", "sessionPeriod", "incidentCommand", "participants", "palettes"]),
     collapsedLandingSections: new Set(["createSession", "joinSession", "whatHappens", "activeSessions"]),
     viewerMode: false,
@@ -300,6 +303,8 @@
     elements.joinSessionPanelToggle.addEventListener("click", () => toggleLandingSection("joinSession"));
     elements.whatHappensPanelToggle.addEventListener("click", () => toggleLandingSection("whatHappens"));
     elements.activeSessionGalleryPanelToggle.addEventListener("click", () => toggleLandingSection("activeSessions"));
+    elements.paletteSearchInput.addEventListener("input", onPaletteSearchInput);
+    elements.clearPaletteSearchBtn.addEventListener("click", clearPaletteSearch);
     elements.createSessionBtn.addEventListener("click", onCreateSession);
     elements.joinSessionBtn.addEventListener("click", onJoinSession);
     elements.startGuidedSetupBtn.addEventListener("click", () => toggleGuidedMode(true));
@@ -896,6 +901,7 @@
     state.incidentFocusSignature = "";
     state.collapsedPaletteCategories = new Set();
     state.paletteCollapseInitialized = false;
+    state.paletteSearchQuery = "";
     state.weatherPanelOpen = false;
     state.weatherLoading = false;
     state.weatherData = null;
@@ -909,6 +915,7 @@
     elements.landingView.classList.remove("hidden");
     elements.appView.classList.add("hidden");
     elements.shell.classList.remove("viewer-mode");
+    if (elements.paletteSearchInput) elements.paletteSearchInput.value = "";
     scheduleMapResizeRefresh();
   }
 
@@ -1661,10 +1668,27 @@
     elements.paletteContainer.innerHTML = "";
     const groups = buildPaletteGroups();
     ensureDefaultPaletteCollapse(groups);
-    groups.forEach(({ category, items, emptyMessage }) => {
+    const query = state.paletteSearchQuery.trim().toLowerCase();
+    const filteredGroups = groups
+      .map((group) => filterPaletteGroup(group, query))
+      .filter(Boolean);
+
+    elements.clearPaletteSearchBtn.classList.toggle("hidden", !query);
+
+    if (!filteredGroups.length) {
+      const empty = document.createElement("div");
+      empty.className = "palette-search-empty muted";
+      empty.textContent = query
+        ? `No palette items match "${state.paletteSearchQuery}".`
+        : "No palette items are available.";
+      elements.paletteContainer.appendChild(empty);
+      return;
+    }
+
+    filteredGroups.forEach(({ category, items, emptyMessage, forceExpanded }) => {
       const group = document.createElement("div");
       group.className = "palette-group";
-      const isCollapsed = state.collapsedPaletteCategories.has(category);
+      const isCollapsed = forceExpanded ? false : state.collapsedPaletteCategories.has(category);
       const header = document.createElement("button");
       header.className = "palette-group-toggle";
       header.type = "button";
@@ -1729,6 +1753,32 @@
     });
   }
 
+  function filterPaletteGroup(group, query) {
+    if (!query) return { ...group, forceExpanded: false };
+    const categoryMatch = group.category.toLowerCase().includes(query);
+    const matchedItems = group.items.filter((item) => paletteItemMatchesQuery(item, query));
+    if (!categoryMatch && !matchedItems.length) return null;
+    return {
+      ...group,
+      items: categoryMatch ? group.items : matchedItems,
+      forceExpanded: true
+    };
+  }
+
+  function paletteItemMatchesQuery(item, query) {
+    const haystack = [
+      item.label,
+      item.category,
+      item.objectType,
+      item.geometryType,
+      ...(Array.isArray(item.keywords) ? item.keywords : [])
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase();
+    return haystack.includes(query);
+  }
+
   function ensureDefaultPaletteCollapse(groups) {
     if (state.paletteCollapseInitialized) return;
     groups.forEach(({ category }) => {
@@ -1744,6 +1794,18 @@
       state.collapsedPaletteCategories.add(category);
     }
     renderPalettes();
+  }
+
+  function onPaletteSearchInput(event) {
+    state.paletteSearchQuery = event.target.value || "";
+    renderPalettes();
+  }
+
+  function clearPaletteSearch() {
+    state.paletteSearchQuery = "";
+    elements.paletteSearchInput.value = "";
+    renderPalettes();
+    elements.paletteSearchInput.focus();
   }
 
   function togglePanel(panelKey) {
