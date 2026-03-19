@@ -19,6 +19,7 @@
         <div class="topbar-action-row">
           <button id="setIncidentFocusBtn" class="primary hidden" type="button">Set Initial Focus</button>
           <button id="centerIncidentBtn" class="secondary hidden" type="button">Center Map</button>
+          <button id="closeScenarioReviewBtn" class="secondary hidden" type="button">Close Review</button>
           <button id="leaveSessionBtn" class="secondary hidden" type="button">Leave Session</button>
           <button id="sessionSignOutBtn" class="secondary hidden" type="button">Sign Out</button>
           <button id="copyJoinLinkBtn" class="secondary hidden" type="button">Copy Join Link</button>
@@ -122,6 +123,17 @@
               <div id="sessionListPanelBody" class="landing-card-body hidden">
                 <p class="muted">Jump back into an active incident quickly, or review sessions created with your account.</p>
                 <div id="commanderSessionList" class="session-list landing-session-list"></div>
+              </div>
+            </div>
+
+            <div id="scenarioReviewPanel" class="landing-card stack hidden">
+              <button id="scenarioReviewPanelToggle" class="landing-card-toggle" type="button" aria-expanded="false">
+                <span>Review Scenario</span>
+                <span class="toggle-symbol">+</span>
+              </button>
+              <div id="scenarioReviewPanelBody" class="landing-card-body hidden">
+                <p class="muted">Open a saved scenario file in review mode, then optionally promote it into a private editable copy.</p>
+                <button id="loadScenarioBtn" class="primary" type="button">Load Scenario File</button>
               </div>
             </div>
           </div>
@@ -318,7 +330,8 @@
               <div class="row">
                 <button id="loadPlaybackBtn" class="secondary" type="button">Replay Incident</button>
                 <button id="exitPlaybackBtn" class="secondary hidden" type="button">Exit Playback</button>
-                <button id="exportTrainingScenarioBtn" class="secondary" type="button">Export Training Scenario</button>
+                <button id="editScenarioBtn" class="secondary hidden" type="button">Edit Scenario</button>
+                <button id="exportTrainingScenarioBtn" class="secondary" type="button">Export Scenario</button>
               </div>
               <div id="playbackEmptyState" class="muted">Load session history to review how the incident developed.</div>
               <div id="playbackControls" class="playback-controls hidden">
@@ -383,6 +396,8 @@
       <button id="copyViewerLinkBtn" class="secondary" type="button">Copy Viewer Link</button>
     </div>
   </div>
+
+  <input id="scenarioFileInput" class="hidden" type="file" accept=".json,.scenario.json,application/json" />
 
   <script src="./vendor/leaflet-1.9.4.js"></script>
   <script src="./config.js"></script>

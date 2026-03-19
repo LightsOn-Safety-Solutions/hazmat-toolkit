@@ -133,6 +133,11 @@
     sessionListPanelToggle: document.getElementById("sessionListPanelToggle"),
     sessionListPanelBody: document.getElementById("sessionListPanelBody"),
     commanderSessionList: document.getElementById("commanderSessionList"),
+    scenarioReviewPanel: document.getElementById("scenarioReviewPanel"),
+    scenarioReviewPanelToggle: document.getElementById("scenarioReviewPanelToggle"),
+    scenarioReviewPanelBody: document.getElementById("scenarioReviewPanelBody"),
+    loadScenarioBtn: document.getElementById("loadScenarioBtn"),
+    scenarioFileInput: document.getElementById("scenarioFileInput"),
     activeSessionGalleryPanel: document.getElementById("activeSessionGalleryPanel"),
     activeSessionGalleryPanelToggle: document.getElementById("activeSessionGalleryPanelToggle"),
     activeSessionGalleryPanelBody: document.getElementById("activeSessionGalleryPanelBody"),
@@ -168,6 +173,7 @@
     exportCostPdfBtn: document.getElementById("exportCostPdfBtn"),
     setIncidentFocusBtn: document.getElementById("setIncidentFocusBtn"),
     centerIncidentBtn: document.getElementById("centerIncidentBtn"),
+    closeScenarioReviewBtn: document.getElementById("closeScenarioReviewBtn"),
     weatherLauncherBtn: document.getElementById("weatherLauncherBtn"),
     weatherPanel: document.getElementById("weatherPanel"),
     weatherSourceLabel: document.getElementById("weatherSourceLabel"),
@@ -226,6 +232,7 @@
     loadPlaybackBtn: document.getElementById("loadPlaybackBtn"),
     exitPlaybackBtn: document.getElementById("exitPlaybackBtn"),
     exportTrainingScenarioBtn: document.getElementById("exportTrainingScenarioBtn"),
+    editScenarioBtn: document.getElementById("editScenarioBtn"),
     playbackEmptyState: document.getElementById("playbackEmptyState"),
     playbackControls: document.getElementById("playbackControls"),
     playbackToggleBtn: document.getElementById("playbackToggleBtn"),
@@ -279,9 +286,10 @@
     paletteSearchQuery: "",
     collapsedPanels: new Set(["session", "sessionPeriod", "incidentCommand", "participants", "palettes"]),
     collapsedModePanels: new Set(),
-    collapsedLandingSections: new Set(["createSession", "joinSession", "whatHappens", "activeSessions"]),
+    collapsedLandingSections: new Set(["createSession", "joinSession", "whatHappens", "activeSessions", "reviewScenario"]),
     viewerMode: false,
     viewerJoinCode: null,
+    scenarioReview: null,
     rightSidebarCollapsed: false,
     mapStyleTrayOpen: false,
     incidentFocusSignature: "",
@@ -352,6 +360,193 @@
     return response.json();
   }
 
+  function isScenarioReviewMode() {
+    return Boolean(state.scenarioReview?.active);
+  }
+
+  function scenarioReviewCanEdit() {
+    return Boolean(state.scenarioReview?.active && state.scenarioReview?.editable);
+  }
+
+  function getWorkspaceSession() {
+    if (state.activeSession) return state.activeSession;
+    if (!isScenarioReviewMode()) return null;
+    return {
+      id: state.scenarioReview.id,
+      incidentName: state.scenarioReview.incidentName,
+      commanderName: state.commanderAuth?.displayName || "Scenario Reviewer",
+      commanderICSRole: "Scenario Review",
+      status: state.scenarioReview.editable ? "editable" : "review",
+      currentVersion: 0
+    };
+  }
+
+  function openNativeFilePicker(inputEl, failureMessage) {
+    if (!inputEl) {
+      setStatus(failureMessage || "File picker unavailable.");
+      return;
+    }
+    try {
+      inputEl.click();
+    } catch (_error) {
+      setStatus(failureMessage || "Unable to open file picker.");
+    }
+  }
+
+  function onLoadScenarioFile() {
+    if (!state.commanderAuth?.accessToken) {
+      setStatus("Sign in first to review a scenario file.");
+      return;
+    }
+    elements.scenarioFileInput.value = "";
+    openNativeFilePicker(elements.scenarioFileInput, "Unable to open scenario file picker.");
+  }
+
+  function onScenarioFileSelected(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) {
+      setStatus("Load canceled.");
+      return;
+    }
+    loadScenarioFromFile(file);
+  }
+
+  function loadScenarioFromFile(file) {
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const parsed = JSON.parse(String(reader.result || "{}"));
+        openScenarioReviewWorkspace(parsed, file.name);
+      } catch (_error) {
+        setStatus("Invalid scenario file.");
+      }
+    };
+    reader.onerror = () => {
+      setStatus("Failed to read scenario file.");
+    };
+    reader.readAsText(file);
+  }
+
+  function openScenarioReviewWorkspace(payload, fileName) {
+    const imported = buildScenarioReviewFromPayload(payload, fileName);
+    clearPolling();
+    clearWeatherPolling();
+    stopPlaybackTimer();
+    state.activeSession = null;
+    state.viewerMode = false;
+    state.viewerJoinCode = null;
+    state.qrPayload = null;
+    state.scenarioReview = imported;
+    state.actor = imported.localActor;
+    state.participants = imported.participants;
+    state.objects = imported.objects;
+    state.selectedObjectId = null;
+    state.selectedTemplateType = null;
+    state.drawState = null;
+    state.incidentFocusSignature = "";
+    state.weatherPanelOpen = false;
+    state.weatherLoading = false;
+    state.weatherData = null;
+    state.weatherError = "";
+    state.weatherTargetSignature = "";
+    state.weatherFetchNonce = 0;
+    state.playbackHistory = deepClone(imported.mutations);
+    state.playbackEntries = deepClone(imported.playbackEntries);
+    state.playbackSessionId = imported.id;
+    state.playbackIndex = 0;
+    state.playbackMode = false;
+    state.playbackSavedSnapshot = null;
+    cancelGeometryPreviewOnly();
+    syncMapObjects();
+    elements.landingView.classList.add("hidden");
+    elements.appView.classList.remove("hidden");
+    elements.shell.classList.remove("viewer-mode");
+    renderAll();
+    centerOnIncidentFocus({ notify: false, fallbackToBounds: true, fallbackToCurrent: false });
+    void refreshWeatherForCurrentTarget({ force: true, silent: true });
+    setStatus(`Loaded scenario file: ${fileName}`);
+  }
+
+  function buildScenarioReviewFromPayload(payload, fileName) {
+    const parsed = payload && typeof payload === "object" ? payload : {};
+    const snapshotObjects = Array.isArray(parsed?.snapshot?.objects)
+      ? parsed.snapshot.objects
+      : Array.isArray(parsed?.objects)
+        ? parsed.objects
+        : [];
+    const importedParticipants = Array.isArray(parsed?.participants) ? parsed.participants : [];
+    const localActor = {
+      id: state.commanderAuth?.email || "scenario-review-local",
+      displayName: state.commanderAuth?.displayName || "Scenario Reviewer",
+      permissionTier: "commander",
+      icsRole: "Scenario Review",
+      joinedAt: new Date().toISOString(),
+      lastSeenAt: new Date().toISOString()
+    };
+    const participants = importedParticipants.some((participant) => participant?.id === localActor.id)
+      ? deepClone(importedParticipants)
+      : [...deepClone(importedParticipants), localActor];
+    const objects = new Map(
+      snapshotObjects
+        .filter((object) => object && !object.isDeleted)
+        .map((object) => [object.id, deepClone(object)])
+    );
+    const mutations = Array.isArray(parsed?.mutations) ? parsed.mutations : [];
+    return {
+      active: true,
+      editable: false,
+      id: `scenario-review-${Date.now()}`,
+      fileName,
+      importedAt: new Date().toISOString(),
+      incidentName: parsed?.incidentName || parsed?.session?.incidentName || stripScenarioExtension(fileName),
+      originalPayload: deepClone(parsed),
+      reviewSnapshot: { objects: snapshotObjects.map((object) => deepClone(object)) },
+      objects,
+      participants,
+      localActor,
+      mutations: deepClone(mutations),
+      playbackEntries: mutations.length ? buildPlaybackEntries(mutations) : buildScenarioSnapshotEntries(snapshotObjects)
+    };
+  }
+
+  function buildScenarioSnapshotEntries(objects) {
+    return (Array.isArray(objects) ? objects : []).map((object, index) => ({
+      id: index + 1,
+      version: index + 1,
+      mutationType: "create",
+      objectId: object.id,
+      participantId: object.createdByParticipantId || "",
+      createdAt: object.createdAt || new Date().toISOString(),
+      object: deepClone(object),
+      label: getObjectDisplayLabel(object, resolveTemplateForObject(object)),
+      category: getPlaybackCategory(object),
+      focusPoint: getObjectFocusPoint(object)
+    }));
+  }
+
+  function stripScenarioExtension(fileName) {
+    return String(fileName || "Scenario")
+      .replace(/\.scenario\.json$/i, "")
+      .replace(/\.json$/i, "");
+  }
+
+  function closeScenarioReview() {
+    if (!isScenarioReviewMode()) return;
+    exitActiveWorkspace();
+    renderAll();
+    setStatus("Scenario review closed.");
+  }
+
+  function promoteScenarioReviewToEditable() {
+    if (!isScenarioReviewMode()) return;
+    state.scenarioReview.editable = true;
+    state.selectedObjectId = null;
+    state.playbackSavedSnapshot = null;
+    renderAll();
+    setStatus("Scenario is now an editable local copy.");
+  }
+
   function wireEvents() {
     elements.signInTabBtn.addEventListener("click", () => setAuthTab("signin"));
     elements.signUpTabBtn.addEventListener("click", () => setAuthTab("signup"));
@@ -359,9 +554,12 @@
     elements.commanderSignOutBtn.addEventListener("click", signOutCommander);
     elements.createSessionPanelToggle.addEventListener("click", () => toggleLandingSection("createSession"));
     elements.sessionListPanelToggle.addEventListener("click", () => toggleLandingSection("reviewSessions"));
+    elements.scenarioReviewPanelToggle.addEventListener("click", () => toggleLandingSection("reviewScenario"));
     elements.joinSessionPanelToggle.addEventListener("click", () => toggleLandingSection("joinSession"));
     elements.whatHappensPanelToggle.addEventListener("click", () => toggleLandingSection("whatHappens"));
     elements.activeSessionGalleryPanelToggle.addEventListener("click", () => toggleLandingSection("activeSessions"));
+    elements.loadScenarioBtn.addEventListener("click", onLoadScenarioFile);
+    elements.scenarioFileInput.addEventListener("change", onScenarioFileSelected);
     elements.paletteSearchInput.addEventListener("input", onPaletteSearchInput);
     elements.clearPaletteSearchBtn.addEventListener("click", clearPaletteSearch);
     elements.createSessionBtn.addEventListener("click", onCreateSession);
@@ -373,6 +571,7 @@
     elements.exportCostPdfBtn.addEventListener("click", exportCostPdf);
     elements.setIncidentFocusBtn.addEventListener("click", onSetIncidentFocusAction);
     elements.centerIncidentBtn.addEventListener("click", onCenterIncidentAction);
+    elements.closeScenarioReviewBtn.addEventListener("click", closeScenarioReview);
     elements.weatherLauncherBtn.addEventListener("click", toggleWeatherPanel);
     elements.refreshWeatherBtn.addEventListener("click", () => {
       void refreshWeatherForCurrentTarget({ force: true, silent: false });
@@ -406,6 +605,7 @@
     elements.loadPlaybackBtn.addEventListener("click", loadPlaybackHistory);
     elements.exitPlaybackBtn.addEventListener("click", exitPlaybackMode);
     elements.exportTrainingScenarioBtn.addEventListener("click", exportTrainingScenario);
+    elements.editScenarioBtn.addEventListener("click", promoteScenarioReviewToEditable);
     elements.playbackToggleBtn.addEventListener("click", togglePlaybackRunning);
     elements.playbackRestartBtn.addEventListener("click", restartPlayback);
     elements.playbackStepBackBtn.addEventListener("click", () => renderPlaybackFrame(state.playbackIndex - 1));
@@ -793,7 +993,9 @@
 
   async function openSession(session, actor, actorType, snapshot) {
     clearPolling();
+    clearWeatherPolling();
     stopPlaybackTimer();
+    state.scenarioReview = null;
     state.activeSession = session;
     state.actor = actor;
     state.lastVersion = Number(session.currentVersion || 0);
@@ -979,6 +1181,7 @@
     clearWeatherPolling();
     stopPlaybackTimer();
     state.activeSession = null;
+    state.scenarioReview = null;
     state.actor = null;
     state.objects = new Map();
     state.participants = [];
@@ -1008,6 +1211,7 @@
     elements.appView.classList.add("hidden");
     elements.shell.classList.remove("viewer-mode");
     if (elements.paletteSearchInput) elements.paletteSearchInput.value = "";
+    if (elements.scenarioFileInput) elements.scenarioFileInput.value = "";
     scheduleMapResizeRefresh();
   }
 
@@ -1168,7 +1372,7 @@
 
   function renderAfterActionControls() {
     if (!elements.afterActionPanel) return;
-    const visible = Boolean(state.activeSession) && !state.viewerMode;
+    const visible = (Boolean(state.activeSession) || isScenarioReviewMode()) && !state.viewerMode;
     elements.afterActionPanel.classList.toggle("hidden", !visible);
     elements.afterActionModeBtn.classList.toggle("hidden", !visible);
     if (!visible) return;
@@ -1176,16 +1380,22 @@
     const hasHistory = state.playbackEntries.length > 0;
     elements.afterActionModeBtn.textContent = state.playbackMode ? "Exit After-Action" : "After-Action Mode";
     elements.loadPlaybackBtn.disabled = state.playbackMode;
-    elements.loadPlaybackBtn.textContent = sessionHasHistoryLoaded() ? "Replay Incident" : "Load Incident Replay";
+    elements.loadPlaybackBtn.textContent = sessionHasHistoryLoaded()
+      ? (isScenarioReviewMode() ? "Replay Scenario" : "Replay Incident")
+      : (isScenarioReviewMode() ? "Load Scenario Replay" : "Load Incident Replay");
     elements.exitPlaybackBtn.classList.toggle("hidden", !state.playbackMode);
-    elements.exportTrainingScenarioBtn.disabled = !state.activeSession;
+    elements.exportTrainingScenarioBtn.disabled = !visible;
+    elements.exportTrainingScenarioBtn.textContent = "Export Scenario";
+    elements.editScenarioBtn.classList.toggle("hidden", !isScenarioReviewMode());
+    elements.editScenarioBtn.disabled = scenarioReviewCanEdit();
+    elements.editScenarioBtn.textContent = scenarioReviewCanEdit() ? "Scenario Editable" : "Edit Scenario";
     elements.playbackEmptyState.classList.toggle("hidden", hasHistory);
     elements.playbackControls.classList.toggle("hidden", !hasHistory);
 
     if (!hasHistory) {
       elements.playbackMeta.textContent = sessionHasHistoryLoaded()
-        ? "This session has no recorded map history yet."
-        : "Load session history to begin playback.";
+        ? (isScenarioReviewMode() ? "This scenario has no recorded map history yet." : "This session has no recorded map history yet.")
+        : (isScenarioReviewMode() ? "Load scenario history to begin playback." : "Load session history to begin playback.");
       return;
     }
 
@@ -1201,7 +1411,7 @@
   }
 
   function sessionHasHistoryLoaded() {
-    return state.playbackSessionId === state.activeSession?.id;
+    return state.playbackSessionId === (state.activeSession?.id || state.scenarioReview?.id);
   }
 
   function toggleLandingSection(sectionKey) {
@@ -1216,6 +1426,7 @@
   function renderLandingSectionCollapses() {
     syncLandingSectionCollapse(elements.createSessionPanelBody, elements.createSessionPanelToggle, "createSession");
     syncLandingSectionCollapse(elements.sessionListPanelBody, elements.sessionListPanelToggle, "reviewSessions");
+    syncLandingSectionCollapse(elements.scenarioReviewPanelBody, elements.scenarioReviewPanelToggle, "reviewScenario");
     syncLandingSectionCollapse(elements.joinSessionPanelBody, elements.joinSessionPanelToggle, "joinSession");
     syncLandingSectionCollapse(elements.whatHappensPanelBody, elements.whatHappensPanelToggle, "whatHappens");
     syncLandingSectionCollapse(elements.activeSessionGalleryPanelBody, elements.activeSessionGalleryPanelToggle, "activeSessions");
@@ -1280,13 +1491,15 @@
     elements.createSessionPanel.classList.toggle("locked", !signedIn);
     elements.createSessionLockedNote.classList.toggle("hidden", signedIn);
     elements.sessionListPanel.classList.toggle("hidden", !signedIn);
+    elements.scenarioReviewPanel.classList.toggle("hidden", !signedIn);
     elements.activeSessionGalleryPanel.classList.toggle("hidden", !signedIn);
     elements.commanderSignOutBtn.classList.toggle("hidden", !signedIn);
-    elements.sessionSignOutBtn.classList.toggle("hidden", !signedIn || !state.activeSession);
-    elements.leaveSessionBtn.classList.toggle("hidden", !state.activeSession);
-    elements.setIncidentFocusBtn.classList.toggle("hidden", !state.activeSession || !isCommander() || Boolean(getIncidentFocusPoint()));
-    elements.centerIncidentBtn.classList.toggle("hidden", !state.activeSession);
-    elements.showViewerQrBtn.classList.toggle("hidden", !isCommander() || !state.activeSession || state.viewerMode);
+    elements.sessionSignOutBtn.classList.toggle("hidden", !signedIn || (!state.activeSession && !isScenarioReviewMode()));
+    elements.closeScenarioReviewBtn.classList.toggle("hidden", !isScenarioReviewMode());
+    elements.leaveSessionBtn.classList.toggle("hidden", !state.activeSession || isScenarioReviewMode());
+    elements.setIncidentFocusBtn.classList.toggle("hidden", !state.activeSession || isScenarioReviewMode() || !isCommander() || Boolean(getIncidentFocusPoint()));
+    elements.centerIncidentBtn.classList.toggle("hidden", !(state.activeSession || isScenarioReviewMode()));
+    elements.showViewerQrBtn.classList.toggle("hidden", !isCommander() || !state.activeSession || state.viewerMode || isScenarioReviewMode());
     elements.joinLockedNote.classList.toggle("hidden", signedIn);
     toggleLandingCardAccess(signedIn);
   }
@@ -1329,7 +1542,7 @@
       elements.centerIncidentBtn.textContent = focusSet ? "Center on Incident" : "Center Map";
     }
     if (elements.viewerCenterIncidentBtn) {
-      elements.viewerCenterIncidentBtn.classList.toggle("hidden", !state.viewerMode || !state.activeSession);
+      elements.viewerCenterIncidentBtn.classList.toggle("hidden", !state.viewerMode || !state.activeSession || isScenarioReviewMode());
       elements.viewerCenterIncidentBtn.disabled = !focusSet && state.layers.size === 0 && !state.currentLocation;
       elements.viewerCenterIncidentBtn.setAttribute("aria-label", focusSet ? "Center on incident" : "Center map");
       elements.viewerCenterIncidentBtn.title = focusSet ? "Center on Incident" : "Center Map";
@@ -1338,7 +1551,7 @@
       elements.setIncidentFocusBtn.disabled = !canCreateObjects();
     }
     if (elements.sessionFocusPrompt) {
-      const showPrompt = Boolean(state.activeSession) && isCommander() && !focusSet;
+      const showPrompt = Boolean(state.activeSession) && !isScenarioReviewMode() && isCommander() && !focusSet;
       elements.sessionFocusPrompt.classList.toggle("hidden", !showPrompt);
       elements.sessionFocusPrompt.textContent = showPrompt
         ? "Set initial hazard/focus location by placing a Hazard Source. This helps everyone join centered on the incident."
@@ -1347,7 +1560,7 @@
   }
 
   function toggleWeatherPanel() {
-    if (!state.activeSession) return;
+    if (!state.activeSession && !isScenarioReviewMode()) return;
     state.weatherPanelOpen = !state.weatherPanelOpen;
     renderWeatherUI();
     if (state.weatherPanelOpen) {
@@ -1357,7 +1570,7 @@
 
   function renderWeatherUI() {
     if (!elements.weatherLauncherBtn || !elements.weatherPanel) return;
-    const visible = Boolean(state.activeSession);
+    const visible = Boolean(state.activeSession) || isScenarioReviewMode();
     const target = getWeatherTarget();
     elements.weatherLauncherBtn.classList.toggle("hidden", !visible);
     elements.weatherPanel.classList.toggle("hidden", !visible || !state.weatherPanelOpen);
@@ -1764,8 +1977,9 @@
 
   function renderSessionMeta() {
     elements.sessionMeta.innerHTML = "";
-    if (!state.activeSession) {
-      appendMetaRow(elements.sessionMeta, "Status", "No active session");
+    const session = getWorkspaceSession();
+    if (!session) {
+      appendMetaRow(elements.sessionMeta, "Status", "No active workspace");
       elements.sessionPeriodPanel.classList.add("hidden");
       elements.incidentCommandPanel.classList.add("hidden");
       elements.setIncidentFocusBtn.classList.add("hidden");
@@ -1774,23 +1988,32 @@
       elements.centerIncidentBtn.classList.add("hidden");
       return;
     }
-    const session = state.activeSession;
-    const visibleStatus = effectiveSessionStatus(session);
+    const visibleStatus = isScenarioReviewMode()
+      ? (scenarioReviewCanEdit() ? "Editable Scenario" : "Scenario Review")
+      : effectiveSessionStatus(session);
     const ownerParticipant = state.participants.find((participant) => participant.permissionTier === "commander");
     appendMetaRow(elements.sessionMeta, "Incident", session.incidentName);
-    appendMetaRow(elements.sessionMeta, "Session Owner", ownerParticipant ? ownerParticipant.displayName : "Owner");
+    appendMetaRow(elements.sessionMeta, isScenarioReviewMode() ? "Source" : "Session Owner", isScenarioReviewMode() ? (state.scenarioReview?.fileName || "Scenario file") : (ownerParticipant ? ownerParticipant.displayName : "Owner"));
     appendMetaRow(elements.sessionMeta, "Incident Commander", `${session.commanderName} · ${session.commanderICSRole}`);
     appendMetaRow(elements.sessionMeta, "Status", visibleStatus);
     appendMetaRow(elements.sessionMeta, "Incident Focus", getIncidentFocusPoint() ? "Set" : "Not set");
-    appendMetaRow(elements.sessionMeta, "Join Code", session.joinCode);
-    appendMetaRow(elements.sessionMeta, "Period", `${formatDateTime(session.operationalPeriodStart)} → ${formatDateTime(session.operationalPeriodEnd)}`);
-    elements.copyJoinLinkBtn.classList.toggle("hidden", !session.joinCode);
-    elements.endSessionBtn.classList.toggle("hidden", !isCommander());
-    elements.sessionPeriodPanel.classList.toggle("hidden", !isCommander());
-    elements.incidentCommandPanel.classList.toggle("hidden", !isCommander());
-    elements.sessionOpStartInput.value = isoToInputValue(session.operationalPeriodStart);
-    elements.sessionOpEndInput.value = isoToInputValue(session.operationalPeriodEnd);
-    elements.sessionIncidentCommanderNameInput.value = session.commanderName || "";
+    if (isScenarioReviewMode()) {
+      appendMetaRow(elements.sessionMeta, "Imported", formatDateTime(state.scenarioReview?.importedAt));
+      elements.copyJoinLinkBtn.classList.add("hidden");
+      elements.endSessionBtn.classList.add("hidden");
+      elements.sessionPeriodPanel.classList.add("hidden");
+      elements.incidentCommandPanel.classList.add("hidden");
+    } else {
+      appendMetaRow(elements.sessionMeta, "Join Code", session.joinCode);
+      appendMetaRow(elements.sessionMeta, "Period", `${formatDateTime(session.operationalPeriodStart)} → ${formatDateTime(session.operationalPeriodEnd)}`);
+      elements.copyJoinLinkBtn.classList.toggle("hidden", !session.joinCode);
+      elements.endSessionBtn.classList.toggle("hidden", !isCommander());
+      elements.sessionPeriodPanel.classList.toggle("hidden", !isCommander());
+      elements.incidentCommandPanel.classList.toggle("hidden", !isCommander());
+      elements.sessionOpStartInput.value = isoToInputValue(session.operationalPeriodStart);
+      elements.sessionOpEndInput.value = isoToInputValue(session.operationalPeriodEnd);
+      elements.sessionIncidentCommanderNameInput.value = session.commanderName || "";
+    }
   }
 
   function renderParticipants() {
@@ -1798,7 +2021,7 @@
     if (!state.participants.length) {
       const empty = document.createElement("div");
       empty.className = "muted";
-      empty.textContent = "No participants yet.";
+      empty.textContent = isScenarioReviewMode() ? "No scenario participants recorded." : "No participants yet.";
       elements.participantList.appendChild(empty);
       return;
     }
@@ -2086,26 +2309,34 @@
 
   async function loadPlaybackHistory(options = {}) {
     const { enterMode = true, silent = false } = options;
-    if (!state.activeSession) {
-      if (!silent) setStatus("Open a collaborative session first.");
+    if (!state.activeSession && !isScenarioReviewMode()) {
+      if (!silent) setStatus("Open a session or scenario first.");
       return [];
     }
     try {
       if (!sessionHasHistoryLoaded()) {
-        const response = await apiFetch(
-          `/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/mutations?sinceVersion=-1&limit=5000`,
-          { actorType: currentActorType() }
-        );
-        state.playbackHistory = Array.isArray(response.mutations) ? response.mutations : [];
-        state.playbackEntries = buildPlaybackEntries(state.playbackHistory);
-        state.playbackSessionId = state.activeSession.id;
-        if (response.session) {
-          state.activeSession = response.session;
+        if (isScenarioReviewMode()) {
+          state.playbackHistory = deepClone(state.scenarioReview?.mutations || []);
+          state.playbackEntries = deepClone(state.scenarioReview?.playbackEntries || []);
+          state.playbackSessionId = state.scenarioReview?.id || null;
+        } else {
+          const response = await apiFetch(
+            `/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/mutations?sinceVersion=-1&limit=5000`,
+            { actorType: currentActorType() }
+          );
+          state.playbackHistory = Array.isArray(response.mutations) ? response.mutations : [];
+          state.playbackEntries = buildPlaybackEntries(state.playbackHistory);
+          state.playbackSessionId = state.activeSession.id;
+          if (response.session) {
+            state.activeSession = response.session;
+          }
         }
       }
       renderAfterActionControls();
       if (!state.playbackEntries.length) {
-        if (!silent) setStatus("No session history recorded yet.");
+        if (!silent) {
+          setStatus(isScenarioReviewMode() ? "No scenario history recorded yet." : "No session history recorded yet.");
+        }
         return [];
       }
       if (enterMode) {
@@ -2276,8 +2507,9 @@
   }
 
   async function exportTrainingScenario() {
-    if (!state.activeSession) {
-      setStatus("Open a collaborative session first.");
+    const workspaceSession = getWorkspaceSession();
+    if (!workspaceSession) {
+      setStatus("Open a session or scenario first.");
       return;
     }
     try {
@@ -2289,8 +2521,8 @@
         : Array.from(state.objects.values());
       const payload = {
         exportedAt: new Date().toISOString(),
-        incidentName: state.activeSession.incidentName,
-        session: deepClone(state.activeSession),
+        incidentName: workspaceSession.incidentName,
+        session: deepClone(workspaceSession),
         participants: deepClone(state.participants),
         snapshot: {
           objects: snapshotSource.map((object) => deepClone(object))
@@ -2299,23 +2531,23 @@
         costSummary: getCostSummaryTotals()
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      const filename = `training-scenario-${slugifyFilename(state.activeSession.incidentName || "incident")}-${Date.now()}.json`;
+      const filename = `scenario-${slugifyFilename(workspaceSession.incidentName || "incident")}-${Date.now()}.json`;
       if (window.exportPdfHelper?.saveAndShareBlob) {
         try {
           const result = await window.exportPdfHelper.saveAndShareBlob(blob, filename, {
-            title: "Export Training Scenario",
-            text: "Here is the collaborative map training scenario export.",
-            dialogTitle: "Share Training Scenario",
+            title: "Export Scenario",
+            text: "Here is the collaborative map scenario export.",
+            dialogTitle: "Share Scenario",
             requireSharePrompt: true
           });
-          setStatus(result?.shared ? `Training scenario shared: ${filename}` : `Training scenario saved: ${filename}`);
+          setStatus(result?.shared ? `Scenario shared: ${filename}` : `Scenario saved: ${filename}`);
           return;
         } catch (_error) {
           // Fall back to browser download when native sharing is unavailable.
         }
       }
       await downloadBlob(blob, filename);
-      setStatus(`Training scenario downloaded: ${filename}`);
+      setStatus(`Scenario downloaded: ${filename}`);
     } catch (error) {
       setStatus(formatError(error));
     }
@@ -2662,6 +2894,31 @@
   }
 
   async function createObject(template, geometry) {
+    if (isScenarioReviewMode()) {
+      const objectId = createLocalID();
+      const object = {
+        id: objectId,
+        sessionId: state.scenarioReview.id,
+        objectType: template.objectType,
+        geometryType: template.geometryType,
+        geometry: deepClone(geometry),
+        fields: buildInitialFields(template),
+        createdByParticipantId: state.actor?.id || "scenario-review-local",
+        updatedByParticipantId: state.actor?.id || "scenario-review-local",
+        version: 1,
+        isDeleted: false,
+        activeLockParticipantId: null,
+        lockExpiresAt: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      state.objects.set(objectId, object);
+      syncMapObjects();
+      syncIncidentFocusState({ notify: true });
+      renderAll();
+      setStatus(`${template.label} placed in editable scenario.`);
+      return;
+    }
     const objectId = createLocalID();
     const result = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/mutations`, {
       method: "POST",
@@ -2696,6 +2953,24 @@
   }
 
   function queueUpdateMutation(mutation, flushNow = false) {
+    if (isScenarioReviewMode()) {
+      const object = state.objects.get(mutation.objectId);
+      if (!object) return Promise.resolve();
+      const updated = {
+        ...object,
+        geometryType: mutation.geometryType || object.geometryType,
+        geometry: mutation.geometry != null ? deepClone(mutation.geometry) : deepClone(object.geometry),
+        fields: mutation.fields != null ? deepClone(mutation.fields) : deepClone(object.fields),
+        version: Number(object.version || 0) + 1,
+        updatedByParticipantId: state.actor?.id || object.updatedByParticipantId,
+        updatedAt: new Date().toISOString()
+      };
+      state.objects.set(object.id, updated);
+      syncMapObjects();
+      syncIncidentFocusState({ notify: true });
+      renderAll();
+      return Promise.resolve();
+    }
     state.pendingMutations.set(mutation.objectId, {
       clientMutationId: createLocalID(),
       ...mutation
@@ -3055,6 +3330,15 @@
       return;
     }
     if (!window.confirm("Delete this map object?")) return;
+    if (isScenarioReviewMode()) {
+      state.objects.delete(object.id);
+      state.selectedObjectId = null;
+      syncMapObjects();
+      renderSelectedObject();
+      renderAll();
+      setStatus("Object deleted from editable scenario.");
+      return;
+    }
     try {
       const result = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/mutations`, {
         method: "POST",
@@ -3083,6 +3367,9 @@
   }
 
   async function acquireObjectLock(object, options = {}) {
+    if (isScenarioReviewMode()) {
+      return Promise.resolve({ object });
+    }
     const shouldSyncUI = options.syncUI !== false;
     const result = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/objects/${encodeURIComponent(object.id)}/lock`, {
       method: "POST",
@@ -3099,6 +3386,9 @@
   }
 
   async function releaseObjectLock(objectId) {
+    if (isScenarioReviewMode()) {
+      return Promise.resolve(objectId);
+    }
     await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/objects/${encodeURIComponent(objectId)}/lock`, {
       method: "DELETE",
       actorType: currentActorType()
@@ -3106,7 +3396,7 @@
   }
 
   async function copyJoinLink() {
-    if (!state.activeSession) return;
+    if (!state.activeSession || isScenarioReviewMode()) return;
     const joinLink = state.activeSession.joinUrl || `${window.location.origin}${window.location.pathname}?join=${encodeURIComponent(state.activeSession.joinCode)}`;
     try {
       await writeToClipboard(joinLink);
@@ -3130,7 +3420,7 @@
   }
 
   function showViewerQrModal() {
-    if (!state.activeSession?.joinCode) return;
+    if (!state.activeSession?.joinCode || isScenarioReviewMode()) return;
     const viewerLink = buildViewerLink();
     elements.viewerQrLink.value = viewerLink;
     elements.viewerQrImage.src = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(viewerLink)}`;
@@ -3142,6 +3432,7 @@
   }
 
   async function copyViewerLink() {
+    if (isScenarioReviewMode()) return;
     const viewerLink = buildViewerLink();
     if (!viewerLink) return;
     try {
@@ -3153,6 +3444,9 @@
   }
 
   function currentActorType() {
+    if (isScenarioReviewMode()) {
+      return "local";
+    }
     if (state.viewerMode) {
       return "public";
     }
@@ -3166,11 +3460,13 @@
   }
 
   function canCreateObjects() {
-    return !state.playbackMode && sessionIsActive() && state.actor && state.actor.permissionTier !== "observer";
+    return !state.playbackMode && ((sessionIsActive() && state.actor && state.actor.permissionTier !== "observer") || scenarioReviewCanEdit());
   }
 
   function canEditObject(object) {
-    if (state.playbackMode || !sessionIsActive() || !state.actor || state.actor.permissionTier === "observer") return false;
+    if (state.playbackMode) return false;
+    if (scenarioReviewCanEdit()) return true;
+    if (!sessionIsActive() || !state.actor || state.actor.permissionTier === "observer") return false;
     if (state.actor.permissionTier === "commander") return true;
     return object.createdByParticipantId === state.actor.id;
   }
@@ -3185,6 +3481,7 @@
   }
 
   function sessionIsActive() {
+    if (scenarioReviewCanEdit()) return true;
     return effectiveSessionStatus(state.activeSession) === "active";
   }
 
@@ -3316,8 +3613,9 @@
   function buildInitialFields(template) {
     const fields = { ...(template.defaults || {}) };
     if (template.objectType === "IncidentCommand") {
-      fields.incidentName = fields.incidentName || elements.incidentNameInput.value.trim() || state.activeSession?.incidentName || "";
-      fields.ICName = fields.ICName || state.activeSession?.commanderName || state.commanderAuth?.displayName || "";
+      const workspaceSession = getWorkspaceSession();
+      fields.incidentName = fields.incidentName || elements.incidentNameInput.value.trim() || workspaceSession?.incidentName || "";
+      fields.ICName = fields.ICName || workspaceSession?.commanderName || state.commanderAuth?.displayName || "";
     }
     return fields;
   }
@@ -3705,7 +4003,9 @@
   function renderCostSummary() {
     if (!elements.costSummaryBody || !elements.costSummaryPanel) return;
     const totals = getCostSummaryTotals();
-    elements.costSummaryPanel.classList.toggle("hidden", !state.activeSession);
+    const visible = Boolean(state.activeSession) || isScenarioReviewMode();
+    elements.costSummaryPanel.classList.toggle("hidden", !visible);
+    if (!visible) return;
     if (!totals.count) {
       elements.costSummaryBody.innerHTML = `<div class="muted">No costed resources placed yet.</div>`;
       return;
@@ -3714,12 +4014,12 @@
       <div class="cost-summary-row"><span>Equipment</span><strong>${escapeHtml(formatCurrency(totals.equipment))}</strong></div>
       <div class="cost-summary-row"><span>Consumables</span><strong>${escapeHtml(formatCurrency(totals.consumables))}</strong></div>
       <div class="cost-summary-row total"><span>Total</span><strong>${escapeHtml(formatCurrency(totals.grandTotal))}</strong></div>
-      <div class="cost-summary-foot muted">${escapeHtml(`${totals.count} costed item${totals.count === 1 ? "" : "s"} in this session`)}</div>
+      <div class="cost-summary-foot muted">${escapeHtml(`${totals.count} costed item${totals.count === 1 ? "" : "s"} in this ${isScenarioReviewMode() ? "scenario" : "session"}`)}</div>
     `;
   }
 
   function renderExportActions() {
-    const visible = Boolean(state.activeSession) && !state.viewerMode;
+    const visible = (Boolean(state.activeSession) || isScenarioReviewMode()) && !state.viewerMode;
     elements.exportCostCsvBtn.classList.toggle("hidden", !visible);
     elements.exportCostPdfBtn.classList.toggle("hidden", !visible);
     elements.exportCostCsvBtn.disabled = !visible || !getCostedResourceObjects().length;
