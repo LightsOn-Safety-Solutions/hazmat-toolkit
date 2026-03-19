@@ -223,6 +223,7 @@
     sessionRefreshNonce: 0,
     dragTemplateType: null,
     collapsedPaletteCategories: new Set(),
+    paletteCollapseInitialized: false,
     collapsedPanels: new Set(["session", "sessionPeriod", "incidentCommand", "participants", "palettes"]),
     collapsedLandingSections: new Set(["createSession", "joinSession", "whatHappens", "activeSessions"]),
     viewerMode: false,
@@ -893,6 +894,8 @@
     state.viewerMode = false;
     state.viewerJoinCode = null;
     state.incidentFocusSignature = "";
+    state.collapsedPaletteCategories = new Set();
+    state.paletteCollapseInitialized = false;
     state.weatherPanelOpen = false;
     state.weatherLoading = false;
     state.weatherData = null;
@@ -1657,6 +1660,7 @@
   function renderPalettes() {
     elements.paletteContainer.innerHTML = "";
     const groups = buildPaletteGroups();
+    ensureDefaultPaletteCollapse(groups);
     groups.forEach(({ category, items, emptyMessage }) => {
       const group = document.createElement("div");
       group.className = "palette-group";
@@ -1723,6 +1727,14 @@
       group.append(header, grid);
       elements.paletteContainer.appendChild(group);
     });
+  }
+
+  function ensureDefaultPaletteCollapse(groups) {
+    if (state.paletteCollapseInitialized) return;
+    groups.forEach(({ category }) => {
+      state.collapsedPaletteCategories.add(category);
+    });
+    state.paletteCollapseInitialized = true;
   }
 
   function togglePaletteCategory(category) {
