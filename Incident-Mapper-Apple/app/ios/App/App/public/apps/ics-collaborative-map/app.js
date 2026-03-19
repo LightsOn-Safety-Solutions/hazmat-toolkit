@@ -163,6 +163,7 @@
     guidedSteps: document.getElementById("guidedSteps"),
     startGuidedSetupBtn: document.getElementById("startGuidedSetupBtn"),
     guidedModeBtn: document.getElementById("guidedModeBtn"),
+    afterActionModeBtn: document.getElementById("afterActionModeBtn"),
     exportCostCsvBtn: document.getElementById("exportCostCsvBtn"),
     exportCostPdfBtn: document.getElementById("exportCostPdfBtn"),
     setIncidentFocusBtn: document.getElementById("setIncidentFocusBtn"),
@@ -217,6 +218,19 @@
     cancelGeometryBtn: document.getElementById("cancelGeometryBtn"),
     rightSidebar: document.getElementById("rightSidebar"),
     rightSidebarCollapseBtn: document.getElementById("rightSidebarCollapseBtn"),
+    afterActionPanel: document.getElementById("afterActionPanel"),
+    loadPlaybackBtn: document.getElementById("loadPlaybackBtn"),
+    exitPlaybackBtn: document.getElementById("exitPlaybackBtn"),
+    exportTrainingScenarioBtn: document.getElementById("exportTrainingScenarioBtn"),
+    playbackEmptyState: document.getElementById("playbackEmptyState"),
+    playbackControls: document.getElementById("playbackControls"),
+    playbackToggleBtn: document.getElementById("playbackToggleBtn"),
+    playbackRestartBtn: document.getElementById("playbackRestartBtn"),
+    playbackStepBackBtn: document.getElementById("playbackStepBackBtn"),
+    playbackStepForwardBtn: document.getElementById("playbackStepForwardBtn"),
+    playbackSpeedSelect: document.getElementById("playbackSpeedSelect"),
+    playbackScrubber: document.getElementById("playbackScrubber"),
+    playbackMeta: document.getElementById("playbackMeta"),
     costSummaryPanel: document.getElementById("costSummaryPanel"),
     costSummaryBody: document.getElementById("costSummaryBody"),
     viewerQrModal: document.getElementById("viewerQrModal"),
@@ -272,7 +286,15 @@
     weatherError: "",
     weatherTargetSignature: "",
     weatherFetchNonce: 0,
-    weatherTimer: null
+    weatherTimer: null,
+    playbackMode: false,
+    playbackHistory: [],
+    playbackSessionId: null,
+    playbackEntries: [],
+    playbackIndex: 0,
+    playbackTimer: null,
+    playbackSpeedMs: 900,
+    playbackSavedSnapshot: null
   };
 
   async function init() {
@@ -341,6 +363,7 @@
     elements.joinSessionBtn.addEventListener("click", onJoinSession);
     elements.startGuidedSetupBtn.addEventListener("click", () => toggleGuidedMode(true));
     elements.guidedModeBtn.addEventListener("click", () => toggleGuidedMode(!state.guidedMode));
+    elements.afterActionModeBtn.addEventListener("click", onAfterActionModeAction);
     elements.exportCostCsvBtn.addEventListener("click", exportCostCsv);
     elements.exportCostPdfBtn.addEventListener("click", exportCostPdf);
     elements.setIncidentFocusBtn.addEventListener("click", onSetIncidentFocusAction);
@@ -373,6 +396,22 @@
     elements.finishGeometryBtn.addEventListener("click", finishGeometryDraw);
     elements.cancelGeometryBtn.addEventListener("click", cancelGeometryDraw);
     elements.rightSidebarCollapseBtn.addEventListener("click", toggleRightSidebar);
+    elements.loadPlaybackBtn.addEventListener("click", loadPlaybackHistory);
+    elements.exitPlaybackBtn.addEventListener("click", exitPlaybackMode);
+    elements.exportTrainingScenarioBtn.addEventListener("click", exportTrainingScenario);
+    elements.playbackToggleBtn.addEventListener("click", togglePlaybackRunning);
+    elements.playbackRestartBtn.addEventListener("click", restartPlayback);
+    elements.playbackStepBackBtn.addEventListener("click", () => renderPlaybackFrame(state.playbackIndex - 1));
+    elements.playbackStepForwardBtn.addEventListener("click", () => renderPlaybackFrame(state.playbackIndex + 1));
+    elements.playbackSpeedSelect.addEventListener("change", (event) => {
+      state.playbackSpeedMs = Number(event.target.value || 900);
+      if (state.playbackMode && state.playbackTimer) {
+        startPlaybackTimer();
+      }
+    });
+    elements.playbackScrubber.addEventListener("input", (event) => {
+      renderPlaybackFrame(Number(event.target.value || 0));
+    });
     window.addEventListener("resize", scheduleMapResizeRefresh);
   }
 
@@ -747,6 +786,7 @@
 
   async function openSession(session, actor, actorType, snapshot) {
     clearPolling();
+    stopPlaybackTimer();
     state.activeSession = session;
     state.actor = actor;
     state.lastVersion = Number(session.currentVersion || 0);
@@ -772,6 +812,7 @@
     scheduleMapResizeRefresh();
     requestCurrentLocation({ recenter: true, force: true });
     applySnapshot(payload);
+    resetPlaybackHistoryForSession(session.id);
     syncIncidentFocusState({ notify: false });
     renderAll();
     scheduleMapResizeRefresh();
@@ -830,6 +871,13 @@
           renderAll();
         }
         if (Array.isArray(deltas.deltas) && deltas.deltas.length > 0) {
+          if (state.playbackMode) {
+            state.lastVersion = Number(deltas.currentVersion || state.lastVersion);
+            state.playbackSessionId = null;
+            renderAfterActionControls();
+            state.sessionRefreshNonce += 1;
+            return;
+          }
           const snapshotResponse = state.viewerMode
             ? await apiFetch(`/v1/ics-collab/view/${encodeURIComponent(state.viewerJoinCode)}`, { actorType: "public" })
             : await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/snapshot`, {
@@ -922,6 +970,7 @@
   function exitActiveWorkspace() {
     clearPolling();
     clearWeatherPolling();
+    stopPlaybackTimer();
     state.activeSession = null;
     state.actor = null;
     state.objects = new Map();
@@ -943,6 +992,7 @@
     state.weatherError = "";
     state.weatherTargetSignature = "";
     state.weatherFetchNonce = 0;
+    resetPlaybackHistoryForSession(null);
     cancelGeometryPreviewOnly();
     syncMapObjects();
     updateDrawControls();
@@ -1096,15 +1146,54 @@
     renderSelectedObject();
     updateDrawControls();
     renderGuidedControls();
+    renderAfterActionControls();
     renderPanelCollapses();
     renderRightSidebarState();
   }
 
   function renderGuidedControls() {
     elements.guidedSetupToggle.checked = state.guidedMode;
-    elements.guidedModeBtn.textContent = state.guidedMode ? "Hide Guided Setup" : "10-Minute Setup";
+    elements.guidedModeBtn.textContent = state.guidedMode ? "Hide IC Mode" : "10-Minute IC Mode";
     elements.quickFlowPanel.classList.toggle("collapsed", !state.guidedMode);
     elements.appView.classList.toggle("guided-collapsed", !state.guidedMode);
+  }
+
+  function renderAfterActionControls() {
+    if (!elements.afterActionPanel) return;
+    const visible = Boolean(state.activeSession) && !state.viewerMode;
+    elements.afterActionPanel.classList.toggle("hidden", !visible);
+    elements.afterActionModeBtn.classList.toggle("hidden", !visible);
+    if (!visible) return;
+
+    const hasHistory = state.playbackEntries.length > 0;
+    elements.afterActionModeBtn.textContent = state.playbackMode ? "Exit After-Action" : "After-Action Mode";
+    elements.loadPlaybackBtn.disabled = state.playbackMode;
+    elements.loadPlaybackBtn.textContent = sessionHasHistoryLoaded() ? "Replay Incident" : "Load Incident Replay";
+    elements.exitPlaybackBtn.classList.toggle("hidden", !state.playbackMode);
+    elements.exportTrainingScenarioBtn.disabled = !state.activeSession;
+    elements.playbackEmptyState.classList.toggle("hidden", hasHistory);
+    elements.playbackControls.classList.toggle("hidden", !hasHistory);
+
+    if (!hasHistory) {
+      elements.playbackMeta.textContent = sessionHasHistoryLoaded()
+        ? "This session has no recorded map history yet."
+        : "Load session history to begin playback.";
+      return;
+    }
+
+    const maxIndex = Math.max(0, state.playbackEntries.length - 1);
+    elements.playbackScrubber.max = String(maxIndex);
+    elements.playbackScrubber.value = String(Math.max(0, Math.min(state.playbackIndex, maxIndex)));
+    elements.playbackScrubber.disabled = maxIndex === 0;
+    elements.playbackToggleBtn.textContent = state.playbackTimer ? "Pause" : "Play";
+    elements.playbackStepBackBtn.disabled = state.playbackIndex <= 0;
+    elements.playbackStepForwardBtn.disabled = state.playbackIndex >= maxIndex;
+    elements.playbackRestartBtn.disabled = maxIndex === 0;
+    elements.playbackSpeedSelect.value = String(state.playbackSpeedMs);
+  }
+
+  function sessionHasHistoryLoaded() {
+    return state.playbackSessionId === state.activeSession?.id;
   }
 
   function toggleLandingSection(sectionKey) {
@@ -1888,6 +1977,311 @@
       }
       elements.guidedSteps.appendChild(card);
     });
+  }
+
+  function onAfterActionModeAction() {
+    if (state.playbackMode) {
+      exitPlaybackMode();
+      return;
+    }
+    void loadPlaybackHistory();
+  }
+
+  function resetPlaybackHistoryForSession(_sessionId) {
+    state.playbackMode = false;
+    state.playbackHistory = [];
+    state.playbackEntries = [];
+    state.playbackIndex = 0;
+    state.playbackSessionId = null;
+    state.playbackSavedSnapshot = null;
+    stopPlaybackTimer();
+  }
+
+  function stopPlaybackTimer() {
+    if (!state.playbackTimer) return;
+    clearInterval(state.playbackTimer);
+    state.playbackTimer = null;
+  }
+
+  function startPlaybackTimer() {
+    stopPlaybackTimer();
+    if (!state.playbackMode || state.playbackEntries.length <= 1) {
+      renderAfterActionControls();
+      return;
+    }
+    state.playbackTimer = window.setInterval(() => {
+      if (state.playbackIndex >= state.playbackEntries.length - 1) {
+        stopPlaybackTimer();
+        renderAfterActionControls();
+        setStatus("Playback complete.");
+        return;
+      }
+      renderPlaybackFrame(state.playbackIndex + 1);
+    }, state.playbackSpeedMs);
+    renderAfterActionControls();
+  }
+
+  function togglePlaybackRunning() {
+    if (!state.playbackEntries.length) {
+      setStatus("Load session history first.");
+      return;
+    }
+    if (!state.playbackMode) {
+      enterPlaybackMode();
+      return;
+    }
+    if (state.playbackTimer) {
+      stopPlaybackTimer();
+      renderAfterActionControls();
+      setStatus("Playback paused.");
+      return;
+    }
+    startPlaybackTimer();
+    setStatus("Playback running.");
+  }
+
+  function restartPlayback() {
+    if (!state.playbackEntries.length) return;
+    if (!state.playbackMode) {
+      enterPlaybackMode();
+      return;
+    }
+    renderPlaybackFrame(0);
+    setStatus("Playback restarted.");
+  }
+
+  async function loadPlaybackHistory(options = {}) {
+    const { enterMode = true, silent = false } = options;
+    if (!state.activeSession) {
+      if (!silent) setStatus("Open a collaborative session first.");
+      return [];
+    }
+    try {
+      if (!sessionHasHistoryLoaded()) {
+        const response = await apiFetch(
+          `/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/mutations?sinceVersion=-1&limit=5000`,
+          { actorType: currentActorType() }
+        );
+        state.playbackHistory = Array.isArray(response.mutations) ? response.mutations : [];
+        state.playbackEntries = buildPlaybackEntries(state.playbackHistory);
+        state.playbackSessionId = state.activeSession.id;
+        if (response.session) {
+          state.activeSession = response.session;
+        }
+      }
+      renderAfterActionControls();
+      if (!state.playbackEntries.length) {
+        if (!silent) setStatus("No session history recorded yet.");
+        return [];
+      }
+      if (enterMode) {
+        enterPlaybackMode();
+      } else if (!silent) {
+        setStatus("Playback history loaded.");
+      }
+      return state.playbackEntries;
+    } catch (error) {
+      if (!silent) {
+        setStatus(formatError(error));
+      }
+      throw error;
+    }
+  }
+
+  function enterPlaybackMode() {
+    if (!state.playbackEntries.length) {
+      setStatus("Load session history first.");
+      return;
+    }
+    cancelGeometryDraw();
+    state.selectedObjectId = null;
+    state.selectedTemplateType = null;
+    if (!state.playbackSavedSnapshot) {
+      state.playbackSavedSnapshot = {
+        participants: deepClone(state.participants),
+        objects: Array.from(state.objects.values()).map((object) => deepClone(object))
+      };
+    }
+    state.playbackMode = true;
+    renderPlaybackFrame(0);
+    renderAll();
+    setStatus("After-action playback loaded.");
+  }
+
+  function exitPlaybackMode() {
+    if (!state.playbackMode) return;
+    stopPlaybackTimer();
+    state.playbackMode = false;
+    state.playbackIndex = 0;
+    if (state.playbackSavedSnapshot) {
+      applySnapshot(state.playbackSavedSnapshot);
+      state.playbackSavedSnapshot = null;
+    }
+    renderAll();
+    setStatus("Returned to live incident view.");
+  }
+
+  function buildPlaybackEntries(mutations) {
+    const ordered = (Array.isArray(mutations) ? mutations : [])
+      .slice()
+      .sort((left, right) => Number(left.version || 0) - Number(right.version || 0));
+    const workingObjects = new Map();
+    return ordered.map((mutation) => {
+      const payload = mutation?.payload && typeof mutation.payload === "object" ? mutation.payload : {};
+      const objectId = String(mutation.objectId || payload?.object?.id || "");
+      const beforeObject = objectId ? deepClone(workingObjects.get(objectId)) : null;
+      let object = beforeObject ? deepClone(beforeObject) : null;
+      if (mutation.mutationType === "create" && payload.object) {
+        object = deepClone(payload.object);
+        if (objectId) {
+          workingObjects.set(objectId, deepClone(object));
+        }
+      } else if (mutation.mutationType === "update" && beforeObject) {
+        object = {
+          ...beforeObject,
+          geometryType: payload.geometryType || beforeObject.geometryType,
+          geometry: payload.geometry != null ? deepClone(payload.geometry) : deepClone(beforeObject.geometry),
+          fields: payload.fields != null ? deepClone(payload.fields) : deepClone(beforeObject.fields),
+          version: Number(mutation.version || beforeObject.version || 0),
+          updatedAt: mutation.createdAt || beforeObject.updatedAt,
+          updatedByParticipantId: mutation.participantId || beforeObject.updatedByParticipantId
+        };
+        if (objectId) {
+          workingObjects.set(objectId, deepClone(object));
+        }
+      } else if (mutation.mutationType === "delete" && objectId) {
+        workingObjects.delete(objectId);
+      }
+
+      const displayObject = object || beforeObject;
+      return {
+        id: Number(mutation.id || 0),
+        version: Number(mutation.version || 0),
+        mutationType: mutation.mutationType || "update",
+        objectId,
+        participantId: mutation.participantId || "",
+        createdAt: mutation.createdAt || new Date().toISOString(),
+        object: displayObject ? deepClone(displayObject) : null,
+        label: displayObject ? getObjectDisplayLabel(displayObject, resolveTemplateForObject(displayObject)) : "Map Object",
+        category: getPlaybackCategory(displayObject),
+        focusPoint: getObjectFocusPoint(displayObject)
+      };
+    });
+  }
+
+  function getPlaybackCategory(object) {
+    if (!object) return "Uncategorized";
+    if (isCostedResourceObject(object)) {
+      return object.fields?.resourceCategory || "Costed Resource";
+    }
+    if (object.objectType === ICON_MARKER_OBJECT_TYPE) {
+      return object.fields?.iconCategory || "Legacy Icons";
+    }
+    const template = resolveTemplateForObject(object);
+    return template?.category || object.objectType || "Uncategorized";
+  }
+
+  function getObjectFocusPoint(object) {
+    if (!object?.geometry) return null;
+    if (object.geometryType === "point" && Number.isFinite(Number(object.geometry.lat)) && Number.isFinite(Number(object.geometry.lng))) {
+      return { lat: Number(object.geometry.lat), lng: Number(object.geometry.lng) };
+    }
+    const firstPoint = Array.isArray(object.geometry.points) ? object.geometry.points[0] : null;
+    if (firstPoint && Number.isFinite(Number(firstPoint.lat)) && Number.isFinite(Number(firstPoint.lng))) {
+      return { lat: Number(firstPoint.lat), lng: Number(firstPoint.lng) };
+    }
+    return null;
+  }
+
+  function applyPlaybackEntry(entry, objectMap) {
+    if (!entry?.objectId) return;
+    if (entry.mutationType === "delete") {
+      objectMap.delete(entry.objectId);
+      return;
+    }
+    if (!entry.object) return;
+    objectMap.set(entry.objectId, deepClone(entry.object));
+  }
+
+  function renderPlaybackFrame(index) {
+    if (!state.playbackEntries.length) {
+      renderAfterActionControls();
+      return;
+    }
+    const boundedIndex = Math.max(0, Math.min(index, state.playbackEntries.length - 1));
+    state.playbackIndex = boundedIndex;
+    const objectMap = new Map();
+    for (let cursor = 0; cursor <= boundedIndex; cursor += 1) {
+      applyPlaybackEntry(state.playbackEntries[cursor], objectMap);
+    }
+    state.objects = objectMap;
+    state.selectedObjectId = null;
+    syncMapObjects();
+    syncIncidentFocusState({ notify: false });
+    renderSessionMeta();
+    renderIncidentFocusUI();
+    renderCostSummary();
+    renderSelectedObject();
+    renderAfterActionControls();
+
+    const frame = state.playbackEntries[boundedIndex];
+    const actor = state.participants.find((participant) => participant.id === frame.participantId);
+    const actorLabel = actor?.displayName || "Participant";
+    const actionLabel = frame.mutationType === "create"
+      ? "Placed"
+      : frame.mutationType === "delete"
+        ? "Removed"
+        : "Updated";
+    elements.playbackMeta.textContent = `${boundedIndex + 1}/${state.playbackEntries.length} • ${formatDateTime(frame.createdAt)} • ${actionLabel} ${frame.label} • ${actorLabel}`;
+
+    if (frame.focusPoint && state.map) {
+      state.map.setView([frame.focusPoint.lat, frame.focusPoint.lng], Math.max(state.map.getZoom(), 15), { animate: false });
+    } else {
+      fitMapIfNeeded();
+    }
+  }
+
+  async function exportTrainingScenario() {
+    if (!state.activeSession) {
+      setStatus("Open a collaborative session first.");
+      return;
+    }
+    try {
+      if (!sessionHasHistoryLoaded()) {
+        await loadPlaybackHistory({ enterMode: false, silent: true });
+      }
+      const snapshotSource = state.playbackSavedSnapshot
+        ? state.playbackSavedSnapshot.objects
+        : Array.from(state.objects.values());
+      const payload = {
+        exportedAt: new Date().toISOString(),
+        incidentName: state.activeSession.incidentName,
+        session: deepClone(state.activeSession),
+        participants: deepClone(state.participants),
+        snapshot: {
+          objects: snapshotSource.map((object) => deepClone(object))
+        },
+        mutations: deepClone(state.playbackHistory),
+        costSummary: getCostSummaryTotals()
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      await downloadBlob(blob, `training-scenario-${slugifyFilename(state.activeSession.incidentName || "incident")}-${Date.now()}.json`);
+      setStatus("Training scenario exported.");
+    } catch (error) {
+      setStatus(formatError(error));
+    }
+  }
+
+  function deepClone(value) {
+    return value == null ? value : JSON.parse(JSON.stringify(value));
+  }
+
+  function slugifyFilename(value) {
+    return String(value || "incident")
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 60) || "incident";
   }
 
   function renderSelectedObject() {
@@ -2723,11 +3117,11 @@
   }
 
   function canCreateObjects() {
-    return sessionIsActive() && state.actor && state.actor.permissionTier !== "observer";
+    return !state.playbackMode && sessionIsActive() && state.actor && state.actor.permissionTier !== "observer";
   }
 
   function canEditObject(object) {
-    if (!sessionIsActive() || !state.actor || state.actor.permissionTier === "observer") return false;
+    if (state.playbackMode || !sessionIsActive() || !state.actor || state.actor.permissionTier === "observer") return false;
     if (state.actor.permissionTier === "commander") return true;
     return object.createdByParticipantId === state.actor.id;
   }

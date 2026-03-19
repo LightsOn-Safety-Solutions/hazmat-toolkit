@@ -797,6 +797,38 @@ button.danger { background: rgba(178,58,72,0.14); color: #f4c9ce; border-color: 
   display: grid;
   gap: 10px;
 }
+.playback-panel-copy {
+  line-height: 1.45;
+}
+.playback-controls {
+  display: grid;
+  gap: 12px;
+  margin-top: 2px;
+}
+.playback-controls-row {
+  align-items: end;
+}
+.playback-speed-field {
+  width: auto;
+  min-width: 110px;
+}
+.playback-speed-field span {
+  display: block;
+  margin-bottom: 6px;
+}
+.playback-speed-field select {
+  min-width: 96px;
+}
+.playback-slider {
+  width: 100%;
+  margin: 0;
+}
+.playback-meta {
+  min-height: 38px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
 .cost-summary-row {
   display: flex;
   justify-content: space-between;

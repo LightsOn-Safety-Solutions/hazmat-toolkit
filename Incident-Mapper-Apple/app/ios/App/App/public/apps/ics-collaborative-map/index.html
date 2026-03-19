@@ -26,7 +26,8 @@
           <button id="endSessionBtn" class="danger hidden" type="button">End Session</button>
         </div>
         <div class="topbar-action-row topbar-action-row-secondary">
-          <button id="guidedModeBtn" class="secondary hidden" type="button">10-Minute Setup</button>
+          <button id="guidedModeBtn" class="secondary hidden" type="button">10-Minute IC Mode</button>
+          <button id="afterActionModeBtn" class="secondary hidden" type="button">After-Action Mode</button>
           <button id="exportCostCsvBtn" class="secondary hidden" type="button">Export CSV</button>
           <button id="exportCostPdfBtn" class="secondary hidden" type="button">Export PDF</button>
         </div>
@@ -103,7 +104,7 @@
                 </div>
                 <label class="inline-checkbox">
                   <input id="guidedSetupDefaultInput" type="checkbox" disabled />
-                  <span>Start this session with the 10-Minute Setup workflow</span>
+                  <span>Start this session with the 10-Minute IC Mode workflow</span>
                 </label>
                 <div class="focus-setup-block">
                   <span id="createSessionFocusBadge" class="focus-badge pending">Set Initial Hazard / Focus</span>
@@ -292,14 +293,44 @@
 
         <aside id="rightSidebar" class="sidebar right">
           <div id="quickFlowPanel" class="panel compact">
-            <h3>Quick Flow</h3>
+            <h3>10-Minute IC Mode</h3>
             <label class="inline-checkbox">
               <input id="guidedSetupToggle" type="checkbox" />
-              <span>Use 10-Minute Setup</span>
+              <span>Use 10-Minute IC Mode</span>
             </label>
             <div class="guided-collapsed-content muted">Turn this on when you want the guided startup workflow.</div>
             <button id="startGuidedSetupBtn" class="primary" type="button">Focus Next Guided Step</button>
             <div id="guidedSteps" class="guided-steps"></div>
+          </div>
+
+          <div id="afterActionPanel" class="panel compact">
+            <h3>Playback / After-Action Mode</h3>
+            <div class="muted playback-panel-copy">Replay the incident, scrub the shared timeline, and export a training scenario from this session.</div>
+            <div class="row">
+              <button id="loadPlaybackBtn" class="secondary" type="button">Replay Incident</button>
+              <button id="exitPlaybackBtn" class="secondary hidden" type="button">Exit Playback</button>
+              <button id="exportTrainingScenarioBtn" class="secondary" type="button">Export Training Scenario</button>
+            </div>
+            <div id="playbackEmptyState" class="muted">Load session history to review how the incident developed.</div>
+            <div id="playbackControls" class="playback-controls hidden">
+              <div class="row playback-controls-row">
+                <button id="playbackToggleBtn" class="primary" type="button">Play</button>
+                <button id="playbackRestartBtn" class="secondary" type="button">Restart</button>
+                <button id="playbackStepBackBtn" class="secondary" type="button">Step -</button>
+                <button id="playbackStepForwardBtn" class="secondary" type="button">Step +</button>
+                <label class="playback-speed-field">
+                  <span>Speed</span>
+                  <select id="playbackSpeedSelect">
+                    <option value="1600">0.5x</option>
+                    <option value="900" selected>1x</option>
+                    <option value="500">2x</option>
+                    <option value="250">4x</option>
+                  </select>
+                </label>
+              </div>
+              <input id="playbackScrubber" class="playback-slider" type="range" min="0" max="0" value="0" />
+              <div id="playbackMeta" class="playback-meta">Load session history to begin playback.</div>
+            </div>
           </div>
 
           <div id="costSummaryPanel" class="panel compact">

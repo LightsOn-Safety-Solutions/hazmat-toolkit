@@ -94,6 +94,11 @@ type LockBody = {
   baseVersion?: number;
 };
 
+type MutationHistoryQuery = {
+  sinceVersion?: string;
+  limit?: string;
+};
+
 type CollabSessionRow = {
   id: string;
   trainer_ref: string;
@@ -537,6 +542,26 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
       return reply.send(participants.map(mapParticipant));
     } catch (error) {
       return sendRouteError(reply, request, error, 'Failed to fetch collaborative participants.');
+    }
+  });
+
+  app.get<{ Params: { sessionId: string }; Querystring: MutationHistoryQuery }>('/v1/ics-collab/sessions/:sessionId/mutations', async (request, reply) => {
+    try {
+      const actor = await resolveSessionActor(app, request.params.sessionId, request.headers.authorization);
+      const sinceVersion = Number.parseInt(String(request.query?.sinceVersion ?? '-1'), 10);
+      const requestedLimit = Number.parseInt(String(request.query?.limit ?? '5000'), 10);
+      const safeLimit = Number.isFinite(requestedLimit)
+        ? Math.max(1, Math.min(requestedLimit, 10000))
+        : 5000;
+      const mutations = await listMutationsSince(app.pg, actor.session.id, Number.isFinite(sinceVersion) ? sinceVersion : -1, safeLimit);
+      const refreshed = await refreshSessionStatusIfExpired(app.pg, actor.session.id);
+      return reply.send({
+        session: mapSession(refreshed, app.config.icsCollabPublicBaseUrl ?? request.headers.origin),
+        currentVersion: Number(refreshed.last_mutation_version),
+        mutations: mutations.map(mapMutation)
+      });
+    } catch (error) {
+      return sendRouteError(reply, request, error, 'Failed to fetch collaborative mutation history.');
     }
   });
 
@@ -1148,7 +1173,7 @@ async function listActiveObjects(pool: { query: PoolClient['query'] }, sessionID
   return result.rows;
 }
 
-async function listMutationsSince(pool: { query: PoolClient['query'] }, sessionID: string, sinceVersion: number) {
+async function listMutationsSince(pool: { query: PoolClient['query'] }, sessionID: string, sinceVersion: number, limit = 1000) {
   const result = await pool.query<CollabMutationRow>(
     `
       select
@@ -1165,9 +1190,9 @@ async function listMutationsSince(pool: { query: PoolClient['query'] }, sessionI
       where session_id = $1::uuid
         and version > $2
       order by version asc
-      limit 1000
+      limit $3
     `,
-    [sessionID, sinceVersion]
+    [sessionID, sinceVersion, limit]
   );
   return result.rows;
 }
