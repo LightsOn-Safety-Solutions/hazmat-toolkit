@@ -2984,76 +2984,164 @@
     `).join("");
   }
 
+  function buildIcs202Checkbox(checked) {
+    return `<span class="ics202-print-checkbox${checked ? " checked" : ""}" aria-hidden="true"></span>`;
+  }
+
+  function buildIcs202ObjectiveRows(objectives) {
+    const normalized = Array.isArray(objectives)
+      ? objectives.filter((entry) => String(entry || "").trim()).map((entry) => String(entry || "").trim())
+      : [];
+    const rowCount = Math.max(normalized.length, 8);
+    return Array.from({ length: rowCount }, (_, index) => `
+      <tr>
+        <td class="ics202-print-objective-number">${index + 1}.</td>
+        <td class="ics202-print-objective-text">${normalized[index] ? formatIcs202Multiline(normalized[index], "") : "&nbsp;"}</td>
+      </tr>
+    `).join("");
+  }
+
   function buildIcs202PrintMarkup() {
     const draft = ensureIcs202Draft();
-    const attachmentLabels = getIcs202AttachmentLabels();
-    const objectives = draft.objectives.filter((entry) => String(entry || "").trim());
+    const exportedAt = new Date().toLocaleString();
+    const objectivesRows = buildIcs202ObjectiveRows(draft.objectives);
+    const incidentName = draft.incidentName || "\u00a0";
+    const incidentNumber = draft.incidentNumber || "\u00a0";
+    const opStartDate = formatIcs202DateInput(draft.operationalPeriod.start) || "\u00a0";
+    const opEndDate = formatIcs202DateInput(draft.operationalPeriod.end) || "\u00a0";
+    const opStartTime = formatIcs202TimeInput(draft.operationalPeriod.start) || "\u00a0";
+    const opEndTime = formatIcs202TimeInput(draft.operationalPeriod.end) || "\u00a0";
+    const otherAttachment = draft.attachments.other.trim() || "\u00a0";
     return `
-      <div class="ics202-print-sheet">
-        <div class="ics202-print-header">
-          <div class="ics202-print-header-badge">ICS 202</div>
-          <div class="ics202-print-header-copy">
-            <h1>Incident Objectives</h1>
-            <p>Operational-period objectives prepared from the ICS Collaborative Map workspace.</p>
-          </div>
-        </div>
-        <div class="ics202-print-two-col">
-          <div class="ics202-print-cell">
-            <div class="ics202-print-section-title">Incident Info</div>
-            <div class="ics202-print-section-body ics202-print-meta">
-              <div><strong>Incident Name:</strong> ${escapeHtml(draft.incidentName || "Not provided")}</div>
-              <div><strong>Incident Number:</strong> ${escapeHtml(draft.incidentNumber || "Not provided")}</div>
-            </div>
-          </div>
-          <div class="ics202-print-cell">
-            <div class="ics202-print-section-title">Operational Period</div>
-            <div class="ics202-print-section-body ics202-print-meta">
-              <div><strong>Start:</strong> ${escapeHtml(formatIcs202DateTime(draft.operationalPeriod.start))}</div>
-              <div><strong>End:</strong> ${escapeHtml(formatIcs202DateTime(draft.operationalPeriod.end))}</div>
-            </div>
-          </div>
-        </div>
-        <div class="ics202-print-section">
-          <div class="ics202-print-section-title">Incident Objectives</div>
-          <div class="ics202-print-section-body">
-            <ol class="ics202-print-objectives">${objectives.map((objective) => `<li>${formatIcs202Multiline(objective, "")}</li>`).join("") || "<li>No objectives entered.</li>"}</ol>
-          </div>
-        </div>
-        <div class="ics202-print-section">
-          <div class="ics202-print-section-title">Command Emphasis</div>
-          <div class="ics202-print-section-body">${formatIcs202Multiline(draft.commandEmphasis)}</div>
-        </div>
-        <div class="ics202-print-section">
-          <div class="ics202-print-section-title">General Situational Awareness</div>
-          <div class="ics202-print-section-body">${formatIcs202Multiline(draft.situationalAwareness)}</div>
-        </div>
-        <div class="ics202-print-two-col">
-          <div class="ics202-print-cell">
-            <div class="ics202-print-section-title">Site Safety Plan</div>
-            <div class="ics202-print-section-body">${draft.siteSafetyPlanRequired ? escapeHtml(draft.siteSafetyPlanLocation || "Required but not entered") : "No"}</div>
-          </div>
-          <div class="ics202-print-cell">
-            <div class="ics202-print-section-title">IAP Attachments</div>
-            <div class="ics202-print-section-body">${escapeHtml(attachmentLabels.length ? attachmentLabels.join(", ") : "None selected")}</div>
-          </div>
-        </div>
-        <div class="ics202-print-section">
-          <div class="ics202-print-section-title">Prepared By / Approved By IC</div>
-          <div class="ics202-print-section-body ics202-print-signatures">
-            <div>
-              <strong>Prepared By</strong>
-              <div>Name: ${escapeHtml(draft.preparedBy.name || "Not provided")}</div>
-              <div>Position/Title: ${escapeHtml(draft.preparedBy.position || "Not provided")}</div>
-              <div>Date/Time: ${escapeHtml(formatIcs202DateTime(draft.preparedBy.datetime))}</div>
-            </div>
-            <div>
-              <strong>Approved By IC</strong>
-              <div>Name: ${escapeHtml(draft.approvedBy.name || "Not provided")}</div>
-              <div class="ics202-print-signature-line">${escapeHtml(draft.approvedBy.signature || "")}</div>
-              <div>Date/Time: ${escapeHtml(formatIcs202DateTime(draft.approvedBy.datetime))}</div>
-            </div>
-          </div>
-        </div>
+      <div class="ics202-print-container">
+        <table class="ics202-print-header-table">
+          <tr>
+            <td class="ics202-print-header-left">INCIDENT OBJECTIVES (ICS 202)</td>
+            <td class="ics202-print-header-right">Date/Time: ${escapeHtml(exportedAt)}<br />Page 1</td>
+          </tr>
+        </table>
+
+        <table class="ics202-print-table">
+          <tr>
+            <td class="ics202-print-half-cell">
+              <div class="ics202-print-label">1. Incident Name</div>
+              <div class="ics202-print-field-box ics202-print-field-tall">${escapeHtml(incidentName)}</div>
+            </td>
+            <td class="ics202-print-half-cell">
+              <div class="ics202-print-label">2. Operational Period</div>
+              <table class="ics202-print-inner-table">
+                <tr>
+                  <td>
+                    <div class="ics202-print-label">Date From</div>
+                    <div class="ics202-print-field-box">${escapeHtml(opStartDate)}</div>
+                  </td>
+                  <td>
+                    <div class="ics202-print-label">Date To</div>
+                    <div class="ics202-print-field-box">${escapeHtml(opEndDate)}</div>
+                  </td>
+                </tr>
+                <tr>
+                  <td>
+                    <div class="ics202-print-label">Time From</div>
+                    <div class="ics202-print-field-box">${escapeHtml(opStartTime)}</div>
+                  </td>
+                  <td>
+                    <div class="ics202-print-label">Time To</div>
+                    <div class="ics202-print-field-box">${escapeHtml(opEndTime)}</div>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <table class="ics202-print-table">
+          <tr>
+            <td>
+              <div class="ics202-print-label">3. Objective(s):</div>
+              <table class="ics202-print-objectives-table">
+                ${objectivesRows}
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <table class="ics202-print-table">
+          <tr>
+            <td class="ics202-print-section4-cell">
+              <div class="ics202-print-label">4. Operational Period Command Emphasis</div>
+              <div class="ics202-print-section4-top">${formatIcs202Multiline(draft.commandEmphasis)}</div>
+              <div class="ics202-print-label ics202-print-subsection-label">General Situational Awareness</div>
+              <div class="ics202-print-section4-bottom">${formatIcs202Multiline(draft.situationalAwareness)}</div>
+            </td>
+          </tr>
+        </table>
+
+        <table class="ics202-print-table">
+          <tr>
+            <td class="ics202-print-site-safety-cell">
+              <div class="ics202-print-label">5. Site Safety Plan</div>
+              <div class="ics202-print-site-safety-row">
+                <span>Yes ${buildIcs202Checkbox(draft.siteSafetyPlanRequired)}</span>
+                <span>No ${buildIcs202Checkbox(!draft.siteSafetyPlanRequired)}</span>
+                <span class="ics202-print-site-safety-location">Location: ${escapeHtml(draft.siteSafetyPlanRequired ? (draft.siteSafetyPlanLocation || "\u00a0") : "\u00a0")}</span>
+              </div>
+            </td>
+          </tr>
+        </table>
+
+        <table class="ics202-print-table">
+          <tr>
+            <td>
+              <div class="ics202-print-label">6. IAP Attachments</div>
+              <table class="ics202-print-attachments-table">
+                <tr><td>ICS 203 ${buildIcs202Checkbox(draft.attachments.ics203)}</td><td>ICS 207 ${buildIcs202Checkbox(draft.attachments.ics207)}</td></tr>
+                <tr><td>ICS 204 ${buildIcs202Checkbox(draft.attachments.ics204)}</td><td>ICS 208 ${buildIcs202Checkbox(draft.attachments.ics208)}</td></tr>
+                <tr><td>ICS 205 ${buildIcs202Checkbox(draft.attachments.ics205)}</td><td>Map/Chart ${buildIcs202Checkbox(draft.attachments.mapChart)}</td></tr>
+                <tr><td>ICS 205A ${buildIcs202Checkbox(draft.attachments.ics205A)}</td><td>Weather Forecast ${buildIcs202Checkbox(draft.attachments.weather)}</td></tr>
+                <tr><td>ICS 206 ${buildIcs202Checkbox(draft.attachments.ics206)}</td><td>&nbsp;</td></tr>
+              </table>
+              <div class="ics202-print-other-attachments">Other Attachments: ${escapeHtml(otherAttachment)}</div>
+            </td>
+          </tr>
+        </table>
+
+        <table class="ics202-print-table">
+          <tr>
+            <td class="ics202-print-signature-cell">
+              <div class="ics202-print-label">7. Prepared By</div>
+              <table class="ics202-print-signature-table">
+                <tr>
+                  <td class="ics202-print-signature-name"><div class="ics202-print-label">Name</div><div class="ics202-print-field-box">${escapeHtml(draft.preparedBy.name || "\u00a0")}</div></td>
+                  <td class="ics202-print-signature-position"><div class="ics202-print-label">Position/Title</div><div class="ics202-print-field-box">${escapeHtml(draft.preparedBy.position || "\u00a0")}</div></td>
+                  <td class="ics202-print-signature-signature"><div class="ics202-print-label">Date/Time</div><div class="ics202-print-field-box">${escapeHtml(formatIcs202DateTime(draft.preparedBy.datetime))}</div></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <table class="ics202-print-table">
+          <tr>
+            <td class="ics202-print-signature-cell">
+              <div class="ics202-print-label">8. Approved by Incident Commander</div>
+              <table class="ics202-print-signature-table">
+                <tr>
+                  <td class="ics202-print-signature-name"><div class="ics202-print-label">Name</div><div class="ics202-print-field-box">${escapeHtml(draft.approvedBy.name || "\u00a0")}</div></td>
+                  <td class="ics202-print-signature-position"><div class="ics202-print-label">Signature</div><div class="ics202-print-field-box">${escapeHtml(draft.approvedBy.signature || "\u00a0")}</div></td>
+                  <td class="ics202-print-signature-signature"><div class="ics202-print-label">Date/Time</div><div class="ics202-print-field-box">${escapeHtml(formatIcs202DateTime(draft.approvedBy.datetime))}</div></td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+
+        <table class="ics202-print-footer-table">
+          <tr>
+            <td class="ics202-print-footer-left">ICS 202 IAP Page 1</td>
+            <td class="ics202-print-footer-right">Date/Time: ${escapeHtml(exportedAt)} ICS 202</td>
+          </tr>
+        </table>
       </div>
     `;
   }
@@ -3142,42 +3230,15 @@
     setStatus("Printing ICS 202.");
   }
 
-  function addIcs202PdfSection(pdf, title, bodyLines, options = {}) {
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = options.margin || 36;
-    const contentWidth = pageWidth - margin * 2;
-    const titleHeight = 20;
-    const lineHeight = options.lineHeight || 14;
-    const bodyPadding = 10;
-    const lines = Array.isArray(bodyLines) && bodyLines.length ? bodyLines : ["Not provided"];
-    const sectionHeight = titleHeight + bodyPadding * 2 + Math.max(lineHeight, lines.length * lineHeight);
-    if ((options.cursor.y + sectionHeight) > (pageHeight - margin)) {
-      pdf.addPage();
-      options.cursor.y = margin;
-    }
-    pdf.setDrawColor(17, 17, 17);
-    pdf.rect(margin, options.cursor.y, contentWidth, titleHeight + Math.max(lineHeight + bodyPadding * 2, lines.length * lineHeight + bodyPadding * 2));
-    pdf.setFillColor(245, 245, 245);
-    pdf.rect(margin, options.cursor.y, contentWidth, titleHeight, "F");
-    pdf.setFont("helvetica", "bold");
-    pdf.setFontSize(10);
-    pdf.text(title, margin + 10, options.cursor.y + 13);
-    pdf.setFont("helvetica", "normal");
-    pdf.setFontSize(11);
-    let lineY = options.cursor.y + titleHeight + bodyPadding + 3;
-    lines.forEach((line) => {
-      pdf.text(line, margin + 10, lineY);
-      lineY += lineHeight;
-    });
-    options.cursor.y += titleHeight + Math.max(lineHeight + bodyPadding * 2, lines.length * lineHeight + bodyPadding * 2);
-  }
-
   async function exportIcs202Pdf() {
     const validation = validateIcs202({ forFinalize: true });
     if (validation.errors.length) {
       updateIcs202ValidationBanner({ forFinalize: true, scrollIntoView: true });
       setStatus(validation.errors[0]);
+      return;
+    }
+    if (typeof window.html2canvas !== "function") {
+      setStatus("PDF export library unavailable.");
       return;
     }
     const jspdfNs = window.jspdf;
@@ -3186,64 +3247,25 @@
       return;
     }
     try {
-      const draft = ensureIcs202Draft();
-      const attachmentLabels = getIcs202AttachmentLabels();
+      renderIcs202PrintView();
+      const canvas = await window.html2canvas(elements.ics202PrintRoot, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true
+      });
       const { jsPDF } = jspdfNs;
-      const pdf = new jsPDF({ unit: "pt", format: "letter" });
+      const pdf = new jsPDF({ unit: "pt", format: "letter", orientation: "portrait" });
       const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
       const margin = 36;
-      const contentWidth = pageWidth - margin * 2;
-      const cursor = { y: margin };
+      const availableWidth = pageWidth - margin * 2;
+      const availableHeight = pageHeight - margin * 2;
+      const imageWidth = canvas.width;
+      const imageHeight = canvas.height;
+      const scale = Math.min(availableWidth / imageWidth, availableHeight / imageHeight);
+      pdf.addImage(canvas.toDataURL("image/png"), "PNG", margin, margin, imageWidth * scale, imageHeight * scale);
 
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(20);
-      pdf.text("ICS 202 - Incident Objectives", margin, cursor.y);
-      cursor.y += 24;
-
-      pdf.setFont("helvetica", "normal");
-      pdf.setFontSize(11);
-      pdf.text("Generated from the ICS Collaborative Map workspace.", margin, cursor.y);
-      cursor.y += 18;
-
-      addIcs202PdfSection(pdf, "Incident Info", [
-        `Incident Name: ${draft.incidentName || "Not provided"}`,
-        `Incident Number: ${draft.incidentNumber || "Not provided"}`
-      ], { cursor, margin });
-
-      addIcs202PdfSection(pdf, "Operational Period", [
-        `Start: ${formatIcs202DateTime(draft.operationalPeriod.start)}`,
-        `End: ${formatIcs202DateTime(draft.operationalPeriod.end)}`
-      ], { cursor, margin });
-
-      const objectiveLines = draft.objectives
-        .filter((entry) => String(entry || "").trim())
-        .flatMap((objective, index) => pdf.splitTextToSize(`${index + 1}. ${String(objective).trim()}`, contentWidth - 20));
-      addIcs202PdfSection(pdf, "Incident Objectives", objectiveLines, { cursor, margin });
-
-      addIcs202PdfSection(pdf, "Command Emphasis", pdf.splitTextToSize(draft.commandEmphasis.trim() || "Not provided", contentWidth - 20), { cursor, margin });
-      addIcs202PdfSection(pdf, "General Situational Awareness", pdf.splitTextToSize(draft.situationalAwareness.trim() || "Not provided", contentWidth - 20), { cursor, margin });
-
-      addIcs202PdfSection(pdf, "Site Safety Plan", [
-        draft.siteSafetyPlanRequired
-          ? `Yes - Located At: ${draft.siteSafetyPlanLocation || "Not provided"}`
-          : "No"
-      ], { cursor, margin });
-
-      addIcs202PdfSection(pdf, "IAP Attachments", pdf.splitTextToSize(attachmentLabels.length ? attachmentLabels.join(", ") : "None selected", contentWidth - 20), { cursor, margin });
-
-      addIcs202PdfSection(pdf, "Prepared By", [
-        `Name: ${draft.preparedBy.name || "Not provided"}`,
-        `Position / Title: ${draft.preparedBy.position || "Not provided"}`,
-        `Date / Time: ${formatIcs202DateTime(draft.preparedBy.datetime)}`
-      ], { cursor, margin });
-
-      addIcs202PdfSection(pdf, "Approved By IC", [
-        `Name: ${draft.approvedBy.name || "Not provided"}`,
-        `Signature: ${draft.approvedBy.signature || ""}`,
-        `Date / Time: ${formatIcs202DateTime(draft.approvedBy.datetime)}`
-      ], { cursor, margin });
-
-      const incidentSlug = String(draft.incidentName || "ics-202")
+      const incidentSlug = String(ensureIcs202Draft().incidentName || "ics-202")
         .trim()
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
