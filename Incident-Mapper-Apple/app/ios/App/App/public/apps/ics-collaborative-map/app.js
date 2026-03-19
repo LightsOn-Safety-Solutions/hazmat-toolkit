@@ -2800,13 +2800,16 @@
     return { errors, warnings };
   }
 
-  function updateIcs202ValidationBanner() {
-    const { errors, warnings } = validateIcs202({ forFinalize: false });
+  function updateIcs202ValidationBanner(options = {}) {
+    const { errors, warnings } = validateIcs202({ forFinalize: Boolean(options.forFinalize) });
     const items = [...errors, ...warnings];
     elements.ics202ValidationBanner.classList.toggle("hidden", items.length === 0);
     if (!items.length) return;
     elements.ics202ValidationTitle.textContent = errors.length ? "Review needed before final output" : "Optional fields to consider";
     elements.ics202ValidationList.innerHTML = items.map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+    if (options.scrollIntoView) {
+      elements.ics202ValidationBanner.scrollIntoView({ block: "start", behavior: "smooth" });
+    }
   }
 
   function updateIcs202AttachmentsState() {
@@ -3112,7 +3115,7 @@
   function printIcs202Workspace() {
     const validation = validateIcs202({ forFinalize: true });
     if (validation.errors.length) {
-      updateIcs202ValidationBanner();
+      updateIcs202ValidationBanner({ forFinalize: true, scrollIntoView: true });
       setStatus(validation.errors[0]);
       return;
     }
@@ -3157,7 +3160,7 @@
   async function exportIcs202Pdf() {
     const validation = validateIcs202({ forFinalize: true });
     if (validation.errors.length) {
-      updateIcs202ValidationBanner();
+      updateIcs202ValidationBanner({ forFinalize: true, scrollIntoView: true });
       setStatus(validation.errors[0]);
       return;
     }
