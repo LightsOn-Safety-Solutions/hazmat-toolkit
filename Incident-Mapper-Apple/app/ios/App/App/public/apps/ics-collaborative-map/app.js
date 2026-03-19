@@ -59,6 +59,10 @@
     { key: "satellite", label: "Satellite", description: "Aerial imagery", chip: "SAT", color: "#8cc46f" },
     { key: "topo", label: "Topographic", description: "Terrain and contours", chip: "TOP", color: "#e1c26f" }
   ];
+  const ICON_CATEGORY_GROUP_OVERRIDES = {
+    hazard: "HazMat",
+    hazardous_materials: "HazMat"
+  };
 
   const ICON_MARKER_TEMPLATE = {
     objectType: ICON_MARKER_OBJECT_TYPE,
@@ -94,9 +98,15 @@
     commanderPasswordInput: document.getElementById("commanderPasswordInput"),
     createSessionPanel: document.getElementById("createSessionPanel"),
     createSessionLockedNote: document.getElementById("createSessionLockedNote"),
+    createSessionPanelToggle: document.getElementById("createSessionPanelToggle"),
+    createSessionPanelBody: document.getElementById("createSessionPanelBody"),
     sessionListPanel: document.getElementById("sessionListPanel"),
+    sessionListPanelToggle: document.getElementById("sessionListPanelToggle"),
+    sessionListPanelBody: document.getElementById("sessionListPanelBody"),
     commanderSessionList: document.getElementById("commanderSessionList"),
     activeSessionGalleryPanel: document.getElementById("activeSessionGalleryPanel"),
+    activeSessionGalleryPanelToggle: document.getElementById("activeSessionGalleryPanelToggle"),
+    activeSessionGalleryPanelBody: document.getElementById("activeSessionGalleryPanelBody"),
     activeSessionGallery: document.getElementById("activeSessionGallery"),
     commanderRoleSelect: document.getElementById("commanderRoleSelect"),
     initialIncidentCommanderRoleInput: document.getElementById("initialIncidentCommanderRoleInput"),
@@ -105,17 +115,26 @@
     opEndInput: document.getElementById("opEndInput"),
     guidedSetupDefaultInput: document.getElementById("guidedSetupDefaultInput"),
     createSessionBtn: document.getElementById("createSessionBtn"),
+    createSessionFocusBadge: document.getElementById("createSessionFocusBadge"),
+    createSessionFocusPrompt: document.getElementById("createSessionFocusPrompt"),
     joinCodeInput: document.getElementById("joinCodeInput"),
     joinDisplayNameInput: document.getElementById("joinDisplayNameInput"),
     joinPermissionSelect: document.getElementById("joinPermissionSelect"),
     joinRoleSelect: document.getElementById("joinRoleSelect"),
     joinSessionBtn: document.getElementById("joinSessionBtn"),
     joinLockedNote: document.getElementById("joinLockedNote"),
+    joinSessionPanelToggle: document.getElementById("joinSessionPanelToggle"),
+    joinSessionPanelBody: document.getElementById("joinSessionPanelBody"),
+    whatHappensPanelToggle: document.getElementById("whatHappensPanelToggle"),
+    whatHappensPanelBody: document.getElementById("whatHappensPanelBody"),
     paletteContainer: document.getElementById("paletteContainer"),
     participantList: document.getElementById("participantList"),
     guidedSteps: document.getElementById("guidedSteps"),
     startGuidedSetupBtn: document.getElementById("startGuidedSetupBtn"),
     guidedModeBtn: document.getElementById("guidedModeBtn"),
+    setIncidentFocusBtn: document.getElementById("setIncidentFocusBtn"),
+    centerIncidentBtn: document.getElementById("centerIncidentBtn"),
+    viewerCenterIncidentBtn: document.getElementById("viewerCenterIncidentBtn"),
     guidedSetupToggle: document.getElementById("guidedSetupToggle"),
     mapStyleLauncherBtn: document.getElementById("mapStyleLauncherBtn"),
     mapStyleCloseBtn: document.getElementById("mapStyleCloseBtn"),
@@ -134,6 +153,7 @@
     copyJoinLinkBtn: document.getElementById("copyJoinLinkBtn"),
     endSessionBtn: document.getElementById("endSessionBtn"),
     sessionMeta: document.getElementById("sessionMeta"),
+    sessionFocusPrompt: document.getElementById("sessionFocusPrompt"),
     sessionPeriodPanel: document.getElementById("sessionPeriodPanel"),
     sessionPeriodPanelToggle: document.getElementById("sessionPeriodPanelToggle"),
     incidentCommandPanel: document.getElementById("incidentCommandPanel"),
@@ -194,11 +214,13 @@
     sessionRefreshNonce: 0,
     dragTemplateType: null,
     collapsedPaletteCategories: new Set(),
-    collapsedPanels: new Set(),
+    collapsedPanels: new Set(["session", "sessionPeriod", "incidentCommand", "participants", "palettes"]),
+    collapsedLandingSections: new Set(["createSession", "reviewSessions", "joinSession", "whatHappens", "activeSessions"]),
     viewerMode: false,
     viewerJoinCode: null,
     rightSidebarCollapsed: false,
-    mapStyleTrayOpen: false
+    mapStyleTrayOpen: false,
+    incidentFocusSignature: ""
   };
 
   async function init() {
@@ -231,14 +253,8 @@
 
   async function loadIconManifest() {
     try {
-      const response = await fetch(ICON_MANIFEST_URL, { cache: "no-store" });
-      if (!response.ok) {
-        throw new Error(`Icon manifest request failed (${response.status})`);
-      }
-      const payload = await response.json();
       state.iconCatalog = {
-        categories: Array.isArray(payload?.categories) ? payload.categories : [],
-        icons: Array.isArray(payload?.icons) ? payload.icons : []
+        ...(await fetchIconManifestPayload())
       };
     } catch (error) {
       console.warn("Unable to load icon manifest.", error);
@@ -246,15 +262,34 @@
     }
   }
 
+  async function fetchIconManifestPayload() {
+    if (window.ICS_ICON_MANIFEST) {
+      return window.ICS_ICON_MANIFEST;
+    }
+    const response = await fetch(ICON_MANIFEST_URL, { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Icon manifest request failed (${response.status})`);
+    }
+    return response.json();
+  }
+
   function wireEvents() {
     elements.signInTabBtn.addEventListener("click", () => setAuthTab("signin"));
     elements.signUpTabBtn.addEventListener("click", () => setAuthTab("signup"));
     elements.commanderAuthBtn.addEventListener("click", onCommanderAuth);
     elements.commanderSignOutBtn.addEventListener("click", signOutCommander);
+    elements.createSessionPanelToggle.addEventListener("click", () => toggleLandingSection("createSession"));
+    elements.sessionListPanelToggle.addEventListener("click", () => toggleLandingSection("reviewSessions"));
+    elements.joinSessionPanelToggle.addEventListener("click", () => toggleLandingSection("joinSession"));
+    elements.whatHappensPanelToggle.addEventListener("click", () => toggleLandingSection("whatHappens"));
+    elements.activeSessionGalleryPanelToggle.addEventListener("click", () => toggleLandingSection("activeSessions"));
     elements.createSessionBtn.addEventListener("click", onCreateSession);
     elements.joinSessionBtn.addEventListener("click", onJoinSession);
     elements.startGuidedSetupBtn.addEventListener("click", () => toggleGuidedMode(true));
     elements.guidedModeBtn.addEventListener("click", () => toggleGuidedMode(!state.guidedMode));
+    elements.setIncidentFocusBtn.addEventListener("click", onSetIncidentFocusAction);
+    elements.centerIncidentBtn.addEventListener("click", onCenterIncidentAction);
+    elements.viewerCenterIncidentBtn.addEventListener("click", onCenterIncidentAction);
     elements.guidedSetupToggle.addEventListener("change", (event) => toggleGuidedMode(event.target.checked));
     elements.mapStyleLauncherBtn.addEventListener("click", toggleMapStyleTray);
     elements.mapStyleCloseBtn.addEventListener("click", closeMapStyleTray);
@@ -672,10 +707,14 @@
     scheduleMapResizeRefresh();
     requestCurrentLocation({ recenter: true, force: true });
     applySnapshot(payload);
+    syncIncidentFocusState({ notify: false });
     renderAll();
     scheduleMapResizeRefresh();
-    fitMapIfNeeded();
-    if (!state.objects.size) {
+    const centeredOnIncident = centerOnIncidentFocus({ notify: false, fallbackToBounds: false });
+    if (!centeredOnIncident) {
+      fitMapIfNeeded();
+    }
+    if (!state.objects.size && !centeredOnIncident) {
       requestCurrentLocation({ recenter: true, force: true });
     }
     scheduleMapResizeRefresh();
@@ -692,6 +731,7 @@
     });
     state.participants = snapshot.participants || [];
     syncMapObjects();
+    syncIncidentFocusState({ notify: false });
     if (state.selectedObjectId && !state.objects.has(state.selectedObjectId)) {
       state.selectedObjectId = null;
     }
@@ -824,6 +864,7 @@
     state.qrPayload = null;
     state.viewerMode = false;
     state.viewerJoinCode = null;
+    state.incidentFocusSignature = "";
     cancelGeometryPreviewOnly();
     syncMapObjects();
     updateDrawControls();
@@ -840,7 +881,8 @@
       return;
     }
     const sessionId = state.activeSession.id;
-    const leavingAsCommander = isCommander();
+    const leavingAsCommander =
+      state.actor?.permissionTier === "commander" && Boolean(state.commanderAuth?.accessToken);
     const actorType = currentActorType();
     const shouldRefreshCommanderSessions = leavingAsCommander && Boolean(state.commanderAuth?.accessToken);
     const prompt = leavingAsCommander
@@ -848,7 +890,7 @@
       : "Leave this session? You can rejoin later with the join code.";
     if (!window.confirm(prompt)) return;
 
-    if (!leavingAsCommander) {
+    if (state.participantAuth?.sessionId === sessionId) {
       clearParticipantAuth();
     }
     exitActiveWorkspace();
@@ -962,6 +1004,8 @@
 
   function renderAll() {
     renderCommanderAuthPanels();
+    renderLandingSectionCollapses();
+    renderIncidentFocusUI();
     renderSessionMeta();
     renderParticipants();
     renderPalettes();
@@ -979,6 +1023,34 @@
     elements.guidedModeBtn.textContent = state.guidedMode ? "Hide Guided Setup" : "10-Minute Setup";
     elements.quickFlowPanel.classList.toggle("collapsed", !state.guidedMode);
     elements.appView.classList.toggle("guided-collapsed", !state.guidedMode);
+  }
+
+  function toggleLandingSection(sectionKey) {
+    if (state.collapsedLandingSections.has(sectionKey)) {
+      state.collapsedLandingSections.delete(sectionKey);
+    } else {
+      state.collapsedLandingSections.add(sectionKey);
+    }
+    renderLandingSectionCollapses();
+  }
+
+  function renderLandingSectionCollapses() {
+    syncLandingSectionCollapse(elements.createSessionPanelBody, elements.createSessionPanelToggle, "createSession");
+    syncLandingSectionCollapse(elements.sessionListPanelBody, elements.sessionListPanelToggle, "reviewSessions");
+    syncLandingSectionCollapse(elements.joinSessionPanelBody, elements.joinSessionPanelToggle, "joinSession");
+    syncLandingSectionCollapse(elements.whatHappensPanelBody, elements.whatHappensPanelToggle, "whatHappens");
+    syncLandingSectionCollapse(elements.activeSessionGalleryPanelBody, elements.activeSessionGalleryPanelToggle, "activeSessions");
+  }
+
+  function syncLandingSectionCollapse(bodyElement, toggleElement, sectionKey) {
+    if (!bodyElement || !toggleElement) return;
+    const collapsed = state.collapsedLandingSections.has(sectionKey);
+    bodyElement.classList.toggle("hidden", collapsed);
+    toggleElement.setAttribute("aria-expanded", String(!collapsed));
+    const symbol = toggleElement.querySelector(".toggle-symbol");
+    if (symbol) {
+      symbol.textContent = collapsed ? "+" : "\u2212";
+    }
   }
 
   function renderPanelCollapses() {
@@ -1016,9 +1088,90 @@
     elements.commanderSignOutBtn.classList.toggle("hidden", !signedIn);
     elements.sessionSignOutBtn.classList.toggle("hidden", !signedIn || !state.activeSession);
     elements.leaveSessionBtn.classList.toggle("hidden", !state.activeSession);
+    elements.setIncidentFocusBtn.classList.toggle("hidden", !state.activeSession || !isCommander() || Boolean(getIncidentFocusPoint()));
+    elements.centerIncidentBtn.classList.toggle("hidden", !state.activeSession);
     elements.showViewerQrBtn.classList.toggle("hidden", !isCommander() || !state.activeSession || state.viewerMode);
     elements.joinLockedNote.classList.toggle("hidden", signedIn);
     toggleLandingCardAccess(signedIn);
+  }
+
+  function incidentFocusSignatureFor(point) {
+    if (!point) return "";
+    return `${roundCoord(point.lat)},${roundCoord(point.lng)}:${String(point.label || "")}`;
+  }
+
+  function getIncidentFocusPoint() {
+    const hazardSource = Array.from(state.objects.values()).find((object) => (
+      object?.objectType === "HazardSource"
+      && object?.geometryType === "point"
+      && Number.isFinite(Number(object?.geometry?.lat))
+      && Number.isFinite(Number(object?.geometry?.lng))
+    ));
+    if (!hazardSource) return null;
+    return {
+      lat: Number(hazardSource.geometry.lat),
+      lng: Number(hazardSource.geometry.lng),
+      label: hazardSource.fields?.product || hazardSource.fields?.hazardType || "Hazard Source"
+    };
+  }
+
+  function renderIncidentFocusUI() {
+    const focusPoint = getIncidentFocusPoint();
+    const focusSet = Boolean(focusPoint);
+    if (elements.createSessionFocusBadge) {
+      elements.createSessionFocusBadge.textContent = focusSet ? "Incident Focus Set" : "Set Initial Hazard / Focus";
+      elements.createSessionFocusBadge.classList.toggle("set", focusSet);
+      elements.createSessionFocusBadge.classList.toggle("pending", !focusSet);
+    }
+    if (elements.createSessionFocusPrompt) {
+      elements.createSessionFocusPrompt.textContent = focusSet
+        ? `Current focus: ${focusPoint.label}. New participants can center on the incident right away.`
+        : "After launch, place a Hazard Source so everyone joins centered on the incident.";
+    }
+    if (elements.centerIncidentBtn) {
+      elements.centerIncidentBtn.disabled = !focusSet && state.layers.size === 0;
+      elements.centerIncidentBtn.textContent = focusSet ? "Center on Incident" : "Center Map";
+    }
+    if (elements.viewerCenterIncidentBtn) {
+      elements.viewerCenterIncidentBtn.classList.toggle("hidden", !state.viewerMode || !state.activeSession);
+      elements.viewerCenterIncidentBtn.disabled = !focusSet && state.layers.size === 0 && !state.currentLocation;
+      elements.viewerCenterIncidentBtn.setAttribute("aria-label", focusSet ? "Center on incident" : "Center map");
+      elements.viewerCenterIncidentBtn.title = focusSet ? "Center on Incident" : "Center Map";
+    }
+    if (elements.setIncidentFocusBtn) {
+      elements.setIncidentFocusBtn.disabled = !canCreateObjects();
+    }
+    if (elements.sessionFocusPrompt) {
+      const showPrompt = Boolean(state.activeSession) && isCommander() && !focusSet;
+      elements.sessionFocusPrompt.classList.toggle("hidden", !showPrompt);
+      elements.sessionFocusPrompt.textContent = showPrompt
+        ? "Set initial hazard/focus location by placing a Hazard Source. This helps everyone join centered on the incident."
+        : "";
+    }
+  }
+
+  function onCenterIncidentAction() {
+    centerOnIncidentFocus({ notify: true, fallbackToBounds: true, fallbackToCurrent: true });
+  }
+
+  function onSetIncidentFocusAction() {
+    if (!canCreateObjects()) {
+      setStatus("Only active editors can set the initial incident focus.");
+      return;
+    }
+    beginTemplatePlacement("HazardSource");
+    setStatus("Set Initial Focus selected. Tap the map to place the Hazard Source.");
+  }
+
+  function syncIncidentFocusState(options = {}) {
+    const { notify = false } = options;
+    const nextSignature = incidentFocusSignatureFor(getIncidentFocusPoint());
+    const previousSignature = state.incidentFocusSignature || "";
+    state.incidentFocusSignature = nextSignature;
+    if (!notify || !state.activeSession || !previousSignature || previousSignature === nextSignature) {
+      return;
+    }
+    setStatus("Incident focus updated. Use Center on Incident to jump there.");
   }
 
   function renderMapStyleTray() {
@@ -1209,8 +1362,10 @@
       appendMetaRow(elements.sessionMeta, "Status", "No active session");
       elements.sessionPeriodPanel.classList.add("hidden");
       elements.incidentCommandPanel.classList.add("hidden");
+      elements.setIncidentFocusBtn.classList.add("hidden");
       elements.copyJoinLinkBtn.classList.add("hidden");
       elements.endSessionBtn.classList.add("hidden");
+      elements.centerIncidentBtn.classList.add("hidden");
       return;
     }
     const session = state.activeSession;
@@ -1220,6 +1375,7 @@
     appendMetaRow(elements.sessionMeta, "Session Owner", ownerParticipant ? ownerParticipant.displayName : "Owner");
     appendMetaRow(elements.sessionMeta, "Incident Commander", `${session.commanderName} · ${session.commanderICSRole}`);
     appendMetaRow(elements.sessionMeta, "Status", visibleStatus);
+    appendMetaRow(elements.sessionMeta, "Incident Focus", getIncidentFocusPoint() ? "Set" : "Not set");
     appendMetaRow(elements.sessionMeta, "Join Code", session.joinCode);
     appendMetaRow(elements.sessionMeta, "Period", `${formatDateTime(session.operationalPeriodStart)} → ${formatDateTime(session.operationalPeriodEnd)}`);
     elements.copyJoinLinkBtn.classList.toggle("hidden", !session.joinCode);
@@ -1710,6 +1866,7 @@
       }
     });
     syncMapObjects();
+    syncIncidentFocusState({ notify: true });
     renderAll();
   }
 
@@ -1821,13 +1978,46 @@
 
   function fitMapIfNeeded() {
     const layers = Array.from(state.layers.values());
-    if (!layers.length) return;
+    if (!layers.length) return false;
     const featureGroup = L.featureGroup(layers);
     try {
       state.map.fitBounds(featureGroup.getBounds().pad(0.2), { maxZoom: 16 });
+      return true;
     } catch (_error) {
       // Ignore empty bounds.
+      return false;
     }
+  }
+
+  function centerOnIncidentFocus({ notify = true, fallbackToBounds = false, fallbackToCurrent = false } = {}) {
+    if (!state.map) return false;
+    const focusPoint = getIncidentFocusPoint();
+    if (focusPoint) {
+      state.map.setView([focusPoint.lat, focusPoint.lng], 16);
+      scheduleMapResizeRefresh();
+      if (notify) {
+        setStatus(`Centered on incident focus: ${focusPoint.label}.`);
+      }
+      return true;
+    }
+    if (fallbackToBounds && fitMapIfNeeded()) {
+      if (notify) {
+        setStatus("Centered on the mapped incident area.");
+      }
+      return true;
+    }
+    if (fallbackToCurrent && state.currentLocation) {
+      state.map.setView([state.currentLocation.lat, state.currentLocation.lng], 16);
+      scheduleMapResizeRefresh();
+      if (notify) {
+        setStatus("Centered on your current location.");
+      }
+      return true;
+    }
+    if (notify) {
+      setStatus("No incident focus is set yet.");
+    }
+    return false;
   }
 
   async function saveSelectedObjectFields() {
@@ -2099,28 +2289,63 @@
   }
 
   function buildPaletteGroups() {
-    const operationalGroups = OBJECT_TEMPLATES.reduce((groups, template) => {
-      groups[template.category] = groups[template.category] || [];
-      groups[template.category].push(template);
-      return groups;
-    }, {});
-    const orderedGroups = Object.entries(operationalGroups).map(([category, items]) => ({
-      category,
-      items
-    }));
-    const iconGroups = (state.iconCatalog.categories || []).map((category) => ({
-      category: category.label,
-      items: (state.iconCatalog.icons || [])
-        .filter((icon) => icon.categoryId === category.id)
-        .map((icon) => ({
-          ...icon,
-          kind: "icon",
-          geometryType: "point",
-          selectionKey: `icon:${icon.id}`
-        })),
-      emptyMessage: "No icons imported for this category yet."
-    }));
-    return [...orderedGroups, ...iconGroups];
+    const groups = [];
+    const groupByCategory = new Map();
+
+    function ensureGroup(category, emptyMessage = "") {
+      if (!groupByCategory.has(category)) {
+        const group = { category, items: [], emptyMessage };
+        groupByCategory.set(category, group);
+        groups.push(group);
+      }
+      const group = groupByCategory.get(category);
+      if (emptyMessage && !group.emptyMessage) {
+        group.emptyMessage = emptyMessage;
+      }
+      return group;
+    }
+
+    OBJECT_TEMPLATES.forEach((template) => {
+      ensureGroup(template.category).items.push(template);
+    });
+
+    const iconCategoriesById = new Map(
+      (state.iconCatalog.categories || []).map((category) => [category.id, category])
+    );
+    const categorizedIcons = new Map();
+
+    (state.iconCatalog.icons || []).forEach((icon) => {
+      const categoryId = String(icon.categoryId || "").trim();
+      if (!categoryId) return;
+      if (!categorizedIcons.has(categoryId)) {
+        categorizedIcons.set(categoryId, []);
+      }
+      categorizedIcons.get(categoryId).push({
+        ...icon,
+        kind: "icon",
+        geometryType: "point",
+        selectionKey: `icon:${icon.id}`
+      });
+    });
+
+    categorizedIcons.forEach((iconItems, categoryId) => {
+      const category = iconCategoriesById.get(categoryId);
+      const fallbackLabel = iconItems[0]?.category || categoryId;
+      const targetCategory = ICON_CATEGORY_GROUP_OVERRIDES[categoryId] || category?.label || fallbackLabel;
+      const targetGroup = ensureGroup(targetCategory, "No icons imported for this category yet.");
+      if (ICON_CATEGORY_GROUP_OVERRIDES[categoryId]) {
+        targetGroup.items.unshift(...iconItems);
+      } else {
+        targetGroup.items.push(...iconItems);
+      }
+    });
+
+    (state.iconCatalog.categories || []).forEach((category) => {
+      const targetCategory = ICON_CATEGORY_GROUP_OVERRIDES[category.id] || category.label;
+      ensureGroup(targetCategory, "No icons imported for this category yet.");
+    });
+
+    return groups;
   }
 
   function createIconTemplate(iconDefinition) {

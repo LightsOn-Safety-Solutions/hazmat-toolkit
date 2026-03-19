@@ -17,6 +17,8 @@
       </div>
       <div class="topbar-actions">
         <div class="topbar-action-row">
+          <button id="setIncidentFocusBtn" class="primary hidden" type="button">Set Initial Focus</button>
+          <button id="centerIncidentBtn" class="secondary hidden" type="button">Center Map</button>
           <button id="leaveSessionBtn" class="secondary hidden" type="button">Leave Session</button>
           <button id="sessionSignOutBtn" class="secondary hidden" type="button">Sign Out</button>
           <button id="copyJoinLinkBtn" class="secondary hidden" type="button">Copy Join Link</button>
@@ -72,14 +74,14 @@
             </div>
 
             <div id="createSessionPanel" class="landing-card stack locked">
-              <div class="landing-card-header">
-                <div>
-                  <h3>Create New Session</h3>
-                  <p class="muted">Start a new collaborative incident map and set the first operational period.</p>
-                </div>
-              </div>
-              <p id="createSessionLockedNote" class="inline-note">Sign in first to unlock session creation.</p>
-              <div class="stack create-session-grid">
+              <button id="createSessionPanelToggle" class="landing-card-toggle" type="button" aria-expanded="false">
+                <span>Create New Session</span>
+                <span class="toggle-symbol">+</span>
+              </button>
+              <div id="createSessionPanelBody" class="landing-card-body hidden">
+                <p class="muted">Start a new collaborative incident map and set the first operational period.</p>
+                <p id="createSessionLockedNote" class="inline-note">Sign in first to unlock session creation.</p>
+                <div class="stack create-session-grid">
                 <label class="field-block field-block-incident">
                   Incident Name
                   <input id="incidentNameInput" type="text" placeholder="Incident name" disabled />
@@ -96,22 +98,28 @@
                   Operational Period End
                   <input id="opEndInput" type="datetime-local" disabled />
                 </label>
+                </div>
+                <label class="inline-checkbox">
+                  <input id="guidedSetupDefaultInput" type="checkbox" disabled />
+                  <span>Start this session with the 10-Minute Setup workflow</span>
+                </label>
+                <div class="focus-setup-block">
+                  <span id="createSessionFocusBadge" class="focus-badge pending">Set Initial Hazard / Focus</span>
+                  <p id="createSessionFocusPrompt" class="focus-prompt">After launch, place a Hazard Source so everyone joins centered on the incident.</p>
+                </div>
+                <button id="createSessionBtn" class="primary" type="button" disabled>Create Collaborative Session</button>
               </div>
-              <label class="inline-checkbox">
-                <input id="guidedSetupDefaultInput" type="checkbox" disabled />
-                <span>Start this session with the 10-Minute Setup workflow</span>
-              </label>
-              <button id="createSessionBtn" class="primary" type="button" disabled>Create Collaborative Session</button>
             </div>
 
             <div id="sessionListPanel" class="landing-card stack hidden">
-              <div class="landing-card-header">
-                <div>
-                  <h3>Your Sessions</h3>
-                  <p class="muted">Jump back into an active incident quickly, or copy the latest join link.</p>
-                </div>
+              <button id="sessionListPanelToggle" class="landing-card-toggle" type="button" aria-expanded="false">
+                <span>Review Sessions</span>
+                <span class="toggle-symbol">+</span>
+              </button>
+              <div id="sessionListPanelBody" class="landing-card-body hidden">
+                <p class="muted">Jump back into an active incident quickly, or review sessions created with your account.</p>
+                <div id="commanderSessionList" class="session-list landing-session-list"></div>
               </div>
-              <div id="commanderSessionList" class="session-list landing-session-list"></div>
             </div>
           </div>
 
@@ -124,8 +132,13 @@
             </div>
 
             <div class="landing-card stack">
-              <p id="joinLockedNote" class="inline-note">Sign in with an account first, then join with the session code.</p>
-              <div class="join-grid">
+              <button id="joinSessionPanelToggle" class="landing-card-toggle" type="button" aria-expanded="false">
+                <span>Join Session</span>
+                <span class="toggle-symbol">+</span>
+              </button>
+              <div id="joinSessionPanelBody" class="landing-card-body hidden">
+                <p id="joinLockedNote" class="inline-note">Sign in with an account first, then join with the session code.</p>
+                <div class="join-grid">
                 <input id="joinCodeInput" type="text" placeholder="Join code" disabled />
                 <input id="joinDisplayNameInput" type="text" placeholder="Display name" disabled />
                 <select id="joinPermissionSelect" disabled>
@@ -133,23 +146,30 @@
                   <option value="observer">Observer</option>
                 </select>
                 <select id="joinRoleSelect" disabled></select>
+                </div>
+                <button id="joinSessionBtn" class="primary" type="button" disabled>Join Session</button>
               </div>
-              <button id="joinSessionBtn" class="primary" type="button" disabled>Join Session</button>
             </div>
 
             <div class="landing-card landing-note">
-              <h3>What Happens Next</h3>
-              <p class="muted">Owners create and share the incident. Operators can contribute to the map. Observers get a read-only operational picture.</p>
+              <button id="whatHappensPanelToggle" class="landing-card-toggle" type="button" aria-expanded="false">
+                <span>What Happens Next</span>
+                <span class="toggle-symbol">+</span>
+              </button>
+              <div id="whatHappensPanelBody" class="landing-card-body hidden">
+                <p class="muted">Owners create and share the incident. Operators can contribute to the map. Observers get a read-only operational picture.</p>
+              </div>
             </div>
 
             <div id="activeSessionGalleryPanel" class="landing-card stack hidden">
-              <div class="landing-card-header">
-                <div>
-                  <h3>Currently Running Sessions</h3>
-                  <p class="muted">See all live incidents and who currently owns them.</p>
-                </div>
+              <button id="activeSessionGalleryPanelToggle" class="landing-card-toggle" type="button" aria-expanded="false">
+                <span>Currently Running Sessions</span>
+                <span class="toggle-symbol">+</span>
+              </button>
+              <div id="activeSessionGalleryPanelBody" class="landing-card-body hidden">
+                <p class="muted">See all live incidents and who currently owns them.</p>
+                <div id="activeSessionGallery" class="session-list landing-session-list"></div>
               </div>
-              <div id="activeSessionGallery" class="session-list landing-session-list"></div>
             </div>
           </div>
       </section>
@@ -163,6 +183,7 @@
             </button>
             <div id="sessionPanelBody" class="panel-section-body">
               <div id="sessionMeta" class="meta-list"></div>
+              <div id="sessionFocusPrompt" class="focus-callout hidden"></div>
             </div>
           </div>
 
@@ -224,6 +245,9 @@
         <section class="map-stage">
           <div id="map"></div>
           <div class="map-style-dock">
+            <button id="viewerCenterIncidentBtn" class="map-focus-launcher hidden" type="button" aria-label="Center on incident">
+              <span class="map-focus-launcher-icon">◎</span>
+            </button>
             <button id="mapStyleLauncherBtn" class="map-style-launcher" type="button" aria-expanded="false" aria-label="Open map styles">
               <span class="map-style-launcher-icon">◫</span>
             </button>
@@ -293,6 +317,7 @@
 
   <script src="./vendor/leaflet-1.9.4.js"></script>
   <script src="./config.js"></script>
+  <script src="./icon-manifest.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

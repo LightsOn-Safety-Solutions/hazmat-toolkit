@@ -9,6 +9,8 @@
     { "id": "nims_positions", "label": "NIMS Positions" },
     { "id": "natural_hazards", "label": "Natural Hazards" },
     { "id": "resources", "label": "Resources" },
+    { "id": "response_vehicles", "label": "Response Vehicles" },
+    { "id": "support_equipment", "label": "Support Equipment" },
     { "id": "infrastructure", "label": "Infrastructure" },
     { "id": "preplan", "label": "Preplan" }
   ],
@@ -72,6 +74,446 @@
       "markerSize": 48,
       "paletteSize": 34,
       "keywords": ["response", "truck", "resource", "vehicle"]
+    },
+    {
+      "id": "air_monitor_trailer",
+      "label": "Air Monitor Trailer",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/air_monitor_trailer.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["air", "monitor", "trailer", "response", "vehicle"]
+    },
+    {
+      "id": "ambulance_unit",
+      "label": "Ambulance Unit",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/ambulance_unit.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["ambulance", "unit", "response", "vehicle"]
+    },
+    {
+      "id": "arrow_board_trailer",
+      "label": "Arrow Board Trailer",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/arrow_board_trailer.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["arrow", "board", "trailer", "response", "vehicle"]
+    },
+    {
+      "id": "bulldozer",
+      "label": "Bulldozer",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/bulldozer.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["bulldozer", "response", "vehicle"]
+    },
+    {
+      "id": "catering_truck",
+      "label": "Catering Truck",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/catering_truck.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["catering", "truck", "response", "vehicle"]
+    },
+    {
+      "id": "command_trailer",
+      "label": "Command Trailer",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/command_trailer.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["command", "trailer", "response", "vehicle"]
+    },
+    {
+      "id": "drone_uav",
+      "label": "Drone UAV",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/drone_uav.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["drone", "uav", "response", "vehicle"]
+    },
+    {
+      "id": "dump_truck",
+      "label": "Dump Truck",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/dump_truck.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["dump", "truck", "response", "vehicle"]
+    },
+    {
+      "id": "engine_company",
+      "label": "Engine Company",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/engine_company.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["engine", "company", "response", "vehicle"]
+    },
+    {
+      "id": "excavator",
+      "label": "Excavator",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/excavator.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["excavator", "response", "vehicle"]
+    },
+    {
+      "id": "foam_engine",
+      "label": "Foam Engine",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/foam_engine.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["foam", "engine", "response", "vehicle"]
+    },
+    {
+      "id": "foam_trailer",
+      "label": "Foam Trailer",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/foam_trailer.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["foam", "trailer", "response", "vehicle"]
+    },
+    {
+      "id": "fuel_truck",
+      "label": "Fuel Truck",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/fuel_truck.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["fuel", "truck", "response", "vehicle"]
+    },
+    {
+      "id": "hazmat_truck",
+      "label": "HazMat Truck",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/hazmat_truck.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["hazmat", "truck", "response", "vehicle"]
+    },
+    {
+      "id": "hose_trailer",
+      "label": "Hose Trailer",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/hose_trailer.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["hose", "trailer", "response", "vehicle"]
+    },
+    {
+      "id": "ladder_truck",
+      "label": "Ladder Truck",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/ladder_truck.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["ladder", "truck", "response", "vehicle"]
+    },
+    {
+      "id": "law_enforcement_unit",
+      "label": "Law Enforcement Unit",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/law_enforcement_unit.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["law", "enforcement", "unit", "response", "vehicle"]
+    },
+    {
+      "id": "lowboy_trailer",
+      "label": "Lowboy Trailer",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/lowboy_trailer.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["lowboy", "trailer", "response", "vehicle"]
+    },
+    {
+      "id": "medical_unit",
+      "label": "Medical Unit",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/medical_unit.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["medical", "unit", "response", "vehicle"]
+    },
+    {
+      "id": "mini_excavator",
+      "label": "Mini Excavator",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/mini_excavator.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["mini", "excavator", "response", "vehicle"]
+    },
+    {
+      "id": "mobile_command_bus",
+      "label": "Mobile Command Bus",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/mobile_command_bus.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["mobile", "command", "bus", "response", "vehicle"]
+    },
+    {
+      "id": "portable_monitor",
+      "label": "Portable Monitor",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/portable_monitor.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["portable", "monitor", "response", "vehicle"]
+    },
+    {
+      "id": "pump_skid",
+      "label": "Pump Skid",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/pump_skid.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["pump", "skid", "response", "vehicle"]
+    },
+    {
+      "id": "rehab_trailer",
+      "label": "Rehab Trailer",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/rehab_trailer.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["rehab", "trailer", "response", "vehicle"]
+    },
+    {
+      "id": "skid_steer",
+      "label": "Skid Steer",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/skid_steer.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["skid", "steer", "response", "vehicle"]
+    },
+    {
+      "id": "traffic_control_truck",
+      "label": "Traffic Control Truck",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/traffic_control_truck.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["traffic", "control", "truck", "response", "vehicle"]
+    },
+    {
+      "id": "vacuum_truck",
+      "label": "Vacuum Truck",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/vacuum_truck.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["vacuum", "truck", "response", "vehicle"]
+    },
+    {
+      "id": "water_tanker",
+      "label": "Water Tanker",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/water_tanker.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["water", "tanker", "response", "vehicle"]
+    },
+    {
+      "id": "wheel_loader",
+      "label": "Wheel Loader",
+      "categoryId": "response_vehicles",
+      "category": "Response Vehicles",
+      "assetPath": "../../icons/wheel_loader.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["wheel", "loader", "response", "vehicle"]
+    },
+    {
+      "id": "containment_boom",
+      "label": "Containment Boom",
+      "categoryId": "support_equipment",
+      "category": "Support Equipment",
+      "assetPath": "../../icons/containment_boom.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["containment", "boom", "support", "equipment"]
+    },
+    {
+      "id": "decon_tent",
+      "label": "Decon Tent",
+      "categoryId": "support_equipment",
+      "category": "Support Equipment",
+      "assetPath": "../../icons/decon_tent.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["decon", "tent", "support", "equipment"]
+    },
+    {
+      "id": "frac_tank",
+      "label": "Frac Tank",
+      "categoryId": "support_equipment",
+      "category": "Support Equipment",
+      "assetPath": "../../icons/frac_tank.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["frac", "tank", "support", "equipment"]
+    },
+    {
+      "id": "generator_large",
+      "label": "Generator Large",
+      "categoryId": "support_equipment",
+      "category": "Support Equipment",
+      "assetPath": "../../icons/generator_large.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["generator", "large", "support", "equipment"]
+    },
+    {
+      "id": "generator_small",
+      "label": "Generator Small",
+      "categoryId": "support_equipment",
+      "category": "Support Equipment",
+      "assetPath": "../../icons/generator_small.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["generator", "small", "support", "equipment"]
+    },
+    {
+      "id": "light_tower",
+      "label": "Light Tower",
+      "categoryId": "support_equipment",
+      "category": "Support Equipment",
+      "assetPath": "../../icons/light_tower.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["light", "tower", "support", "equipment"]
+    },
+    {
+      "id": "portable_flare_stack",
+      "label": "Portable Flare Stack",
+      "categoryId": "support_equipment",
+      "category": "Support Equipment",
+      "assetPath": "../../icons/portable_flare_stack.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["portable", "flare", "stack", "support", "equipment"]
+    },
+    {
+      "id": "portable_restroom",
+      "label": "Portable Restroom",
+      "categoryId": "support_equipment",
+      "category": "Support Equipment",
+      "assetPath": "../../icons/portable_restroom.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["portable", "restroom", "support", "equipment"]
+    },
+    {
+      "id": "repair_clamp",
+      "label": "Repair Clamp",
+      "categoryId": "support_equipment",
+      "category": "Support Equipment",
+      "assetPath": "../../icons/repair_clamp.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["repair", "clamp", "support", "equipment"]
+    },
+    {
+      "id": "road_barricade",
+      "label": "Road Barricade",
+      "categoryId": "support_equipment",
+      "category": "Support Equipment",
+      "assetPath": "../../icons/road_barricade.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["road", "barricade", "support", "equipment"]
+    },
+    {
+      "id": "rolloff_container",
+      "label": "Rolloff Container",
+      "categoryId": "support_equipment",
+      "category": "Support Equipment",
+      "assetPath": "../../icons/rolloff_container.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["rolloff", "container", "support", "equipment"]
+    },
+    {
+      "id": "staging_area",
+      "label": "Staging Area",
+      "categoryId": "support_equipment",
+      "category": "Support Equipment",
+      "assetPath": "../../icons/staging_area.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["staging", "area", "support", "equipment"]
+    },
+    {
+      "id": "traffic_cones",
+      "label": "Traffic Cones",
+      "categoryId": "support_equipment",
+      "category": "Support Equipment",
+      "assetPath": "../../icons/traffic_cones.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["traffic", "cones", "support", "equipment"]
+    },
+    {
+      "id": "valve_site",
+      "label": "Valve Site",
+      "categoryId": "support_equipment",
+      "category": "Support Equipment",
+      "assetPath": "../../icons/valve_site.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["valve", "site", "support", "equipment"]
+    },
+    {
+      "id": "weather_station",
+      "label": "Weather Station",
+      "categoryId": "support_equipment",
+      "category": "Support Equipment",
+      "assetPath": "../../icons/weather_station.svg",
+      "markerSize": 44,
+      "paletteSize": 30,
+      "keywords": ["weather", "station", "support", "equipment"]
     }
   ]
 }

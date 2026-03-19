@@ -94,6 +94,38 @@ body { height: 100vh; overflow: hidden; }
   border-radius: 16px;
   padding: 16px;
 }
+.landing-card-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font-size: 18px;
+  font-weight: 700;
+}
+.landing-card-toggle .toggle-symbol {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid var(--stroke);
+  color: var(--muted);
+  font-size: 20px;
+  line-height: 1;
+}
+.landing-card-body {
+  display: grid;
+  gap: 12px;
+  margin-top: 12px;
+}
 .account-summary {
   display: grid;
   gap: 4px;
@@ -158,6 +190,51 @@ body { height: 100vh; overflow: hidden; }
   color: var(--accent);
   font-size: 13px;
   font-weight: 600;
+}
+.focus-setup-block {
+  display: grid;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid var(--stroke);
+  background: rgba(255,255,255,0.04);
+}
+.focus-badge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.focus-badge.pending {
+  background: rgba(243,198,19,0.12);
+  color: var(--accent);
+  border: 1px solid rgba(243,198,19,0.28);
+}
+.focus-badge.set {
+  background: rgba(59,165,93,0.14);
+  color: #8fe0a5;
+  border: 1px solid rgba(59,165,93,0.32);
+}
+.focus-prompt {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.focus-callout {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(243,198,19,0.24);
+  background: rgba(243,198,19,0.08);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
 }
 .app {
   flex: 1;
@@ -226,6 +303,25 @@ body { height: 100vh; overflow: hidden; }
   justify-content: center;
   font-size: 24px;
   font-weight: 700;
+}
+.map-focus-launcher {
+  min-width: 54px;
+  height: 54px;
+  padding: 0 14px;
+  border-radius: 18px;
+  background: rgba(9,16,24,0.94);
+  color: var(--accent);
+  border: 1px solid rgba(243,198,19,0.42);
+  box-shadow: 0 14px 30px rgba(0,0,0,0.28);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 24px;
+  font-weight: 700;
+}
+.map-focus-launcher-icon {
+  line-height: 1;
 }
 .map-style-launcher-icon {
   line-height: 1;
