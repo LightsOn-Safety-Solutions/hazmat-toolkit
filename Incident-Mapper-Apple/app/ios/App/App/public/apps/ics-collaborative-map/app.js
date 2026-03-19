@@ -2265,7 +2265,21 @@
         costSummary: getCostSummaryTotals()
       };
       const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-      await downloadBlob(blob, `training-scenario-${slugifyFilename(state.activeSession.incidentName || "incident")}-${Date.now()}.json`);
+      const filename = `training-scenario-${slugifyFilename(state.activeSession.incidentName || "incident")}-${Date.now()}.json`;
+      if (window.exportPdfHelper?.saveAndShareBlob) {
+        try {
+          await window.exportPdfHelper.saveAndShareBlob(blob, filename, {
+            title: "Export Training Scenario",
+            text: "Here is the collaborative map training scenario export.",
+            dialogTitle: "Share Training Scenario"
+          });
+          setStatus(`Training scenario shared: ${filename}`);
+          return;
+        } catch (_error) {
+          // Fall back to browser download when native sharing is unavailable.
+        }
+      }
+      await downloadBlob(blob, filename);
       setStatus("Training scenario exported.");
     } catch (error) {
       setStatus(formatError(error));
