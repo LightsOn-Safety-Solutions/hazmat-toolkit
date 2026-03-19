@@ -3123,6 +3123,37 @@
     setStatus("Printing ICS 202.");
   }
 
+  function addIcs202PdfSection(pdf, title, bodyLines, options = {}) {
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const margin = options.margin || 36;
+    const contentWidth = pageWidth - margin * 2;
+    const titleHeight = 20;
+    const lineHeight = options.lineHeight || 14;
+    const bodyPadding = 10;
+    const lines = Array.isArray(bodyLines) && bodyLines.length ? bodyLines : ["Not provided"];
+    const sectionHeight = titleHeight + bodyPadding * 2 + Math.max(lineHeight, lines.length * lineHeight);
+    if ((options.cursor.y + sectionHeight) > (pageHeight - margin)) {
+      pdf.addPage();
+      options.cursor.y = margin;
+    }
+    pdf.setDrawColor(17, 17, 17);
+    pdf.rect(margin, options.cursor.y, contentWidth, titleHeight + Math.max(lineHeight + bodyPadding * 2, lines.length * lineHeight + bodyPadding * 2));
+    pdf.setFillColor(245, 245, 245);
+    pdf.rect(margin, options.cursor.y, contentWidth, titleHeight, "F");
+    pdf.setFont("helvetica", "bold");
+    pdf.setFontSize(10);
+    pdf.text(title, margin + 10, options.cursor.y + 13);
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(11);
+    let lineY = options.cursor.y + titleHeight + bodyPadding + 3;
+    lines.forEach((line) => {
+      pdf.text(line, margin + 10, lineY);
+      lineY += lineHeight;
+    });
+    options.cursor.y += titleHeight + Math.max(lineHeight + bodyPadding * 2, lines.length * lineHeight + bodyPadding * 2);
+  }
+
   async function exportIcs202Pdf() {
     const validation = validateIcs202({ forFinalize: true });
     if (validation.errors.length) {
@@ -3130,50 +3161,91 @@
       setStatus(validation.errors[0]);
       return;
     }
-    if (typeof window.html2canvas !== "function") {
-      setStatus("PDF export library unavailable.");
-      return;
-    }
     const jspdfNs = window.jspdf;
     if (!jspdfNs?.jsPDF) {
       setStatus("PDF export library unavailable.");
       return;
     }
-    renderIcs202PrintView();
-    const canvas = await window.html2canvas(elements.ics202PrintRoot, {
-      backgroundColor: "#ffffff",
-      scale: 2,
-      useCORS: true
-    });
-    const { jsPDF } = jspdfNs;
-    const pdf = new jsPDF({ unit: "pt", format: "letter" });
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const margin = 20;
-    const availableWidth = pageWidth - margin * 2;
-    const availableHeight = pageHeight - margin * 2;
-    const imageWidth = canvas.width;
-    const imageHeight = canvas.height;
-    const scale = Math.min(availableWidth / imageWidth, availableHeight / imageHeight);
-    pdf.addImage(canvas.toDataURL("image/png"), "PNG", margin, margin, imageWidth * scale, imageHeight * scale);
-    const incidentSlug = String(ensureIcs202Draft().incidentName || "ics-202")
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "ics-202";
-    const filename = `${incidentSlug}-${Date.now()}-ics202.pdf`;
-    const blob = pdf.output("blob");
-    if (window.exportPdfHelper?.saveAndSharePdfBlob) {
-      try {
-        await window.exportPdfHelper.saveAndSharePdfBlob(blob, filename);
-        setStatus(`ICS 202 PDF shared: ${filename}`);
-        return;
-      } catch (_error) {
-        // Fall back to browser download.
+    try {
+      const draft = ensureIcs202Draft();
+      const attachmentLabels = getIcs202AttachmentLabels();
+      const { jsPDF } = jspdfNs;
+      const pdf = new jsPDF({ unit: "pt", format: "letter" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 36;
+      const contentWidth = pageWidth - margin * 2;
+      const cursor = { y: margin };
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(20);
+      pdf.text("ICS 202 - Incident Objectives", margin, cursor.y);
+      cursor.y += 24;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.setFontSize(11);
+      pdf.text("Generated from the ICS Collaborative Map workspace.", margin, cursor.y);
+      cursor.y += 18;
+
+      addIcs202PdfSection(pdf, "Incident Info", [
+        `Incident Name: ${draft.incidentName || "Not provided"}`,
+        `Incident Number: ${draft.incidentNumber || "Not provided"}`
+      ], { cursor, margin });
+
+      addIcs202PdfSection(pdf, "Operational Period", [
+        `Start: ${formatIcs202DateTime(draft.operationalPeriod.start)}`,
+        `End: ${formatIcs202DateTime(draft.operationalPeriod.end)}`
+      ], { cursor, margin });
+
+      const objectiveLines = draft.objectives
+        .filter((entry) => String(entry || "").trim())
+        .flatMap((objective, index) => pdf.splitTextToSize(`${index + 1}. ${String(objective).trim()}`, contentWidth - 20));
+      addIcs202PdfSection(pdf, "Incident Objectives", objectiveLines, { cursor, margin });
+
+      addIcs202PdfSection(pdf, "Command Emphasis", pdf.splitTextToSize(draft.commandEmphasis.trim() || "Not provided", contentWidth - 20), { cursor, margin });
+      addIcs202PdfSection(pdf, "General Situational Awareness", pdf.splitTextToSize(draft.situationalAwareness.trim() || "Not provided", contentWidth - 20), { cursor, margin });
+
+      addIcs202PdfSection(pdf, "Site Safety Plan", [
+        draft.siteSafetyPlanRequired
+          ? `Yes - Located At: ${draft.siteSafetyPlanLocation || "Not provided"}`
+          : "No"
+      ], { cursor, margin });
+
+      addIcs202PdfSection(pdf, "IAP Attachments", pdf.splitTextToSize(attachmentLabels.length ? attachmentLabels.join(", ") : "None selected", contentWidth - 20), { cursor, margin });
+
+      addIcs202PdfSection(pdf, "Prepared By", [
+        `Name: ${draft.preparedBy.name || "Not provided"}`,
+        `Position / Title: ${draft.preparedBy.position || "Not provided"}`,
+        `Date / Time: ${formatIcs202DateTime(draft.preparedBy.datetime)}`
+      ], { cursor, margin });
+
+      addIcs202PdfSection(pdf, "Approved By IC", [
+        `Name: ${draft.approvedBy.name || "Not provided"}`,
+        `Signature: ${draft.approvedBy.signature || ""}`,
+        `Date / Time: ${formatIcs202DateTime(draft.approvedBy.datetime)}`
+      ], { cursor, margin });
+
+      const incidentSlug = String(draft.incidentName || "ics-202")
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "") || "ics-202";
+      const filename = `${incidentSlug}-${Date.now()}-ics202.pdf`;
+      const blob = pdf.output("blob");
+      if (window.exportPdfHelper?.saveAndSharePdfBlob) {
+        try {
+          await window.exportPdfHelper.saveAndSharePdfBlob(blob, filename);
+          setStatus(`ICS 202 PDF shared: ${filename}`);
+          return;
+        } catch (_error) {
+          // Fall back to browser download.
+        }
       }
+      await downloadBlob(blob, filename);
+      setStatus(`ICS 202 PDF exported: ${filename}`);
+    } catch (error) {
+      console.error("ICS 202 PDF export failed", error);
+      setStatus("ICS 202 PDF export failed.");
     }
-    await downloadBlob(blob, filename);
-    setStatus(`ICS 202 PDF exported: ${filename}`);
   }
 
   function clearIcs202Form() {
