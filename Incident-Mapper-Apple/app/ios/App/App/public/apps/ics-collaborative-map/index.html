@@ -192,57 +192,65 @@
 
       <section id="appView" class="app hidden">
         <aside class="sidebar left">
-          <div id="sessionPanel" class="panel compact">
-            <button id="sessionPanelToggle" class="panel-section-toggle" type="button" aria-expanded="true">
-              <span>Session</span>
+          <div id="incidentOverviewPanel" class="panel compact">
+            <button id="incidentOverviewPanelToggle" class="panel-section-toggle" type="button" aria-expanded="true">
+              <span>Incident Overview</span>
               <span class="toggle-symbol">−</span>
             </button>
-            <div id="sessionPanelBody" class="panel-section-body">
-              <div id="sessionMeta" class="meta-list"></div>
-              <div id="sessionFocusPrompt" class="focus-callout hidden"></div>
-            </div>
-          </div>
+            <div id="incidentOverviewPanelBody" class="panel-section-body incident-overview-body">
+              <div id="sessionPanel" class="panel-subsection">
+                <button id="sessionPanelToggle" class="panel-section-toggle" type="button" aria-expanded="true">
+                  <span>Session</span>
+                  <span class="toggle-symbol">−</span>
+                </button>
+                <div id="sessionPanelBody" class="panel-section-body">
+                  <div id="sessionMeta" class="meta-list"></div>
+                  <div id="sessionFocusPrompt" class="focus-callout hidden"></div>
+                </div>
+              </div>
 
-          <div id="sessionPeriodPanel" class="panel compact hidden">
-            <button id="sessionPeriodPanelToggle" class="panel-section-toggle" type="button" aria-expanded="true">
-              <span>Operational Period</span>
-              <span class="toggle-symbol">−</span>
-            </button>
-            <div id="sessionPeriodPanelBody" class="panel-section-body">
-              <label>
-                Start
-                <input id="sessionOpStartInput" type="datetime-local" />
-              </label>
-              <label>
-                End
-                <input id="sessionOpEndInput" type="datetime-local" />
-              </label>
-              <button id="updateOperationalPeriodBtn" class="secondary" type="button">Update Period</button>
-            </div>
-          </div>
+              <div id="sessionPeriodPanel" class="panel-subsection hidden">
+                <button id="sessionPeriodPanelToggle" class="panel-section-toggle" type="button" aria-expanded="true">
+                  <span>Operational Period</span>
+                  <span class="toggle-symbol">−</span>
+                </button>
+                <div id="sessionPeriodPanelBody" class="panel-section-body">
+                  <label>
+                    Start
+                    <input id="sessionOpStartInput" type="datetime-local" />
+                  </label>
+                  <label>
+                    End
+                    <input id="sessionOpEndInput" type="datetime-local" />
+                  </label>
+                  <button id="updateOperationalPeriodBtn" class="secondary" type="button">Update Period</button>
+                </div>
+              </div>
 
-          <div id="incidentCommandPanel" class="panel compact hidden">
-            <button id="incidentCommandPanelToggle" class="panel-section-toggle" type="button" aria-expanded="true">
-              <span>Incident Command</span>
-              <span class="toggle-symbol">−</span>
-            </button>
-            <div id="incidentCommandPanelBody" class="panel-section-body">
-              <label>
-                Assigned Incident Commander
-                <input id="sessionIncidentCommanderNameInput" type="text" />
-              </label>
-              <div class="muted">Session ownership stays with the owner even if you assign another Incident Commander.</div>
-              <button id="updateIncidentCommandBtn" class="secondary" type="button">Assign Incident Commander</button>
-            </div>
-          </div>
+              <div id="incidentCommandPanel" class="panel-subsection hidden">
+                <button id="incidentCommandPanelToggle" class="panel-section-toggle" type="button" aria-expanded="true">
+                  <span>Incident Command</span>
+                  <span class="toggle-symbol">−</span>
+                </button>
+                <div id="incidentCommandPanelBody" class="panel-section-body">
+                  <label>
+                    Assigned Incident Commander
+                    <input id="sessionIncidentCommanderNameInput" type="text" />
+                  </label>
+                  <div class="muted">Session ownership stays with the owner even if you assign another Incident Commander.</div>
+                  <button id="updateIncidentCommandBtn" class="secondary" type="button">Assign Incident Commander</button>
+                </div>
+              </div>
 
-          <div id="participantsPanel" class="panel compact">
-            <button id="participantsPanelToggle" class="panel-section-toggle" type="button" aria-expanded="true">
-              <span>Participants</span>
-              <span class="toggle-symbol">−</span>
-            </button>
-            <div id="participantsPanelBody" class="panel-section-body">
-              <div id="participantList" class="participant-list"></div>
+              <div id="participantsPanel" class="panel-subsection">
+                <button id="participantsPanelToggle" class="panel-section-toggle" type="button" aria-expanded="true">
+                  <span>Participants</span>
+                  <span class="toggle-symbol">−</span>
+                </button>
+                <div id="participantsPanelBody" class="panel-section-body">
+                  <div id="participantList" class="participant-list"></div>
+                </div>
+              </div>
             </div>
           </div>
 

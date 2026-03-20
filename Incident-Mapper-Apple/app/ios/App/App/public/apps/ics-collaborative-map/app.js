@@ -225,6 +225,8 @@
     quickFlowPanelBody: document.getElementById("quickFlowPanelBody"),
     afterActionPanelToggle: document.getElementById("afterActionPanelToggle"),
     afterActionPanelBody: document.getElementById("afterActionPanelBody"),
+    incidentOverviewPanel: document.getElementById("incidentOverviewPanel"),
+    incidentOverviewPanelToggle: document.getElementById("incidentOverviewPanelToggle"),
     sessionPanel: document.getElementById("sessionPanel"),
     sessionPanelToggle: document.getElementById("sessionPanelToggle"),
     participantsPanel: document.getElementById("participantsPanel"),
@@ -764,6 +766,7 @@
     elements.leaveSessionBtn.addEventListener("click", leaveCurrentSession);
     elements.sessionSignOutBtn.addEventListener("click", signOutCommander);
     elements.showViewerQrBtn.addEventListener("click", showViewerQrModal);
+    elements.incidentOverviewPanelToggle.addEventListener("click", () => togglePanel("incidentOverview"));
     elements.sessionPanelToggle.addEventListener("click", () => togglePanel("session"));
     elements.sessionPeriodPanelToggle.addEventListener("click", () => togglePanel("sessionPeriod"));
     elements.incidentCommandPanelToggle.addEventListener("click", () => togglePanel("incidentCommand"));
@@ -1742,6 +1745,7 @@
   }
 
   function renderPanelCollapses() {
+    syncPanelCollapse(elements.incidentOverviewPanel, elements.incidentOverviewPanelToggle, "incidentOverview");
     syncPanelCollapse(elements.sessionPanel, elements.sessionPanelToggle, "session");
     syncPanelCollapse(elements.sessionPeriodPanel, elements.sessionPeriodPanelToggle, "sessionPeriod");
     syncPanelCollapse(elements.incidentCommandPanel, elements.incidentCommandPanelToggle, "incidentCommand");
