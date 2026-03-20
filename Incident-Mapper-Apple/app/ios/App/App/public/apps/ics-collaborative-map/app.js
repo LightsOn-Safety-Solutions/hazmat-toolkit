@@ -3865,22 +3865,7 @@
 
   async function onMapClick(event) {
     if (state.pendingIsolationConfig) {
-      if (!canCreateObjects()) {
-        setStatus("This session is read-only or you do not have edit access.");
-        state.pendingIsolationConfig = null;
-        return;
-      }
-      const spillPoint = {
-        lat: roundCoord(event.latlng.lat),
-        lng: roundCoord(event.latlng.lng)
-      };
-      const config = state.pendingIsolationConfig;
-      state.pendingIsolationConfig = null;
-      try {
-        await placeIsolationZonesAt(spillPoint, config);
-      } catch (error) {
-        setStatus(formatError(error));
-      }
+      await handlePendingIsolationPlacement(event.latlng);
       return;
     }
     if (!state.drawState) return;
@@ -3910,6 +3895,26 @@
     state.drawState.points.push(point);
     redrawPreviewLayer();
     updateDrawControls();
+  }
+
+  async function handlePendingIsolationPlacement(latlng) {
+    if (!state.pendingIsolationConfig) return;
+    if (!canCreateObjects()) {
+      setStatus("This session is read-only or you do not have edit access.");
+      state.pendingIsolationConfig = null;
+      return;
+    }
+    const spillPoint = {
+      lat: roundCoord(latlng.lat),
+      lng: roundCoord(latlng.lng)
+    };
+    const config = state.pendingIsolationConfig;
+    state.pendingIsolationConfig = null;
+    try {
+      await placeIsolationZonesAt(spillPoint, config);
+    } catch (error) {
+      setStatus(formatError(error));
+    }
   }
 
   function updateDrawControls() {
@@ -4301,7 +4306,17 @@
     } else {
       layer = L.polygon(toLeafletLatLngs(object.geometry.points), { color, weight: 2, fillColor: color, fillOpacity: 0.18 });
     }
-    layer.on("click", () => {
+    layer.on("click", async (event) => {
+      if (state.pendingIsolationConfig && event?.latlng) {
+        if (typeof event.originalEvent?.stopPropagation === "function") {
+          event.originalEvent.stopPropagation();
+        }
+        if (typeof event.originalEvent?.preventDefault === "function") {
+          event.originalEvent.preventDefault();
+        }
+        await handlePendingIsolationPlacement(event.latlng);
+        return;
+      }
       state.selectedObjectId = object.id;
       renderSelectedObject();
     });
