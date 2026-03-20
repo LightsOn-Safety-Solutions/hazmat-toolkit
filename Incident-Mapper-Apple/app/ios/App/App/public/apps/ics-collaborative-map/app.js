@@ -383,7 +383,7 @@
     paletteCollapseInitialized: false,
     paletteSearchQuery: "",
     collapsedPanels: new Set(["session", "sessionPeriod", "incidentCommand", "participants", "palettes"]),
-    collapsedModePanels: new Set(),
+    collapsedModePanels: new Set(["quickFlow", "afterAction"]),
     collapsedLandingSections: new Set(["createSession", "joinSession", "whatHappens", "activeSessions", "reviewScenario"]),
     viewerMode: false,
     viewerJoinCode: null,
