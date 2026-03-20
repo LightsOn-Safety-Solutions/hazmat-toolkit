@@ -401,6 +401,7 @@
     ergCatalog: { materials: [], lookup: new Map() },
     pendingIsolationConfig: null,
     isolationEditContext: null,
+    afterActionPanelVisible: false,
     playbackMode: false,
     playbackHistory: [],
     playbackSessionId: null,
@@ -1614,12 +1615,16 @@
   function renderAfterActionControls() {
     if (!elements.afterActionPanel) return;
     const visible = (Boolean(state.activeSession) || isScenarioReviewMode()) && !state.viewerMode;
-    elements.afterActionPanel.classList.toggle("hidden", !visible);
+    elements.afterActionPanel.classList.toggle("hidden", !visible || !state.afterActionPanelVisible);
     elements.afterActionModeBtn.classList.toggle("hidden", !visible);
     if (!visible) return;
 
     const hasHistory = state.playbackEntries.length > 0;
-    elements.afterActionModeBtn.textContent = state.playbackMode ? "Exit After-Action" : "After-Action Mode";
+    elements.afterActionModeBtn.textContent = state.playbackMode
+      ? "Exit After-Action"
+      : state.afterActionPanelVisible
+        ? "Hide After-Action"
+        : "After-Action Mode";
     elements.loadPlaybackBtn.disabled = state.playbackMode;
     elements.loadPlaybackBtn.textContent = sessionHasHistoryLoaded()
       ? (isScenarioReviewMode() ? "Replay Scenario" : "Replay Incident")
@@ -3083,10 +3088,17 @@
       exitPlaybackMode();
       return;
     }
-    void loadPlaybackHistory();
+    state.afterActionPanelVisible = !state.afterActionPanelVisible;
+    renderAfterActionControls();
+    if (state.afterActionPanelVisible) {
+      setStatus("After-action panel opened.");
+    } else {
+      setStatus("After-action panel hidden.");
+    }
   }
 
   function resetPlaybackHistoryForSession(_sessionId) {
+    state.afterActionPanelVisible = false;
     state.playbackMode = false;
     state.playbackHistory = [];
     state.playbackEntries = [];
@@ -3182,6 +3194,7 @@
         return [];
       }
       if (enterMode) {
+        state.afterActionPanelVisible = true;
         enterPlaybackMode();
       } else if (!silent) {
         setStatus("Playback history loaded.");
@@ -3200,6 +3213,7 @@
       setStatus("Load session history first.");
       return;
     }
+    state.afterActionPanelVisible = true;
     cancelGeometryDraw();
     state.selectedObjectId = null;
     state.selectedTemplateType = null;
