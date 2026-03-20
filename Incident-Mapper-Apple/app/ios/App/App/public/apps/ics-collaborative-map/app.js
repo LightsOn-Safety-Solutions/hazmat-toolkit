@@ -169,6 +169,8 @@
     commanderNameInput: document.getElementById("commanderNameInput"),
     commanderEmailInput: document.getElementById("commanderEmailInput"),
     commanderPasswordInput: document.getElementById("commanderPasswordInput"),
+    forgotPasswordRow: document.getElementById("forgotPasswordRow"),
+    forgotPasswordBtn: document.getElementById("forgotPasswordBtn"),
     superAdminWorkspaceBtn: document.getElementById("superAdminWorkspaceBtn"),
     departmentAdminPanel: document.getElementById("departmentAdminPanel"),
     departmentAdminPanelToggle: document.getElementById("departmentAdminPanelToggle"),
@@ -770,6 +772,7 @@
     elements.signUpTabBtn.addEventListener("click", () => setAuthTab("signup"));
     elements.commanderAuthBtn.addEventListener("click", onCommanderAuth);
     elements.commanderSignOutBtn.addEventListener("click", signOutCommander);
+    elements.forgotPasswordBtn?.addEventListener("click", onForgotPassword);
     elements.superAdminWorkspaceBtn?.addEventListener("click", openSuperAdminWorkspace);
     elements.departmentAdminPanelToggle?.addEventListener("click", () => toggleLandingSection("departmentAdmin"));
     elements.departmentAdminAddBtn?.addEventListener("click", onAddOrganizationMember);
@@ -1187,6 +1190,29 @@
     return await parseSupabaseAuthResponse(response);
   }
 
+  async function supabaseRequestPasswordReset(email) {
+    const emailRedirectTo = getAuthRedirectUrl();
+    const response = await fetch(`${runtimeConfig.supabaseUrl}/auth/v1/recover`, {
+      method: "POST",
+      headers: supabaseHeaders(),
+      body: JSON.stringify({
+        email,
+        redirectTo: emailRedirectTo
+      })
+    });
+    const payload = await parseJsonSafely(response);
+    if (!response.ok) {
+      const details =
+        payload?.msg_description ||
+        payload?.error_description ||
+        payload?.error ||
+        payload?.message ||
+        `HTTP ${response.status}`;
+      throw new Error(`Password reset request failed: ${details}`);
+    }
+    return payload;
+  }
+
   async function refreshCommanderTokenIfNeeded() {
     if (!state.commanderAuth || !state.commanderAuth.refreshToken) return;
     const expiresAt = Number(state.commanderAuth.expiresAt || 0);
@@ -1201,6 +1227,26 @@
     if (session?.access_token) {
       state.commanderAuth = normalizeCommanderAuth(session, state.commanderAuth.displayName);
       persistJSON(STORAGE_KEYS.commanderAuth, state.commanderAuth);
+    }
+  }
+
+  async function onForgotPassword() {
+    if (!hasSupabaseAuthConfig()) {
+      setStatus("Supabase auth is not configured for password reset.");
+      return;
+    }
+    const email = elements.commanderEmailInput.value.trim();
+    if (!email) {
+      setStatus("Enter the email address first, then tap Forgot Password.");
+      elements.commanderEmailInput.focus();
+      return;
+    }
+    setStatus("Sending password reset email…");
+    try {
+      await supabaseRequestPasswordReset(email);
+      setStatus("Check your email for a reset link.");
+    } catch (error) {
+      setStatus(formatError(error));
     }
   }
 
@@ -2178,6 +2224,10 @@
     elements.commanderAuthBtn.textContent = signedIn ? "Signed In" : (state.authTab === "signin" ? "Sign In" : "Create Account");
     elements.commanderAuthBtn.disabled = signedIn || !authReady;
     elements.commanderSignOutBtn.disabled = !signedIn;
+    elements.forgotPasswordRow?.classList.toggle("hidden", signedIn || state.authTab !== "signin");
+    if (elements.forgotPasswordBtn) {
+      elements.forgotPasswordBtn.disabled = !authReady;
+    }
     elements.superAdminWorkspaceBtn?.classList.toggle("hidden", !signedIn || !superAdmin || Boolean(state.activeSession) || isScenarioReviewMode() || state.viewerMode || state.ics202Open || state.superAdminOpen);
     elements.departmentAdminPanel.classList.toggle("hidden", !orgAdmin);
     elements.createSessionPanel.classList.toggle("hidden", false);
