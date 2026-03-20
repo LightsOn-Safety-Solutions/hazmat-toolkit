@@ -112,6 +112,19 @@ type UpdateSessionOrgAccessBody = {
   organizationId?: string;
 };
 
+type CreateOrganizationMemberBody = {
+  email?: string;
+  displayName?: string;
+  isAdmin?: boolean;
+  isActive?: boolean;
+};
+
+type UpdateOrganizationMemberBody = {
+  displayName?: string;
+  isAdmin?: boolean;
+  isActive?: boolean;
+};
+
 type LockBody = {
   baseVersion?: number;
 };
@@ -251,6 +264,115 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
       });
     } catch (error) {
       return sendTrainerError(reply, request, error, 'Failed to fetch department license context.');
+    }
+  });
+
+  app.get('/v1/ics-collab/admin/organization', async (request, reply) => {
+    try {
+      const trainer = await requireTrainerIdentity(app, request.headers);
+      const membership = await requireLicensedCollabMembership(app.pg, trainer);
+      ensureOrganizationAdmin(membership);
+      const roster = await listOrganizationMembers(app.pg, membership.organization_id);
+      return reply.send({
+        organization: mapOrganizationSummary(membership, roster.length),
+        roster: roster.map(mapOrganizationRosterMember)
+      });
+    } catch (error) {
+      return sendTrainerError(reply, request, error, 'Failed to fetch department admin workspace.');
+    }
+  });
+
+  app.post<{ Body: CreateOrganizationMemberBody }>('/v1/ics-collab/admin/organization/members', async (request, reply) => {
+    try {
+      const trainer = await requireTrainerIdentity(app, request.headers);
+      const membership = await requireLicensedCollabMembership(app.pg, trainer);
+      ensureOrganizationAdmin(membership);
+      const email = normalizeEmail(request.body?.email);
+      const displayName = normalizeRequiredText(request.body?.displayName, 'displayName');
+      const isAdmin = request.body?.isAdmin === true;
+      const isActive = request.body?.isActive !== false;
+      if (!email || !displayName) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'email and displayName are required.' });
+      }
+      const existingMember = await fetchLicensedCollabMembership(app.pg, email);
+      if (existingMember && existingMember.organization_id !== membership.organization_id) {
+        return reply.code(409).send({ error: 'MEMBER_ASSIGNED_ELSEWHERE', message: 'That email is already assigned to another department.' });
+      }
+      const organization = await fetchOrganizationByID(app.pg, membership.organization_id);
+      if (!organization) {
+        return reply.code(404).send({ error: 'NOT_FOUND', message: 'Organization not found.' });
+      }
+      const activeCount = await countActiveOrganizationMembers(app.pg, membership.organization_id);
+      const activatingNewSeat = isActive && (!existingMember || !existingMember.is_active);
+      if (activatingNewSeat && organization.seat_limit != null && activeCount >= organization.seat_limit) {
+        return reply.code(409).send({ error: 'SEAT_LIMIT_REACHED', message: 'Seat limit reached for this department license.' });
+      }
+      const created = await upsertOrganizationMember(app.pg, {
+        organizationId: membership.organization_id,
+        trainerRef: email,
+        email,
+        displayName,
+        isAdmin,
+        isActive
+      });
+      const roster = await listOrganizationMembers(app.pg, membership.organization_id);
+      return reply.code(201).send({
+        member: mapOrganizationRosterMember(created),
+        organization: mapOrganizationSummary(membership, roster.length),
+        roster: roster.map(mapOrganizationRosterMember)
+      });
+    } catch (error) {
+      return sendTrainerError(reply, request, error, 'Failed to add department user.');
+    }
+  });
+
+  app.patch<{ Params: { memberId: string }; Body: UpdateOrganizationMemberBody }>('/v1/ics-collab/admin/organization/members/:memberId', async (request, reply) => {
+    try {
+      const trainer = await requireTrainerIdentity(app, request.headers);
+      const membership = await requireLicensedCollabMembership(app.pg, trainer);
+      ensureOrganizationAdmin(membership);
+      const memberId = normalizeUUID(request.params.memberId);
+      if (!memberId) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'Valid memberId is required.' });
+      }
+      const existing = await fetchOrganizationMemberByID(app.pg, memberId);
+      if (!existing || existing.organization_id !== membership.organization_id) {
+        return reply.code(404).send({ error: 'NOT_FOUND', message: 'Department member not found.' });
+      }
+      const nextDisplayName = normalizeOptionalText(request.body?.displayName) ?? existing.display_name;
+      const nextIsAdmin = typeof request.body?.isAdmin === 'boolean' ? request.body.isAdmin : existing.is_admin;
+      const nextIsActive = typeof request.body?.isActive === 'boolean' ? request.body.isActive : existing.is_active;
+      if (!nextDisplayName) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'displayName is required.' });
+      }
+      const organization = await fetchOrganizationByID(app.pg, membership.organization_id);
+      if (!organization) {
+        return reply.code(404).send({ error: 'NOT_FOUND', message: 'Organization not found.' });
+      }
+      if (!existing.is_active && nextIsActive && organization.seat_limit != null) {
+        const activeCount = await countActiveOrganizationMembers(app.pg, membership.organization_id);
+        if (activeCount >= organization.seat_limit) {
+          return reply.code(409).send({ error: 'SEAT_LIMIT_REACHED', message: 'Seat limit reached for this department license.' });
+        }
+      }
+      const updated = await updateOrganizationMember(app.pg, {
+        memberId,
+        organizationId: membership.organization_id,
+        displayName: nextDisplayName,
+        isAdmin: nextIsAdmin,
+        isActive: nextIsActive
+      });
+      if (!updated) {
+        return reply.code(404).send({ error: 'NOT_FOUND', message: 'Department member not found.' });
+      }
+      const roster = await listOrganizationMembers(app.pg, membership.organization_id);
+      return reply.send({
+        member: mapOrganizationRosterMember(updated),
+        organization: mapOrganizationSummary(membership, roster.length),
+        roster: roster.map(mapOrganizationRosterMember)
+      });
+    } catch (error) {
+      return sendTrainerError(reply, request, error, 'Failed to update department user.');
     }
   });
 
@@ -1615,6 +1737,12 @@ function ensureOwningCommander(actor: SessionActor) {
   }
 }
 
+function ensureOrganizationAdmin(membership: CollabOrgMembershipRow) {
+  if (!membership.is_admin) {
+    throw new TrainerForbiddenError('Department admin access is required.');
+  }
+}
+
 async function nextSessionVersion(pool: { query: PoolClient['query'] }, sessionID: string) {
   const result = await pool.query<{ last_mutation_version: string }>(
     `
@@ -1818,6 +1946,139 @@ async function listOrganizationMembers(pool: { query: PoolClient['query'] }, org
   return result.rows;
 }
 
+async function countActiveOrganizationMembers(pool: { query: PoolClient['query'] }, organizationId: string) {
+  const result = await pool.query<{ count: string }>(
+    `
+      select count(*)::text as count
+      from collab_org_members
+      where organization_id = $1::uuid
+        and is_active = true
+    `,
+    [organizationId]
+  );
+  return Number(result.rows[0]?.count ?? 0);
+}
+
+async function fetchOrganizationMemberByID(pool: { query: PoolClient['query'] }, memberId: string) {
+  const result = await pool.query<CollabOrgMembershipRow>(
+    `
+      select
+        m.id::text as id,
+        m.organization_id::text as organization_id,
+        m.trainer_id::text as trainer_id,
+        m.trainer_ref,
+        m.email,
+        m.display_name,
+        m.is_admin,
+        m.is_active,
+        org.organization_name,
+        org.license_status,
+        org.seat_limit,
+        org.county_id::text as county_id,
+        county.county_name
+      from collab_org_members m
+      join collab_organizations org
+        on org.id = m.organization_id
+      left join collab_counties county
+        on county.id = org.county_id
+      where m.id = $1::uuid
+      limit 1
+    `,
+    [memberId]
+  );
+  return result.rows[0] ?? null;
+}
+
+async function upsertOrganizationMember(
+  pool: { query: PoolClient['query'] },
+  params: {
+    organizationId: string;
+    trainerRef: string;
+    email: string;
+    displayName: string;
+    isAdmin: boolean;
+    isActive: boolean;
+  }
+) {
+  const result = await pool.query<CollabOrgMembershipRow>(
+    `
+      insert into collab_org_members (
+        organization_id,
+        trainer_ref,
+        email,
+        display_name,
+        is_admin,
+        is_active
+      )
+      values ($1::uuid, $2, $3, $4, $5, $6)
+      on conflict (trainer_ref)
+      do update set
+        organization_id = excluded.organization_id,
+        email = excluded.email,
+        display_name = excluded.display_name,
+        is_admin = excluded.is_admin,
+        is_active = excluded.is_active
+      returning
+        id::text as id,
+        organization_id::text as organization_id,
+        trainer_id::text as trainer_id,
+        trainer_ref,
+        email,
+        display_name,
+        is_admin,
+        is_active,
+        null::text as organization_name,
+        'active'::text as license_status,
+        null::int as seat_limit,
+        null::text as county_id,
+        null::text as county_name
+    `,
+    [params.organizationId, params.trainerRef, params.email, params.displayName, params.isAdmin, params.isActive]
+  );
+  const member = result.rows[0];
+  return (await fetchOrganizationMemberByID(pool, member.id)) ?? member;
+}
+
+async function updateOrganizationMember(
+  pool: { query: PoolClient['query'] },
+  params: {
+    memberId: string;
+    organizationId: string;
+    displayName: string;
+    isAdmin: boolean;
+    isActive: boolean;
+  }
+) {
+  const result = await pool.query<CollabOrgMembershipRow>(
+    `
+      update collab_org_members
+      set
+        display_name = $3,
+        is_admin = $4,
+        is_active = $5
+      where id = $1::uuid
+        and organization_id = $2::uuid
+      returning
+        id::text as id,
+        organization_id::text as organization_id,
+        trainer_id::text as trainer_id,
+        trainer_ref,
+        email,
+        display_name,
+        is_admin,
+        is_active,
+        null::text as organization_name,
+        'active'::text as license_status,
+        null::int as seat_limit,
+        null::text as county_id,
+        null::text as county_name
+    `,
+    [params.memberId, params.organizationId, params.displayName, params.isAdmin, params.isActive]
+  );
+  const member = result.rows[0];
+  return member ? ((await fetchOrganizationMemberByID(pool, member.id)) ?? member) : null;
+}
+
 async function fetchOrganizationByID(pool: { query: PoolClient['query'] }, organizationId: string) {
   const result = await pool.query<CollabOrganizationRow>(
     `
@@ -2018,6 +2279,18 @@ function mapSharedOrganization(row: CollabOrganizationRow) {
   };
 }
 
+function mapOrganizationSummary(row: CollabOrgMembershipRow, seatsUsed: number) {
+  return {
+    organizationId: row.organization_id,
+    organizationName: row.organization_name,
+    countyId: row.county_id,
+    countyName: row.county_name,
+    licenseStatus: row.license_status,
+    seatLimit: row.seat_limit,
+    seatsUsed
+  };
+}
+
 function mapObject(row: CollabObjectRow) {
   return {
     id: row.id,
@@ -2059,6 +2332,11 @@ function normalizeRequiredText(value: string | undefined, _field: string) {
 function normalizeOptionalText(value: string | undefined) {
   const trimmed = typeof value === 'string' ? value.trim() : '';
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeEmail(value: string | undefined) {
+  const normalized = normalizeOptionalText(value);
+  return normalized ? normalized.toLowerCase() : null;
 }
 
 function normalizeJoinCode(value: string | undefined) {

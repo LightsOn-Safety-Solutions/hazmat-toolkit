@@ -79,6 +79,41 @@
 
             </div>
 
+            <div id="departmentAdminPanel" class="landing-card stack hidden">
+              <button id="departmentAdminPanelToggle" class="landing-card-toggle" type="button" aria-expanded="false">
+                <span>Department Admin</span>
+                <span class="toggle-symbol">+</span>
+              </button>
+              <div id="departmentAdminPanelBody" class="landing-card-body hidden">
+                <p class="muted">Manage the licensed roster for your department and keep seats aligned to your station membership.</p>
+                <div id="departmentAdminSummary" class="department-admin-summary"></div>
+                <div class="stack department-admin-form">
+                  <div class="department-admin-grid">
+                    <label class="field-block">
+                      User Name
+                      <input id="departmentAdminNameInput" type="text" placeholder="Full name" />
+                    </label>
+                    <label class="field-block">
+                      User Email
+                      <input id="departmentAdminEmailInput" type="email" placeholder="name@agency.org" />
+                    </label>
+                  </div>
+                  <div class="row department-admin-options">
+                    <label class="inline-checkbox">
+                      <input id="departmentAdminIsAdminInput" type="checkbox" />
+                      <span>Department Admin</span>
+                    </label>
+                    <label class="inline-checkbox">
+                      <input id="departmentAdminIsActiveInput" type="checkbox" checked />
+                      <span>Active</span>
+                    </label>
+                  </div>
+                  <button id="departmentAdminAddBtn" class="primary" type="button">Add User</button>
+                </div>
+                <div id="departmentAdminMemberList" class="participant-list"></div>
+              </div>
+            </div>
+
             <div id="createSessionPanel" class="landing-card stack locked">
               <button id="createSessionPanelToggle" class="landing-card-toggle" type="button" aria-expanded="false">
                 <span>Create New Session</span>

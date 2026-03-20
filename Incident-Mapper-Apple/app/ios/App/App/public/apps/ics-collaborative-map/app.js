@@ -169,6 +169,16 @@
     commanderNameInput: document.getElementById("commanderNameInput"),
     commanderEmailInput: document.getElementById("commanderEmailInput"),
     commanderPasswordInput: document.getElementById("commanderPasswordInput"),
+    departmentAdminPanel: document.getElementById("departmentAdminPanel"),
+    departmentAdminPanelToggle: document.getElementById("departmentAdminPanelToggle"),
+    departmentAdminPanelBody: document.getElementById("departmentAdminPanelBody"),
+    departmentAdminSummary: document.getElementById("departmentAdminSummary"),
+    departmentAdminNameInput: document.getElementById("departmentAdminNameInput"),
+    departmentAdminEmailInput: document.getElementById("departmentAdminEmailInput"),
+    departmentAdminIsAdminInput: document.getElementById("departmentAdminIsAdminInput"),
+    departmentAdminIsActiveInput: document.getElementById("departmentAdminIsActiveInput"),
+    departmentAdminAddBtn: document.getElementById("departmentAdminAddBtn"),
+    departmentAdminMemberList: document.getElementById("departmentAdminMemberList"),
     createSessionPanel: document.getElementById("createSessionPanel"),
     createSessionLockedNote: document.getElementById("createSessionLockedNote"),
     createSessionPanelToggle: document.getElementById("createSessionPanelToggle"),
@@ -383,6 +393,7 @@
     participantAuth: loadStoredJSON(STORAGE_KEYS.participantAuth),
     organizationContext: null,
     organizationRoster: [],
+    organizationSummary: null,
     activeSession: null,
     actor: null,
     snapshotLoaded: false,
@@ -414,7 +425,7 @@
     paletteSearchQuery: "",
     collapsedPanels: new Set(["session", "sessionPeriod", "incidentCommand", "participants", "palettes"]),
     collapsedModePanels: new Set(["quickFlow", "afterAction"]),
-    collapsedLandingSections: new Set(["createSession", "joinSession", "whatHappens", "activeSessions", "reviewScenario"]),
+    collapsedLandingSections: new Set(["departmentAdmin", "createSession", "joinSession", "whatHappens", "activeSessions", "reviewScenario"]),
     viewerMode: false,
     viewerJoinCode: null,
     scenarioReview: null,
@@ -724,6 +735,8 @@
     elements.signUpTabBtn.addEventListener("click", () => setAuthTab("signup"));
     elements.commanderAuthBtn.addEventListener("click", onCommanderAuth);
     elements.commanderSignOutBtn.addEventListener("click", signOutCommander);
+    elements.departmentAdminPanelToggle?.addEventListener("click", () => toggleLandingSection("departmentAdmin"));
+    elements.departmentAdminAddBtn?.addEventListener("click", onAddOrganizationMember);
     elements.createSessionPanelToggle.addEventListener("click", () => toggleLandingSection("createSession"));
     elements.sessionListPanelToggle.addEventListener("click", () => toggleLandingSection("reviewSessions"));
     elements.scenarioReviewPanelToggle.addEventListener("click", () => toggleLandingSection("reviewScenario"));
@@ -1152,6 +1165,11 @@
       renderCommanderAuthPanels();
       return;
     }
+    if (orgContext.isAdmin) {
+      await refreshOrganizationAdminData();
+    } else {
+      state.organizationSummary = null;
+    }
     const [sessions, activeSessions] = await Promise.all([
       apiFetch("/v1/ics-collab/sessions", { actorType: "commander" }),
       apiFetch("/v1/ics-collab/sessions/active", { actorType: "commander" })
@@ -1183,7 +1201,72 @@
         isActive: false
       };
       state.organizationRoster = [];
+      state.organizationSummary = null;
       return null;
+    }
+  }
+
+  async function refreshOrganizationAdminData() {
+    if (!state.commanderAuth?.accessToken || !state.organizationContext?.isAdmin || !hasActiveOrganizationAccess()) {
+      state.organizationSummary = null;
+      return null;
+    }
+    const result = await apiFetch("/v1/ics-collab/admin/organization", { actorType: "commander" });
+    state.organizationSummary = result?.organization || null;
+    state.organizationRoster = Array.isArray(result?.roster) ? result.roster : [];
+    return result;
+  }
+
+  async function onAddOrganizationMember() {
+    if (!state.organizationContext?.isAdmin || !hasActiveOrganizationAccess()) {
+      setStatus("Department admin access is required.");
+      return;
+    }
+    const displayName = elements.departmentAdminNameInput.value.trim();
+    const email = elements.departmentAdminEmailInput.value.trim().toLowerCase();
+    const isAdmin = Boolean(elements.departmentAdminIsAdminInput.checked);
+    const isActive = Boolean(elements.departmentAdminIsActiveInput.checked);
+    if (!displayName || !email) {
+      setStatus("Enter the user name and email address.");
+      return;
+    }
+    setStatus("Adding department user…");
+    try {
+      const result = await apiFetch("/v1/ics-collab/admin/organization/members", {
+        method: "POST",
+        actorType: "commander",
+        body: { displayName, email, isAdmin, isActive }
+      });
+      state.organizationSummary = result?.organization || state.organizationSummary;
+      state.organizationRoster = Array.isArray(result?.roster) ? result.roster : state.organizationRoster;
+      elements.departmentAdminNameInput.value = "";
+      elements.departmentAdminEmailInput.value = "";
+      elements.departmentAdminIsAdminInput.checked = false;
+      elements.departmentAdminIsActiveInput.checked = true;
+      renderDepartmentAdminPanel();
+      setStatus(`Added ${displayName} to ${state.organizationContext.organizationName}.`);
+    } catch (error) {
+      setStatus(formatError(error));
+    }
+  }
+
+  async function updateOrganizationMember(memberId, updates, successMessage) {
+    if (!state.organizationContext?.isAdmin || !hasActiveOrganizationAccess()) {
+      setStatus("Department admin access is required.");
+      return;
+    }
+    try {
+      const result = await apiFetch(`/v1/ics-collab/admin/organization/members/${encodeURIComponent(memberId)}`, {
+        method: "PATCH",
+        actorType: "commander",
+        body: updates
+      });
+      state.organizationSummary = result?.organization || state.organizationSummary;
+      state.organizationRoster = Array.isArray(result?.roster) ? result.roster : state.organizationRoster;
+      renderDepartmentAdminPanel();
+      setStatus(successMessage);
+    } catch (error) {
+      setStatus(formatError(error));
     }
   }
 
@@ -1463,6 +1546,7 @@
     state.commanderAuth = null;
     state.organizationContext = null;
     state.organizationRoster = [];
+    state.organizationSummary = null;
     persistJSON(STORAGE_KEYS.commanderAuth, null);
     elements.createSessionPanel.classList.add("hidden");
     elements.sessionListPanel.classList.add("hidden");
@@ -1800,6 +1884,7 @@
   }
 
   function renderLandingSectionCollapses() {
+    syncLandingSectionCollapse(elements.departmentAdminPanelBody, elements.departmentAdminPanelToggle, "departmentAdmin");
     syncLandingSectionCollapse(elements.createSessionPanelBody, elements.createSessionPanelToggle, "createSession");
     syncLandingSectionCollapse(elements.sessionListPanelBody, elements.sessionListPanelToggle, "reviewSessions");
     syncLandingSectionCollapse(elements.scenarioReviewPanelBody, elements.scenarioReviewPanelToggle, "reviewScenario");
@@ -1869,6 +1954,7 @@
     const signedIn = Boolean(state.commanderAuth?.accessToken);
     const authReady = hasSupabaseAuthConfig();
     const licensed = hasActiveOrganizationAccess();
+    const orgAdmin = Boolean(state.organizationContext?.isAdmin && licensed);
     elements.commanderSignedInSummary.classList.toggle("hidden", !signedIn);
     elements.authFields.classList.toggle("hidden", signedIn);
     if (signedIn) {
@@ -1888,6 +1974,7 @@
     elements.commanderAuthBtn.textContent = signedIn ? "Signed In" : (state.authTab === "signin" ? "Sign In" : "Create Account");
     elements.commanderAuthBtn.disabled = signedIn || !authReady;
     elements.commanderSignOutBtn.disabled = !signedIn;
+    elements.departmentAdminPanel.classList.toggle("hidden", !orgAdmin);
     elements.createSessionPanel.classList.toggle("hidden", false);
     elements.createSessionPanel.classList.toggle("locked", !signedIn || !licensed);
     elements.createSessionLockedNote.classList.toggle("hidden", signedIn && licensed);
@@ -1918,6 +2005,7 @@
         ? "Sign in with an account first, then join with the session code."
         : (state.organizationContext?.error || "Your account is not assigned to an active department license.");
     }
+    renderDepartmentAdminPanel();
     toggleLandingCardAccess(signedIn && licensed);
   }
 
@@ -2883,6 +2971,86 @@
       if (element) element.disabled = !enabled;
     });
     renderCreateSessionFocusVisibility();
+  }
+
+  function renderDepartmentAdminPanel() {
+    if (!elements.departmentAdminSummary || !elements.departmentAdminMemberList) return;
+    if (!state.organizationContext?.isAdmin || !hasActiveOrganizationAccess()) {
+      elements.departmentAdminSummary.innerHTML = "";
+      elements.departmentAdminMemberList.innerHTML = "";
+      return;
+    }
+    const summary = state.organizationSummary || {
+      organizationName: state.organizationContext.organizationName,
+      countyName: state.organizationContext.countyName,
+      licenseStatus: state.organizationContext.licenseStatus,
+      seatLimit: state.organizationContext.seatLimit,
+      seatsUsed: state.organizationRoster.length
+    };
+    const seatsUsed = Number(summary.seatsUsed ?? state.organizationRoster.length ?? 0);
+    const seatLimit = Number.isFinite(Number(summary.seatLimit)) ? Number(summary.seatLimit) : null;
+    elements.departmentAdminSummary.innerHTML = `
+      <div class="department-admin-kpi">
+        <div class="label">Department</div>
+        <div class="value">${escapeHtml(summary.organizationName || "Department")}</div>
+      </div>
+      <div class="department-admin-kpi">
+        <div class="label">County</div>
+        <div class="value">${escapeHtml(summary.countyName || "Unassigned")}</div>
+      </div>
+      <div class="department-admin-kpi">
+        <div class="label">License</div>
+        <div class="value">${escapeHtml(formatLicenseStatus(summary.licenseStatus))}</div>
+      </div>
+      <div class="department-admin-kpi">
+        <div class="label">Seats</div>
+        <div class="value">${seatLimit == null ? `${seatsUsed}` : `${seatsUsed} / ${seatLimit}`}</div>
+      </div>
+    `;
+    elements.departmentAdminMemberList.innerHTML = "";
+    if (!state.organizationRoster.length) {
+      const empty = document.createElement("div");
+      empty.className = "muted";
+      empty.textContent = "No department users yet.";
+      elements.departmentAdminMemberList.appendChild(empty);
+      return;
+    }
+    state.organizationRoster.forEach((member) => {
+      const card = document.createElement("div");
+      card.className = "participant-card department-admin-member";
+      const title = document.createElement("strong");
+      title.textContent = member.displayName || member.email;
+      const meta = document.createElement("div");
+      meta.className = "muted";
+      meta.textContent = `${member.email} · ${member.isAdmin ? "Department Admin" : "Member"} · ${member.isActive ? "Active" : "Inactive"}`;
+      const actions = document.createElement("div");
+      actions.className = "row department-admin-member-actions";
+      const toggleActiveBtn = document.createElement("button");
+      toggleActiveBtn.className = "secondary";
+      toggleActiveBtn.type = "button";
+      toggleActiveBtn.textContent = member.isActive ? "Deactivate" : "Reactivate";
+      toggleActiveBtn.addEventListener("click", () => {
+        void updateOrganizationMember(
+          member.id,
+          { isActive: !member.isActive },
+          `${member.displayName || member.email} ${member.isActive ? "deactivated" : "reactivated"}.`
+        );
+      });
+      const toggleAdminBtn = document.createElement("button");
+      toggleAdminBtn.className = "secondary";
+      toggleAdminBtn.type = "button";
+      toggleAdminBtn.textContent = member.isAdmin ? "Remove Admin" : "Make Admin";
+      toggleAdminBtn.addEventListener("click", () => {
+        void updateOrganizationMember(
+          member.id,
+          { isAdmin: !member.isAdmin },
+          `${member.displayName || member.email} is ${member.isAdmin ? "no longer" : "now"} a department admin.`
+        );
+      });
+      actions.append(toggleActiveBtn, toggleAdminBtn);
+      card.append(title, meta, actions);
+      elements.departmentAdminMemberList.appendChild(card);
+    });
   }
 
   function renderCommanderSessions(sessions) {
@@ -5530,6 +5698,10 @@
   function formatPermissionTier(permissionTier) {
     if (permissionTier === "commander") return "owner";
     return permissionTier;
+  }
+
+  function formatLicenseStatus(status) {
+    return status === "active" ? "Active" : "Inactive";
   }
 
   function sessionIsActive() {
