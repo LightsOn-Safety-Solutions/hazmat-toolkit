@@ -331,7 +331,11 @@
     isolationDistanceInput: document.getElementById("isolationDistanceInput"),
     evacuationDistanceInput: document.getElementById("evacuationDistanceInput"),
     distanceUnitSelect: document.getElementById("distanceUnitSelect"),
-    windDirectionInput: document.getElementById("windDirectionInput")
+    windDirectionInput: document.getElementById("windDirectionInput"),
+    isolationUseLiveWindToggle: document.getElementById("isolationUseLiveWindToggle"),
+    isolationManualOverrideToggle: document.getElementById("isolationManualOverrideToggle"),
+    isolationManualWindField: document.getElementById("isolationManualWindField"),
+    isolationWindHint: document.getElementById("isolationWindHint")
   };
 
   const state = {
@@ -668,6 +672,8 @@
     elements.closeIsolationToolBtn.addEventListener("click", closeIsolationToolModal);
     elements.cancelIsolationToolBtn.addEventListener("click", closeIsolationToolModal);
     elements.startIsolationPlacementBtn.addEventListener("click", beginIsolationPlacementFlow);
+    elements.isolationUseLiveWindToggle?.addEventListener("change", renderIsolationWindControls);
+    elements.isolationManualOverrideToggle?.addEventListener("change", renderIsolationWindControls);
     elements.ics202WorkspaceBtn.addEventListener("click", openIcs202Workspace);
     elements.setIncidentFocusBtn.addEventListener("click", onSetIncidentFocusAction);
     elements.centerIncidentBtn.addEventListener("click", onCenterIncidentAction);
@@ -1529,7 +1535,9 @@
         unit: fields.distanceUnit === "m" ? "m" : "ft",
         initialMeters: Math.max(1, Number(fields.initialMeters || 0) || 0),
         evacMeters: Math.max(1, Number(fields.evacMeters || 0) || 0),
-        windFrom: ((Number(fields.windFrom) || 270) % 360 + 360) % 360
+        windFrom: ((Number(fields.windFrom) || 270) % 360 + 360) % 360,
+        useLiveWind: fields.useLiveWind !== false,
+        manualOverride: Boolean(fields.manualOverride)
       }
     };
   }
@@ -2041,14 +2049,11 @@
 
   function buildProtectiveActionPolygonPoints(center, windFrom, evacMeters, initialMeters = 0) {
     const downwind = (Number(windFrom) + 180) % 360;
-    const nearDistance = Math.max(initialMeters * 0.65, evacMeters * 0.22, 20);
-    const nearAngle = 14;
     const farAngle = 34;
     return [
-      destinationPoint(center.lat, center.lng, downwind - nearAngle, nearDistance),
+      { lat: roundCoord(center.lat), lng: roundCoord(center.lng) },
       destinationPoint(center.lat, center.lng, downwind - farAngle, evacMeters),
-      destinationPoint(center.lat, center.lng, downwind + farAngle, evacMeters),
-      destinationPoint(center.lat, center.lng, downwind + nearAngle, nearDistance)
+      destinationPoint(center.lat, center.lng, downwind + farAngle, evacMeters)
     ];
   }
 
@@ -2060,9 +2065,44 @@
       initialMeters: round2(config.initialMeters),
       evacMeters: round2(config.evacMeters),
       windFrom: round2(config.windFrom),
+      useLiveWind: Boolean(config.useLiveWind),
+      manualOverride: Boolean(config.manualOverride),
       spillLat: roundCoord(spillLatLng.lat),
       spillLng: roundCoord(spillLatLng.lng)
     };
+  }
+
+  function renderIsolationWindControls() {
+    if (!elements.isolationManualWindField || !elements.isolationUseLiveWindToggle || !elements.isolationManualOverrideToggle || !elements.isolationWindHint) {
+      return;
+    }
+    const useLiveWind = Boolean(elements.isolationUseLiveWindToggle.checked);
+    const manualOverride = Boolean(elements.isolationManualOverrideToggle.checked);
+    const manualEnabled = !useLiveWind || manualOverride;
+    elements.isolationManualWindField.classList.toggle("hidden", !manualEnabled);
+    elements.windDirectionInput.disabled = !manualEnabled;
+    elements.isolationWindHint.textContent = useLiveWind && !manualOverride
+      ? "0 = from North, 90 = from East. Zone extends downwind away from the spill. Live wind will be fetched from the spill point after placement."
+      : "0 = from North, 90 = from East. Zone extends downwind away from the spill.";
+  }
+
+  async function fetchWindDirectionForLatLng(latlng) {
+    const response = await fetch(buildWeatherUrl({
+      lat: latlng.lat,
+      lng: latlng.lng,
+      label: "Spill Point",
+      sourceLabel: "spill point"
+    }), { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Weather request failed (${response.status})`);
+    }
+    const payload = await response.json();
+    const current = payload?.current;
+    const windDirection = Number(current?.wind_direction_10m);
+    if (!Number.isFinite(windDirection)) {
+      throw new Error("Weather service returned no wind direction.");
+    }
+    return ((windDirection % 360) + 360) % 360;
   }
 
   function openIsolationToolModal() {
@@ -2077,12 +2117,17 @@
       unit: elements.distanceUnitSelect?.value === "m" ? "m" : "ft",
       initialMeters: convertDistanceToMeters(elements.isolationDistanceInput?.value || 100, elements.distanceUnitSelect?.value || "ft"),
       evacMeters: convertDistanceToMeters(elements.evacuationDistanceInput?.value || 300, elements.distanceUnitSelect?.value || "ft"),
-      windFrom: ((Number(elements.windDirectionInput?.value) || 270) % 360 + 360) % 360
+      windFrom: ((Number(elements.windDirectionInput?.value) || 270) % 360 + 360) % 360,
+      useLiveWind: true,
+      manualOverride: false
     };
     elements.distanceUnitSelect.value = activeConfig.unit;
     elements.isolationDistanceInput.value = String(Math.round(convertMetersToDistance(activeConfig.initialMeters, activeConfig.unit)));
     elements.evacuationDistanceInput.value = String(Math.round(convertMetersToDistance(activeConfig.evacMeters, activeConfig.unit)));
     elements.windDirectionInput.value = String(Math.round(activeConfig.windFrom));
+    if (elements.isolationUseLiveWindToggle) elements.isolationUseLiveWindToggle.checked = activeConfig.useLiveWind !== false;
+    if (elements.isolationManualOverrideToggle) elements.isolationManualOverrideToggle.checked = Boolean(activeConfig.manualOverride);
+    renderIsolationWindControls();
     elements.startIsolationPlacementBtn.textContent = state.isolationEditContext ? "Update Selected Zones" : "Place on Map";
     elements.isolationToolModal.classList.remove("hidden");
   }
@@ -2092,7 +2137,7 @@
     elements.startIsolationPlacementBtn.textContent = "Place on Map";
   }
 
-  function beginIsolationPlacementFlow() {
+  async function beginIsolationPlacementFlow() {
     if (!canCreateObjects()) {
       setStatus("Only active editors can use the Isolation Tool.");
       return;
@@ -2100,14 +2145,27 @@
     const unit = elements.distanceUnitSelect.value === "m" ? "m" : "ft";
     const initialMeters = convertDistanceToMeters(elements.isolationDistanceInput.value, unit);
     const evacMeters = convertDistanceToMeters(elements.evacuationDistanceInput.value, unit);
+    const useLiveWind = Boolean(elements.isolationUseLiveWindToggle?.checked);
+    const manualOverride = Boolean(elements.isolationManualOverrideToggle?.checked);
     const windFrom = ((Number(elements.windDirectionInput.value) || 270) % 360 + 360) % 360;
     if (initialMeters <= 0 || evacMeters <= 0) {
       setStatus("Isolation and evacuation distances must be greater than zero.");
       return;
     }
-    const config = { unit, initialMeters, evacMeters, windFrom };
+    const config = { unit, initialMeters, evacMeters, windFrom, useLiveWind, manualOverride };
     if (state.isolationEditContext?.spillLatLng) {
-      void placeIsolationZonesAt(state.isolationEditContext.spillLatLng, config, state.isolationEditContext);
+      let resolvedConfig = config;
+      if (config.useLiveWind && !config.manualOverride) {
+        try {
+          resolvedConfig = {
+            ...config,
+            windFrom: await fetchWindDirectionForLatLng(state.isolationEditContext.spillLatLng)
+          };
+        } catch (error) {
+          setStatus(`Live wind unavailable. Using manual wind setting. ${formatError(error)}`);
+        }
+      }
+      void placeIsolationZonesAt(state.isolationEditContext.spillLatLng, resolvedConfig, state.isolationEditContext);
       closeIsolationToolModal();
       state.isolationEditContext = null;
       return;
@@ -2115,7 +2173,9 @@
     state.pendingIsolationConfig = config;
     state.isolationEditContext = null;
     closeIsolationToolModal();
-    setStatus("Isolation tool armed. Tap the spill point on the map.");
+    setStatus(config.useLiveWind && !config.manualOverride
+      ? "Isolation tool armed. Tap the spill point on the map. Live wind will be fetched there."
+      : "Isolation tool armed. Tap the spill point on the map.");
   }
 
   function showPrintExportModal() {
@@ -3908,9 +3968,20 @@
       lat: roundCoord(latlng.lat),
       lng: roundCoord(latlng.lng)
     };
-    const config = state.pendingIsolationConfig;
+    let config = state.pendingIsolationConfig;
     state.pendingIsolationConfig = null;
     try {
+      if (config.useLiveWind && !config.manualOverride) {
+        try {
+          config = {
+            ...config,
+            windFrom: await fetchWindDirectionForLatLng(spillPoint)
+          };
+          setStatus("Live wind applied at spill point.");
+        } catch (error) {
+          setStatus(`Live wind unavailable. Using manual wind setting. ${formatError(error)}`);
+        }
+      }
       await placeIsolationZonesAt(spillPoint, config);
     } catch (error) {
       setStatus(formatError(error));

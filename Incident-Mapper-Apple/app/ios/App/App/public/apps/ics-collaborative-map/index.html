@@ -574,31 +574,45 @@
   </div>
 
   <div id="isolationToolModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="isolationToolTitle">
-    <div class="modal-card">
+    <div class="modal-card isolation-modal-card">
       <div class="modal-header">
         <h2 id="isolationToolTitle">Initial Isolation / Evacuation Tool</h2>
         <button id="closeIsolationToolBtn" class="secondary" type="button">Close</button>
       </div>
-      <label>
-        Initial Isolation Distance
+      <label class="isolation-field">
+        <span class="isolation-label">Initial Isolation Distance</span>
         <input id="isolationDistanceInput" type="number" min="0" step="1" value="100" />
       </label>
-      <label>
-        Evacuation Distance (Downwind)
+      <label class="isolation-field">
+        <span class="isolation-label">Evacuation Distance (Downwind)</span>
         <input id="evacuationDistanceInput" type="number" min="0" step="1" value="300" />
       </label>
-      <label>
-        Units
+      <label class="isolation-field">
+        <span class="isolation-label">Units</span>
         <select id="distanceUnitSelect">
           <option value="ft" selected>Feet</option>
           <option value="m">Meters</option>
         </select>
       </label>
-      <label>
-        Wind Direction (From, Degrees)
+      <label class="toggle-row" for="isolationUseLiveWindToggle">
+        <input id="isolationUseLiveWindToggle" type="checkbox" checked />
+        <span>
+          <strong class="isolation-label">Use Live Wind at Spill Point</strong>
+          <span class="muted">When enabled, the tool pulls the current wind direction for the spill location as the zone is placed.</span>
+        </span>
+      </label>
+      <label class="toggle-row" for="isolationManualOverrideToggle">
+        <input id="isolationManualOverrideToggle" type="checkbox" />
+        <span>
+          <strong class="isolation-label">Manual Override</strong>
+          <span class="muted">Use this when field observations differ from live weather.</span>
+        </span>
+      </label>
+      <label id="isolationManualWindField" class="isolation-field">
+        <span class="isolation-label">Manual Wind Direction (From, Degrees)</span>
         <input id="windDirectionInput" type="number" min="0" max="359" step="1" value="270" />
       </label>
-      <div class="muted">Tap Place on Map, then tap the spill point to place both the initial isolation zone and the downwind protective action zone.</div>
+      <div id="isolationWindHint" class="muted">0 = from North, 90 = from East. Zone extends downwind away from the spill. Live wind will be fetched from the spill point after placement.</div>
       <div class="row">
         <button id="cancelIsolationToolBtn" class="secondary" type="button">Cancel</button>
         <button id="startIsolationPlacementBtn" class="primary" type="button">Place on Map</button>

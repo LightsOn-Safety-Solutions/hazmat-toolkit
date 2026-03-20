@@ -1052,6 +1052,37 @@ button.danger { background: rgba(178,58,72,0.14); color: #f4c9ce; border-color: 
 .export-modal-card {
   width: min(460px, 100%);
 }
+.isolation-modal-card {
+  width: min(720px, 100%);
+}
+.isolation-field {
+  display: grid;
+  gap: 6px;
+}
+.isolation-label {
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+.toggle-row {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 12px;
+  align-items: start;
+}
+.toggle-row input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  margin-top: 3px;
+}
+.toggle-row span {
+  display: grid;
+  gap: 4px;
+}
+.isolation-field.hidden {
+  display: none;
+}
 .export-option-group {
   display: grid;
   gap: 10px;
