@@ -17,6 +17,15 @@ const ICS_ROLES = [
   'Decontamination Group'
 ] as const;
 
+const MAP_NOTE_ALLOWED_ROLES = [
+  'Incident Commander',
+  'Operations Section Chief',
+  'Planning Section Chief',
+  'Logistics Section Chief',
+  'Safety Officer',
+  'HazMat Group Supervisor'
+] as const;
+
 const PERMISSION_TIERS = ['commander', 'operator', 'observer'] as const;
 const OBJECT_TYPES = [
   'IncidentCommand',
@@ -37,6 +46,7 @@ const OBJECT_TYPES = [
   'RIT',
   'SafetyHazard',
   'EvacuationZone',
+  'MapNote',
   'InitialIsolationZone',
   'ProtectiveActionZone',
   'IconMarker'
@@ -976,6 +986,9 @@ async function applyMutation(
     if (!objectType || !geometryType) {
       throw new ValidationError('Create mutations require objectType and geometryType.');
     }
+    if (objectType === 'MapNote' && !canManageMapNotes(actor)) {
+      throw new TrainerForbiddenError('Only command staff can place map notes.');
+    }
     const nextVersion = await nextSessionVersion(client, session.id);
     const objectID = normalizeUUID(mutation?.objectId) ?? randomUUID();
     const inserted = await client.query<CollabObjectRow>(
@@ -1434,12 +1447,22 @@ async function getObjectForUpdate(pool: { query: PoolClient['query'] }, sessionI
 }
 
 function ensureObjectMutationAllowed(actor: SessionActor, object: CollabObjectRow) {
+  if (object.object_type === 'MapNote' && !canManageMapNotes(actor)) {
+    throw new TrainerForbiddenError('Only command staff can edit map notes.');
+  }
   if (actor.participant.permission_tier === 'commander') {
     return;
   }
   if (object.created_by_participant_id !== actor.participant.id) {
     throw new TrainerForbiddenError('Participants can only edit their own objects.');
   }
+}
+
+function canManageMapNotes(actor: SessionActor) {
+  if (actor.participant.permission_tier === 'commander') {
+    return true;
+  }
+  return MAP_NOTE_ALLOWED_ROLES.includes(actor.participant.ics_role as (typeof MAP_NOTE_ALLOWED_ROLES)[number]);
 }
 
 async function nextSessionVersion(pool: { query: PoolClient['query'] }, sessionID: string) {

@@ -53,12 +53,31 @@
     "Safety Officer",
     "HazMat Group Supervisor"
   ]);
+  const MAP_NOTE_OBJECT_TYPE = "MapNote";
+  const MAP_NOTE_ALLOWED_ROLES = new Set([
+    "Incident Commander",
+    "Operations Section Chief",
+    "Planning Section Chief",
+    "Logistics Section Chief",
+    "Safety Officer",
+    "HazMat Group Supervisor"
+  ]);
   const ISOLATION_ZONE_OBJECT_TYPE = "InitialIsolationZone";
   const PROTECTIVE_ACTION_ZONE_OBJECT_TYPE = "ProtectiveActionZone";
+  const MAP_NOTE_FIELD_DEFS = [
+    { key: "title", label: "Title", type: "text" },
+    { key: "noteText", label: "Note", type: "textarea" },
+    { key: "priority", label: "Priority", type: "select", options: [
+      { value: "info", label: "Info" },
+      { value: "important", label: "Important" },
+      { value: "urgent", label: "Urgent" }
+    ] }
+  ];
   const OBJECT_TEMPLATES = [
     { objectType: "IncidentCommand", label: "Incident Command Post", category: "Command", geometryType: "point", color: "#f3c613", defaults: { incidentName: "", ICName: "", channel: "" } },
     { objectType: "Staging", label: "Staging Area", category: "Command", geometryType: "point", color: "#0d6efd", defaults: { capacity: "", stagingManager: "", apparatusCount: "" } },
     { objectType: "Division", label: "Operational Division", category: "Command", geometryType: "polygon", color: "#3d8bfd", defaults: { divisionName: "", supervisor: "" } },
+    { objectType: MAP_NOTE_OBJECT_TYPE, label: "Map Note", category: "Command", geometryType: "point", color: "#ffd400", defaults: { title: "", noteText: "", priority: "info" }, fieldDefs: MAP_NOTE_FIELD_DEFS },
     { objectType: "AccessRoute", label: "Access Route", category: "Operations", geometryType: "line", color: "#63c174", defaults: {} },
     { objectType: "ExitRoute", label: "Exit Route", category: "Operations", geometryType: "line", color: "#25a18e", defaults: {} },
     { objectType: "Rehab", label: "Medical / Rehab", category: "Operations", geometryType: "point", color: "#94d82d", defaults: { medicUnit: "", capacity: "" } },
@@ -3014,10 +3033,11 @@
       items.forEach((item) => {
         const button = document.createElement("button");
         const selectionKey = item.selectionKey || item.objectType;
+        const canUseItem = canUsePaletteItem(item);
         button.className = `object-template ${item.kind === "icon" ? "icon-template" : ""} ${item.kind === "costed" ? "cost-template" : ""} ${state.selectedTemplateType === selectionKey ? "active" : ""}`;
         button.type = "button";
-        button.disabled = !canCreateObjects();
-        button.draggable = canCreateObjects() && item.geometryType === "point" && !IS_TOUCH_PREFERRED;
+        button.disabled = !canUseItem;
+        button.draggable = canUseItem && item.geometryType === "point" && !IS_TOUCH_PREFERRED;
         button.innerHTML = item.kind === "icon"
           ? `
             <span class="object-template-icon-wrap">
@@ -4293,6 +4313,9 @@
     if (isCostedResourceObject(object)) {
       appendMetaRow(elements.selectedObjectMeta, "Category", object.fields?.resourceCategory || "Costed Resource");
       appendMetaRow(elements.selectedObjectMeta, "Current Total", formatCurrency(getCostedResourceTotal(object)));
+    } else if (object.objectType === MAP_NOTE_OBJECT_TYPE) {
+      appendMetaRow(elements.selectedObjectMeta, "Priority", formatMapNotePriority(object.fields?.priority));
+      appendMetaRow(elements.selectedObjectMeta, "Note", object.fields?.title || "Map Note");
     } else if (isIsolationZoneObject(object)) {
       appendMetaRow(elements.selectedObjectMeta, "Tool", "Isolation Tool");
       appendMetaRow(elements.selectedObjectMeta, "Distance", `${Math.round(convertMetersToDistance(Number(object.fields?.initialMeters || 0), object.fields?.distanceUnit || "ft"))} ${object.fields?.distanceUnit || "ft"}`);
@@ -4655,6 +4678,10 @@
   }
 
   async function createObject(template, geometry) {
+    if (template?.objectType === MAP_NOTE_OBJECT_TYPE && !canManageMapNotes()) {
+      setStatus("Only command staff can place map notes.");
+      return;
+    }
     if (isScenarioReviewMode()) {
       const objectId = createLocalID();
       const object = {
@@ -4912,14 +4939,7 @@
     const color = template?.color || "#f3c613";
     let layer = null;
     if (object.geometryType === "point") {
-      const icon = object.objectType === ICON_MARKER_OBJECT_TYPE && object.fields?.iconAssetPath
-        ? buildIconMarkerIcon(object, template)
-        : L.divIcon({
-          className: "",
-          html: `<div class="point-marker" style="background:${escapeAttribute(color)}"></div>`,
-          iconSize: [20, 20],
-          iconAnchor: [10, 10]
-        });
+      const icon = buildPointObjectIcon(object, template, color);
       layer = L.marker([object.geometry.lat, object.geometry.lng], {
         icon,
         draggable: canEditObject(object) && sessionIsActive()
@@ -5365,10 +5385,28 @@
     return !state.playbackMode && ((sessionIsActive() && state.actor && state.actor.permissionTier !== "observer") || scenarioReviewCanEdit());
   }
 
+  function canManageMapNotes() {
+    if (scenarioReviewCanEdit()) return true;
+    if (!sessionIsActive() || !state.actor || state.viewerMode) return false;
+    if (state.actor.permissionTier === "commander") return true;
+    return MAP_NOTE_ALLOWED_ROLES.has(String(state.actor.icsRole || "").trim());
+  }
+
+  function canUsePaletteItem(item) {
+    if (!canCreateObjects()) return false;
+    if (item?.objectType === MAP_NOTE_OBJECT_TYPE) {
+      return canManageMapNotes();
+    }
+    return true;
+  }
+
   function canEditObject(object) {
     if (state.playbackMode) return false;
     if (scenarioReviewCanEdit()) return true;
     if (!sessionIsActive() || !state.actor || state.actor.permissionTier === "observer") return false;
+    if (object?.objectType === MAP_NOTE_OBJECT_TYPE) {
+      return canManageMapNotes();
+    }
     if (state.actor.permissionTier === "commander") return true;
     return object.createdByParticipantId === state.actor.id;
   }
@@ -5506,6 +5544,12 @@
       return [];
     }
     const template = resolveTemplateForObject(object);
+    if (template?.fieldDefs?.length) {
+      return template.fieldDefs.map((fieldDef) => ({
+        ...fieldDef,
+        value: object.fields?.[fieldDef.key] ?? template.defaults?.[fieldDef.key] ?? ""
+      }));
+    }
     const merged = { ...(template?.defaults || {}), ...(object.fields || {}) };
     if (object.objectType === ICON_MARKER_OBJECT_TYPE) {
       delete merged.iconId;
@@ -5569,6 +5613,11 @@
     const parts = [getObjectDisplayLabel(object, template)];
     if (isCostedResourceObject(object)) {
       parts.push(`${object.fields?.resourceCategory || "Costed Resource"} · ${formatCurrency(getCostedResourceTotal(object))}`);
+    } else if (object.objectType === MAP_NOTE_OBJECT_TYPE) {
+      parts.push(formatMapNotePriority(object.fields?.priority));
+      if (object.fields?.noteText) {
+        parts.push(String(object.fields.noteText).replace(/\s+/g, " ").trim().slice(0, 72));
+      }
     } else if (isIsolationZoneObject(object)) {
       const unit = object.fields?.distanceUnit || "ft";
       const distanceMeters = object.objectType === ISOLATION_ZONE_OBJECT_TYPE
@@ -5707,6 +5756,38 @@
     });
   }
 
+  function buildMapNoteIcon(object) {
+    const priority = normalizeMapNotePriority(object?.fields?.priority);
+    const noteLabel = object?.fields?.title ? escapeHtml(String(object.fields.title).trim().slice(0, 18)) : "Note";
+    return L.divIcon({
+      className: "",
+      html: `
+        <div class="map-note-marker map-note-${escapeAttribute(priority)}">
+          <div class="map-note-marker-corner"></div>
+          <div class="map-note-marker-glyph">N</div>
+          <div class="map-note-marker-label">${noteLabel}</div>
+        </div>
+      `,
+      iconSize: [86, 52],
+      iconAnchor: [18, 26]
+    });
+  }
+
+  function buildPointObjectIcon(object, template, color) {
+    if (object.objectType === MAP_NOTE_OBJECT_TYPE) {
+      return buildMapNoteIcon(object);
+    }
+    if (object.objectType === ICON_MARKER_OBJECT_TYPE && object.fields?.iconAssetPath) {
+      return buildIconMarkerIcon(object, template);
+    }
+    return L.divIcon({
+      className: "",
+      html: `<div class="point-marker" style="background:${escapeAttribute(color)}"></div>`,
+      iconSize: [20, 20],
+      iconAnchor: [10, 10]
+    });
+  }
+
   function findIconBySelectionKey(selectionKey) {
     return (state.iconCatalog.icons || []).find((icon) => `icon:${icon.id}` === selectionKey) || null;
   }
@@ -5744,7 +5825,24 @@
     if (isCostedResourceObject(object)) {
       return object.fields?.displayLabel || template?.label || "Costed Resource";
     }
+    if (object?.objectType === MAP_NOTE_OBJECT_TYPE) {
+      return object.fields?.title || template?.label || "Map Note";
+    }
     return template?.label || object?.objectType || "Object";
+  }
+
+  function normalizeMapNotePriority(value) {
+    const normalized = String(value || "info").trim().toLowerCase();
+    if (normalized === "urgent") return "urgent";
+    if (normalized === "important") return "important";
+    return "info";
+  }
+
+  function formatMapNotePriority(value) {
+    const normalized = normalizeMapNotePriority(value);
+    if (normalized === "urgent") return "Urgent";
+    if (normalized === "important") return "Important";
+    return "Info";
   }
 
   function resolveAssetPath(assetPath) {
