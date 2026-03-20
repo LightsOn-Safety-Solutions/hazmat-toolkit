@@ -16,6 +16,7 @@
   const WEATHER_REFRESH_MS = 5 * 60 * 1000;
   const WEATHER_API_BASE_URL = (config.weatherApiBaseUrl || "https://api.open-meteo.com/v1/forecast").replace(/\/$/, "");
   const ICON_MANIFEST_URL = "./icon-manifest.json";
+  const ERG_WIND_BUCKETS = ["low", "moderate", "high"];
   const ICON_MARKER_OBJECT_TYPE = "IconMarker";
   const IS_TOUCH_PREFERRED = Boolean(
     window.matchMedia?.("(pointer: coarse)")?.matches
@@ -331,6 +332,15 @@
     isolationDistanceInput: document.getElementById("isolationDistanceInput"),
     evacuationDistanceInput: document.getElementById("evacuationDistanceInput"),
     distanceUnitSelect: document.getElementById("distanceUnitSelect"),
+    isolationErgMaterialInput: document.getElementById("isolationErgMaterialInput"),
+    isolationErgMaterialList: document.getElementById("isolationErgMaterialList"),
+    isolationSpillSizeSelect: document.getElementById("isolationSpillSizeSelect"),
+    isolationTimeOfDaySelect: document.getElementById("isolationTimeOfDaySelect"),
+    isolationTransportContainerField: document.getElementById("isolationTransportContainerField"),
+    isolationTransportContainerSelect: document.getElementById("isolationTransportContainerSelect"),
+    isolationWindBucketField: document.getElementById("isolationWindBucketField"),
+    isolationWindBucketSelect: document.getElementById("isolationWindBucketSelect"),
+    isolationErgHint: document.getElementById("isolationErgHint"),
     windDirectionInput: document.getElementById("windDirectionInput"),
     isolationUseLiveWindToggle: document.getElementById("isolationUseLiveWindToggle"),
     isolationManualOverrideToggle: document.getElementById("isolationManualOverrideToggle"),
@@ -387,6 +397,7 @@
     weatherTargetSignature: "",
     weatherFetchNonce: 0,
     weatherTimer: null,
+    ergCatalog: { materials: [], lookup: new Map() },
     pendingIsolationConfig: null,
     isolationEditContext: null,
     playbackMode: false,
@@ -404,6 +415,7 @@
 
   async function init() {
     await loadIconManifest();
+    loadErgIsolationCatalog();
     ensureIcs202Draft();
     if (elements.initialIncidentCommanderRoleInput) {
       elements.initialIncidentCommanderRoleInput.value = "Incident Commander";
@@ -440,6 +452,25 @@
       console.warn("Unable to load icon manifest.", error);
       state.iconCatalog = { categories: [], icons: [] };
     }
+  }
+
+  function loadErgIsolationCatalog() {
+    const materials = Array.isArray(window.ICS_ERG_ISOLATION_DATA?.materials) ? window.ICS_ERG_ISOLATION_DATA.materials : [];
+    const lookup = new Map();
+    materials.forEach((material) => {
+      const register = (value) => {
+        const key = normalizeErgLookupKey(value);
+        if (key && !lookup.has(key)) lookup.set(key, material);
+      };
+      register(material.displayName);
+      register(material.unNumber);
+      register(`UN${material.unNumber}`);
+      register(`UN ${material.unNumber}`);
+      register(`${material.displayName} (UN${material.unNumber})`);
+      (material.materialNames || []).forEach(register);
+    });
+    state.ergCatalog = { materials, lookup };
+    populateErgMaterialOptions();
   }
 
   async function fetchIconManifestPayload() {
@@ -672,6 +703,12 @@
     elements.closeIsolationToolBtn.addEventListener("click", closeIsolationToolModal);
     elements.cancelIsolationToolBtn.addEventListener("click", closeIsolationToolModal);
     elements.startIsolationPlacementBtn.addEventListener("click", beginIsolationPlacementFlow);
+    elements.isolationErgMaterialInput?.addEventListener("change", () => renderIsolationErgControls({ autofill: true }));
+    elements.isolationSpillSizeSelect?.addEventListener("change", () => renderIsolationErgControls({ autofill: true }));
+    elements.isolationTimeOfDaySelect?.addEventListener("change", () => renderIsolationErgControls({ autofill: true }));
+    elements.isolationTransportContainerSelect?.addEventListener("change", () => renderIsolationErgControls({ autofill: true }));
+    elements.isolationWindBucketSelect?.addEventListener("change", () => renderIsolationErgControls({ autofill: true }));
+    elements.distanceUnitSelect?.addEventListener("change", () => renderIsolationErgControls({ autofill: Boolean(getSelectedErgMaterial()) }));
     elements.isolationUseLiveWindToggle?.addEventListener("change", renderIsolationWindControls);
     elements.isolationManualOverrideToggle?.addEventListener("change", renderIsolationWindControls);
     elements.ics202WorkspaceBtn.addEventListener("click", openIcs202Workspace);
@@ -1539,7 +1576,16 @@
         useLiveWind: fields.useLiveWind !== false,
         manualOverride: Boolean(fields.manualOverride),
         lastWindUpdatedAt: String(fields.lastWindUpdatedAt || ""),
-        windSource: String(fields.windSource || "")
+        windSource: String(fields.windSource || ""),
+        ergSource: String(fields.ergSource || "manual"),
+        ergMaterialName: String(fields.ergMaterialName || ""),
+        ergUnNumber: String(fields.ergUnNumber || ""),
+        ergGuideNumber: String(fields.ergGuideNumber || ""),
+        ergSpillSize: String(fields.ergSpillSize || "small"),
+        ergTimeOfDay: String(fields.ergTimeOfDay || "day"),
+        ergTransportContainer: String(fields.ergTransportContainer || ""),
+        ergWindBucket: String(fields.ergWindBucket || ""),
+        ergWindBucketMode: String(fields.ergWindBucketMode || (fields.ergWindBucket ? fields.ergWindBucket : "auto"))
       }
     };
   }
@@ -2017,6 +2063,23 @@
     renderMapStyleTray();
   }
 
+  function normalizeErgLookupKey(value) {
+    return String(value || "")
+      .toLowerCase()
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function populateErgMaterialOptions() {
+    if (!elements.isolationErgMaterialList) return;
+    elements.isolationErgMaterialList.innerHTML = "";
+    state.ergCatalog.materials.forEach((material) => {
+      const option = document.createElement("option");
+      option.value = `${material.displayName} (UN${material.unNumber})`;
+      elements.isolationErgMaterialList.appendChild(option);
+    });
+  }
+
   function convertDistanceToMeters(value, unit) {
     const numeric = Math.max(0, Number(value) || 0);
     return unit === "ft" ? numeric * 0.3048 : numeric;
@@ -2025,6 +2088,127 @@
   function convertMetersToDistance(valueMeters, unit) {
     const numeric = Math.max(0, Number(valueMeters) || 0);
     return unit === "ft" ? numeric / 0.3048 : numeric;
+  }
+
+  function formatErgDistance(valueMeters, unit = "ft") {
+    const value = convertMetersToDistance(valueMeters, unit);
+    return `${Math.round(value)} ${unit}`;
+  }
+
+  function resolveErgWindBucketFromMph(value) {
+    const mph = Number(value);
+    if (!Number.isFinite(mph)) return "";
+    if (mph < 6) return "low";
+    if (mph < 12) return "moderate";
+    return "high";
+  }
+
+  function formatErgWindBucketLabel(value) {
+    if (value === "low") return "Low";
+    if (value === "moderate") return "Moderate";
+    if (value === "high") return "High";
+    return "Auto";
+  }
+
+  function resolveErgMaterialFromInput(value) {
+    const key = normalizeErgLookupKey(value);
+    if (!key) return null;
+    const direct = state.ergCatalog.lookup.get(key);
+    if (direct) return direct;
+    return state.ergCatalog.materials.find((material) => {
+      const names = [material.displayName, ...(material.materialNames || []), material.unNumber ? `un${material.unNumber}` : ""];
+      return names.some((name) => normalizeErgLookupKey(name).includes(key));
+    }) || null;
+  }
+
+  function getSelectedErgMaterial() {
+    return resolveErgMaterialFromInput(elements.isolationErgMaterialInput?.value);
+  }
+
+  function getCurrentIsolationUnit() {
+    return elements.distanceUnitSelect?.value === "m" ? "m" : "ft";
+  }
+
+  function setIsolationDistanceInputs(initialMeters, evacMeters, unit = getCurrentIsolationUnit()) {
+    if (elements.isolationDistanceInput) {
+      elements.isolationDistanceInput.value = String(Math.round(convertMetersToDistance(initialMeters, unit)));
+    }
+    if (elements.evacuationDistanceInput) {
+      elements.evacuationDistanceInput.value = String(Math.round(convertMetersToDistance(evacMeters, unit)));
+    }
+  }
+
+  function getIsolationWeatherMphForAuto() {
+    const mph = Number(state.weatherData?.windSpeedMph);
+    return Number.isFinite(mph) ? mph : null;
+  }
+
+  function resolveErgAutoDistances(material, options = {}) {
+    if (!material) {
+      return { mode: "manual", error: "", material: null };
+    }
+    const spillSize = options.spillSize === "large" ? "large" : "small";
+    const timeOfDay = options.timeOfDay === "night" ? "night" : "day";
+    const selectedContainer = String(options.transportContainer || "").trim();
+    const windBucketMode = options.windBucketMode || "auto";
+    if (spillSize === "small") {
+      if (!material.smallSpill?.initialIsolationMeters || !material.smallSpill?.protectiveAction?.[`${timeOfDay}Meters`]) {
+        return { mode: "erg", material, error: "This ERG entry does not include small-spill distances." };
+      }
+      return {
+        mode: "erg",
+        material,
+        spillSize,
+        timeOfDay,
+        initialMeters: Number(material.smallSpill.initialIsolationMeters),
+        evacMeters: Number(material.smallSpill.protectiveAction[`${timeOfDay}Meters`]),
+        windBucket: "",
+        transportContainer: "",
+        windBucketMode
+      };
+    }
+    if (Array.isArray(material.largeSpillOptions) && material.largeSpillOptions.length) {
+      const option = material.largeSpillOptions.find((item) => item.transportContainer === selectedContainer) || material.largeSpillOptions[0];
+      const weatherBucket = resolveErgWindBucketFromMph(options.weatherMph);
+      const windBucket = windBucketMode === "auto" ? weatherBucket : windBucketMode;
+      if (!windBucket || !ERG_WIND_BUCKETS.includes(windBucket)) {
+        return {
+          mode: "erg",
+          material,
+          spillSize,
+          timeOfDay,
+          transportContainer: option?.transportContainer || "",
+          windBucket: "",
+          windBucketMode,
+          error: "Select a wind bucket for this large-spill ERG entry."
+        };
+      }
+      return {
+        mode: "erg",
+        material,
+        spillSize,
+        timeOfDay,
+        transportContainer: option.transportContainer,
+        windBucket,
+        windBucketMode,
+        initialMeters: Number(option.initialIsolationMeters),
+        evacMeters: Number(option.protectiveAction?.[timeOfDay]?.[`${windBucket}Meters`])
+      };
+    }
+    if (!material.largeSpill?.initialIsolationMeters || !material.largeSpill?.protectiveAction?.[`${timeOfDay}Meters`]) {
+      return { mode: "erg", material, spillSize, timeOfDay, error: "This ERG entry does not include large-spill distances." };
+    }
+    return {
+      mode: "erg",
+      material,
+      spillSize,
+      timeOfDay,
+      transportContainer: "",
+      windBucket: "",
+      windBucketMode,
+      initialMeters: Number(material.largeSpill.initialIsolationMeters),
+      evacMeters: Number(material.largeSpill.protectiveAction[`${timeOfDay}Meters`])
+    };
   }
 
   function destinationPoint(lat, lng, bearingDeg, distanceMeters) {
@@ -2075,8 +2259,87 @@
       lastWindUpdatedAt: config.lastWindUpdatedAt || "",
       windSource: config.windSource || (config.useLiveWind && !config.manualOverride ? "live" : "manual"),
       spillLat: roundCoord(spillLatLng.lat),
-      spillLng: roundCoord(spillLatLng.lng)
+      spillLng: roundCoord(spillLatLng.lng),
+      ergSource: config.ergSource || "manual",
+      ergMaterialName: config.ergMaterialName || "",
+      ergUnNumber: config.ergUnNumber || "",
+      ergGuideNumber: config.ergGuideNumber || "",
+      ergSpillSize: config.ergSpillSize || "",
+      ergTimeOfDay: config.ergTimeOfDay || "",
+      ergTransportContainer: config.ergTransportContainer || "",
+      ergWindBucket: config.ergWindBucket || "",
+      ergWindBucketMode: config.ergWindBucketMode || ""
     };
+  }
+
+  function populateIsolationTransportContainerOptions(options, selectedValue = "") {
+    if (!elements.isolationTransportContainerSelect) return;
+    elements.isolationTransportContainerSelect.innerHTML = "";
+    options.forEach((option) => {
+      const optionEl = document.createElement("option");
+      optionEl.value = option.transportContainer;
+      optionEl.textContent = option.transportContainer;
+      elements.isolationTransportContainerSelect.appendChild(optionEl);
+    });
+    if (options.length) {
+      elements.isolationTransportContainerSelect.value = options.some((option) => option.transportContainer === selectedValue)
+        ? selectedValue
+        : options[0].transportContainer;
+    }
+  }
+
+  function renderIsolationErgControls({ autofill = true } = {}) {
+    const material = getSelectedErgMaterial();
+    const spillSize = elements.isolationSpillSizeSelect?.value === "large" ? "large" : "small";
+    const timeOfDay = elements.isolationTimeOfDaySelect?.value === "night" ? "night" : "day";
+    const weatherMph = getIsolationWeatherMphForAuto();
+    const containerOptions = Array.isArray(material?.largeSpillOptions) ? material.largeSpillOptions : [];
+    const needsContainer = Boolean(material && spillSize === "large" && containerOptions.length);
+    if (elements.isolationTransportContainerField) {
+      elements.isolationTransportContainerField.classList.toggle("hidden", !needsContainer);
+    }
+    if (needsContainer) {
+      populateIsolationTransportContainerOptions(containerOptions, elements.isolationTransportContainerSelect?.value || state.isolationEditContext?.config?.ergTransportContainer || "");
+    }
+    const showWindBucket = needsContainer;
+    if (elements.isolationWindBucketField) {
+      elements.isolationWindBucketField.classList.toggle("hidden", !showWindBucket);
+    }
+    const windBucketMode = showWindBucket
+      ? (ERG_WIND_BUCKETS.includes(elements.isolationWindBucketSelect?.value) ? elements.isolationWindBucketSelect.value : "auto")
+      : "";
+    const resolved = resolveErgAutoDistances(material, {
+      spillSize,
+      timeOfDay,
+      transportContainer: elements.isolationTransportContainerSelect?.value || "",
+      windBucketMode,
+      weatherMph
+    });
+    if (autofill && resolved.initialMeters > 0 && resolved.evacMeters > 0) {
+      setIsolationDistanceInputs(resolved.initialMeters, resolved.evacMeters, getCurrentIsolationUnit());
+    }
+    if (!elements.isolationErgHint) return;
+    if (!material) {
+      elements.isolationErgHint.textContent = "Leave the ERG material blank to enter isolation distances manually.";
+      return;
+    }
+    if (resolved.error) {
+      elements.isolationErgHint.textContent = resolved.error;
+      return;
+    }
+    const bits = [
+      `${material.displayName} · Guide ${material.guideNumber || "N/A"} · UN${material.unNumber}`
+    ];
+    if (spillSize === "large" && resolved.transportContainer) {
+      bits.push(resolved.transportContainer);
+    }
+    bits.push(`${timeOfDay === "night" ? "Night" : "Day"} distances`);
+    bits.push(`Isolation ${formatErgDistance(resolved.initialMeters, getCurrentIsolationUnit())}`);
+    bits.push(`Protective ${formatErgDistance(resolved.evacMeters, getCurrentIsolationUnit())}`);
+    if (spillSize === "large" && resolved.windBucket) {
+      bits.push(`Wind ${formatErgWindBucketLabel(resolved.windBucket)}${weatherMph != null && windBucketMode === "auto" ? ` (${Math.round(weatherMph)} mph)` : ""}`);
+    }
+    elements.isolationErgHint.textContent = bits.join(" · ");
   }
 
   function renderIsolationWindControls() {
@@ -2100,7 +2363,7 @@
       : `0 = from North, 90 = from East. Zone extends downwind away from the spill.${updateNote}`;
   }
 
-  async function fetchWindDirectionForLatLng(latlng) {
+  async function fetchWeatherSnapshotForLatLng(latlng) {
     const response = await fetch(buildWeatherUrl({
       lat: latlng.lat,
       lng: latlng.lng,
@@ -2113,10 +2376,120 @@
     const payload = await response.json();
     const current = payload?.current;
     const windDirection = Number(current?.wind_direction_10m);
+    const windSpeedMph = Number(current?.wind_speed_10m);
     if (!Number.isFinite(windDirection)) {
       throw new Error("Weather service returned no wind direction.");
     }
-    return ((windDirection % 360) + 360) % 360;
+    return {
+      windDirection: ((windDirection % 360) + 360) % 360,
+      windSpeedMph: Number.isFinite(windSpeedMph) ? windSpeedMph : null,
+      updatedAt: current?.time || new Date().toISOString()
+    };
+  }
+
+  async function fetchWindDirectionForLatLng(latlng) {
+    const snapshot = await fetchWeatherSnapshotForLatLng(latlng);
+    return snapshot.windDirection;
+  }
+
+  function getIsolationConfigFromModal() {
+    const unit = getCurrentIsolationUnit();
+    const initialMeters = convertDistanceToMeters(elements.isolationDistanceInput.value, unit);
+    const evacMeters = convertDistanceToMeters(elements.evacuationDistanceInput.value, unit);
+    const useLiveWind = Boolean(elements.isolationUseLiveWindToggle?.checked);
+    const manualOverride = Boolean(elements.isolationManualOverrideToggle?.checked);
+    const windFrom = ((Number(elements.windDirectionInput.value) || 270) % 360 + 360) % 360;
+    const material = getSelectedErgMaterial();
+    const spillSize = elements.isolationSpillSizeSelect?.value === "large" ? "large" : "small";
+    const timeOfDay = elements.isolationTimeOfDaySelect?.value === "night" ? "night" : "day";
+    const windBucketMode = ERG_WIND_BUCKETS.includes(elements.isolationWindBucketSelect?.value) ? elements.isolationWindBucketSelect.value : "auto";
+    const ergResolved = resolveErgAutoDistances(material, {
+      spillSize,
+      timeOfDay,
+      transportContainer: elements.isolationTransportContainerSelect?.value || "",
+      windBucketMode,
+      weatherMph: getIsolationWeatherMphForAuto()
+    });
+    return {
+      unit,
+      initialMeters,
+      evacMeters,
+      windFrom,
+      useLiveWind,
+      manualOverride,
+      lastWindUpdatedAt: state.isolationEditContext?.config?.lastWindUpdatedAt || "",
+      windSource: state.isolationEditContext?.config?.windSource || "",
+      ergSource: material ? "erg" : "manual",
+      ergMaterialName: material?.displayName || "",
+      ergUnNumber: material?.unNumber || "",
+      ergGuideNumber: material?.guideNumber || "",
+      ergSpillSize: material ? spillSize : "",
+      ergTimeOfDay: material ? timeOfDay : "",
+      ergTransportContainer: material ? (ergResolved.transportContainer || elements.isolationTransportContainerSelect?.value || "") : "",
+      ergWindBucket: material ? (ergResolved.windBucket || "") : "",
+      ergWindBucketMode: material ? windBucketMode : "",
+      ergResolved
+    };
+  }
+
+  async function resolveIsolationPlacementConfig(config, spillLatLng) {
+    let resolvedConfig = { ...config };
+    let weatherSnapshot = null;
+    const needsErgWeatherBucket = config.ergSource === "erg"
+      && config.ergSpillSize === "large"
+      && config.ergWindBucketMode === "auto"
+      && Boolean(config.ergMaterialName);
+    if ((config.useLiveWind && !config.manualOverride) || needsErgWeatherBucket) {
+      try {
+        weatherSnapshot = await fetchWeatherSnapshotForLatLng(spillLatLng);
+      } catch (error) {
+        if (needsErgWeatherBucket && !Number.isFinite(getIsolationWeatherMphForAuto())) {
+          throw new Error(`Live weather unavailable at the spill point. Choose a wind bucket manually. ${formatError(error)}`);
+        }
+        if (config.useLiveWind && !config.manualOverride) {
+          setStatus(`Live wind unavailable. Using manual wind setting. ${formatError(error)}`);
+        }
+      }
+    }
+    if (config.ergSource === "erg") {
+      const material = resolveErgMaterialFromInput(config.ergMaterialName || config.ergUnNumber);
+      const ergResolved = resolveErgAutoDistances(material, {
+        spillSize: config.ergSpillSize,
+        timeOfDay: config.ergTimeOfDay,
+        transportContainer: config.ergTransportContainer,
+        windBucketMode: config.ergWindBucketMode || "auto",
+        weatherMph: weatherSnapshot?.windSpeedMph ?? getIsolationWeatherMphForAuto()
+      });
+      if (ergResolved.error) {
+        throw new Error(ergResolved.error);
+      }
+      resolvedConfig = {
+        ...resolvedConfig,
+        initialMeters: ergResolved.initialMeters,
+        evacMeters: ergResolved.evacMeters,
+        ergMaterialName: material?.displayName || config.ergMaterialName || "",
+        ergUnNumber: material?.unNumber || config.ergUnNumber || "",
+        ergGuideNumber: material?.guideNumber || config.ergGuideNumber || "",
+        ergTransportContainer: ergResolved.transportContainer || config.ergTransportContainer || "",
+        ergWindBucket: ergResolved.windBucket || "",
+        ergWindBucketMode: config.ergWindBucketMode || ""
+      };
+    }
+    if (config.useLiveWind && !config.manualOverride && weatherSnapshot?.windDirection != null) {
+      resolvedConfig = {
+        ...resolvedConfig,
+        windFrom: weatherSnapshot.windDirection,
+        lastWindUpdatedAt: weatherSnapshot.updatedAt || new Date().toISOString(),
+        windSource: "live"
+      };
+    } else if (!config.useLiveWind || config.manualOverride) {
+      resolvedConfig = {
+        ...resolvedConfig,
+        lastWindUpdatedAt: config.lastWindUpdatedAt || new Date().toISOString(),
+        windSource: "manual"
+      };
+    }
+    return resolvedConfig;
   }
 
   function openIsolationToolModal() {
@@ -2135,14 +2508,40 @@
       useLiveWind: true,
       manualOverride: false,
       lastWindUpdatedAt: "",
-      windSource: ""
+      windSource: "",
+      ergSource: "manual",
+      ergMaterialName: "",
+      ergUnNumber: "",
+      ergGuideNumber: "",
+      ergSpillSize: "small",
+      ergTimeOfDay: "day",
+      ergTransportContainer: "",
+      ergWindBucket: "",
+      ergWindBucketMode: "auto"
     };
     elements.distanceUnitSelect.value = activeConfig.unit;
     elements.isolationDistanceInput.value = String(Math.round(convertMetersToDistance(activeConfig.initialMeters, activeConfig.unit)));
     elements.evacuationDistanceInput.value = String(Math.round(convertMetersToDistance(activeConfig.evacMeters, activeConfig.unit)));
     elements.windDirectionInput.value = String(Math.round(activeConfig.windFrom));
+    if (elements.isolationErgMaterialInput) {
+      elements.isolationErgMaterialInput.value = activeConfig.ergMaterialName
+        ? activeConfig.ergUnNumber ? `${activeConfig.ergMaterialName} (UN${activeConfig.ergUnNumber})` : activeConfig.ergMaterialName
+        : "";
+    }
+    if (elements.isolationSpillSizeSelect) elements.isolationSpillSizeSelect.value = activeConfig.ergSpillSize === "large" ? "large" : "small";
+    if (elements.isolationTimeOfDaySelect) elements.isolationTimeOfDaySelect.value = activeConfig.ergTimeOfDay === "night" ? "night" : "day";
+    if (elements.isolationWindBucketSelect) {
+      elements.isolationWindBucketSelect.value = ERG_WIND_BUCKETS.includes(activeConfig.ergWindBucketMode)
+        ? activeConfig.ergWindBucketMode
+        : "auto";
+    }
     if (elements.isolationUseLiveWindToggle) elements.isolationUseLiveWindToggle.checked = activeConfig.useLiveWind !== false;
     if (elements.isolationManualOverrideToggle) elements.isolationManualOverrideToggle.checked = Boolean(activeConfig.manualOverride);
+    renderIsolationErgControls({ autofill: Boolean(activeConfig.ergSource === "erg") });
+    if (activeConfig.ergTransportContainer && elements.isolationTransportContainerSelect) {
+      elements.isolationTransportContainerSelect.value = activeConfig.ergTransportContainer;
+      renderIsolationErgControls({ autofill: Boolean(activeConfig.ergSource === "erg") });
+    }
     renderIsolationWindControls();
     elements.isolationToolModal.classList.remove("hidden");
   }
@@ -2157,45 +2556,35 @@
       setStatus("Only active editors can use the Isolation Tool.");
       return;
     }
-    const unit = elements.distanceUnitSelect.value === "m" ? "m" : "ft";
-    const initialMeters = convertDistanceToMeters(elements.isolationDistanceInput.value, unit);
-    const evacMeters = convertDistanceToMeters(elements.evacuationDistanceInput.value, unit);
-    const useLiveWind = Boolean(elements.isolationUseLiveWindToggle?.checked);
-    const manualOverride = Boolean(elements.isolationManualOverrideToggle?.checked);
-    const windFrom = ((Number(elements.windDirectionInput.value) || 270) % 360 + 360) % 360;
+    const config = getIsolationConfigFromModal();
+    const { unit, initialMeters, evacMeters, useLiveWind, manualOverride, windFrom, ergResolved } = config;
     if (initialMeters <= 0 || evacMeters <= 0) {
       setStatus("Isolation and evacuation distances must be greater than zero.");
       return;
     }
-    const config = {
-      unit,
-      initialMeters,
-      evacMeters,
-      windFrom,
-      useLiveWind,
-      manualOverride,
-      lastWindUpdatedAt: state.isolationEditContext?.config?.lastWindUpdatedAt || "",
-      windSource: state.isolationEditContext?.config?.windSource || ""
-    };
+    if (config.ergSource === "erg" && ergResolved?.error) {
+      setStatus(ergResolved.error);
+      return;
+    }
     if (state.isolationEditContext?.spillLatLng) {
-      let resolvedConfig = config;
       if (config.useLiveWind && !config.manualOverride) {
         try {
-          resolvedConfig = {
-            ...config,
-            windFrom: await fetchWindDirectionForLatLng(state.isolationEditContext.spillLatLng),
-            lastWindUpdatedAt: new Date().toISOString(),
-            windSource: "live"
-          };
+          const resolvedConfig = await resolveIsolationPlacementConfig(config, state.isolationEditContext.spillLatLng);
+          void placeIsolationZonesAt(state.isolationEditContext.spillLatLng, resolvedConfig, state.isolationEditContext);
+          closeIsolationToolModal();
+          state.isolationEditContext = null;
+          return;
         } catch (error) {
-          setStatus(`Live wind unavailable. Using manual wind setting. ${formatError(error)}`);
+          setStatus(formatError(error));
+          return;
         }
-      } else {
-        resolvedConfig = {
-          ...config,
-          lastWindUpdatedAt: config.lastWindUpdatedAt || new Date().toISOString(),
-          windSource: "manual"
-        };
+      }
+      let resolvedConfig;
+      try {
+        resolvedConfig = await resolveIsolationPlacementConfig(config, state.isolationEditContext.spillLatLng);
+      } catch (error) {
+        setStatus(formatError(error));
+        return;
       }
       void placeIsolationZonesAt(state.isolationEditContext.spillLatLng, resolvedConfig, state.isolationEditContext);
       closeIsolationToolModal();
@@ -3744,6 +4133,17 @@
       appendMetaRow(elements.selectedObjectMeta, "Tool", "Isolation Tool");
       appendMetaRow(elements.selectedObjectMeta, "Distance", `${Math.round(convertMetersToDistance(Number(object.fields?.initialMeters || 0), object.fields?.distanceUnit || "ft"))} ${object.fields?.distanceUnit || "ft"}`);
       appendMetaRow(elements.selectedObjectMeta, "Downwind", `${Math.round(convertMetersToDistance(Number(object.fields?.evacMeters || 0), object.fields?.distanceUnit || "ft"))} ${object.fields?.distanceUnit || "ft"}`);
+      if (object.fields?.ergMaterialName) {
+        appendMetaRow(elements.selectedObjectMeta, "ERG Material", object.fields.ergMaterialName);
+        appendMetaRow(elements.selectedObjectMeta, "UN Number", object.fields?.ergUnNumber ? `UN${object.fields.ergUnNumber}` : "Not set");
+        appendMetaRow(elements.selectedObjectMeta, "Spill", `${object.fields?.ergSpillSize === "large" ? "Large" : "Small"} · ${object.fields?.ergTimeOfDay === "night" ? "Night" : "Day"}`);
+        if (object.fields?.ergTransportContainer) {
+          appendMetaRow(elements.selectedObjectMeta, "Container", object.fields.ergTransportContainer);
+        }
+        if (object.fields?.ergWindBucket) {
+          appendMetaRow(elements.selectedObjectMeta, "ERG Wind", formatErgWindBucketLabel(object.fields.ergWindBucket));
+        }
+      }
       appendMetaRow(elements.selectedObjectMeta, "Wind From", `${Math.round(Number(object.fields?.windFrom || 0))}°`);
       appendMetaRow(elements.selectedObjectMeta, "Wind Source", object.fields?.windSource === "live" ? "Live Weather" : "Manual");
       appendMetaRow(elements.selectedObjectMeta, "Last Wind Update", object.fields?.lastWindUpdatedAt ? formatDateTime(object.fields.lastWindUpdatedAt) : "Not yet updated");
@@ -4005,27 +4405,16 @@
     let config = state.pendingIsolationConfig;
     state.pendingIsolationConfig = null;
     try {
-      if (config.useLiveWind && !config.manualOverride) {
-        try {
-          config = {
-            ...config,
-            windFrom: await fetchWindDirectionForLatLng(spillPoint),
-            lastWindUpdatedAt: new Date().toISOString(),
-            windSource: "live"
-          };
-          setStatus("Live wind applied at spill point.");
-        } catch (error) {
-          setStatus(`Live wind unavailable. Using manual wind setting. ${formatError(error)}`);
-        }
-      } else {
-        config = {
-          ...config,
-          lastWindUpdatedAt: config.lastWindUpdatedAt || new Date().toISOString(),
-          windSource: "manual"
-        };
-      }
+      config = await resolveIsolationPlacementConfig(config, spillPoint);
       await placeIsolationZonesAt(spillPoint, config);
+      if (config.windSource === "live") {
+        setStatus("Live wind applied at spill point.");
+      }
     } catch (error) {
+      if (config?.ergSource === "erg" && config?.ergSpillSize === "large" && config?.ergWindBucketMode === "auto") {
+        state.pendingIsolationConfig = config;
+        openIsolationToolModal();
+      }
       setStatus(formatError(error));
     }
   }

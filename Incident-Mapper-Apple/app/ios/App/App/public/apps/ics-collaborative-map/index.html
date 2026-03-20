@@ -580,6 +580,41 @@
         <button id="closeIsolationToolBtn" class="secondary" type="button">Close</button>
       </div>
       <label class="isolation-field">
+        <span class="isolation-label">Chemical / Material</span>
+        <input id="isolationErgMaterialInput" type="text" list="isolationErgMaterialList" placeholder="Search ERG material or UN number" autocomplete="off" />
+      </label>
+      <datalist id="isolationErgMaterialList"></datalist>
+      <div class="isolation-grid">
+        <label class="isolation-field">
+          <span class="isolation-label">Spill Size</span>
+          <select id="isolationSpillSizeSelect">
+            <option value="small">Small Spill</option>
+            <option value="large">Large Spill</option>
+          </select>
+        </label>
+        <label class="isolation-field">
+          <span class="isolation-label">Day / Night</span>
+          <select id="isolationTimeOfDaySelect">
+            <option value="day">Day</option>
+            <option value="night">Night</option>
+          </select>
+        </label>
+      </div>
+      <label id="isolationTransportContainerField" class="isolation-field hidden">
+        <span class="isolation-label">Transport Container</span>
+        <select id="isolationTransportContainerSelect"></select>
+      </label>
+      <label id="isolationWindBucketField" class="isolation-field hidden">
+        <span class="isolation-label">Wind Bucket</span>
+        <select id="isolationWindBucketSelect">
+          <option value="auto">Auto from Weather</option>
+          <option value="low">Low (&lt; 6 mph)</option>
+          <option value="moderate">Moderate (6 to &lt; 12 mph)</option>
+          <option value="high">High (&ge; 12 mph)</option>
+        </select>
+      </label>
+      <div id="isolationErgHint" class="muted">Leave the ERG material blank to enter isolation distances manually.</div>
+      <label class="isolation-field">
         <span class="isolation-label">Initial Isolation Distance</span>
         <input id="isolationDistanceInput" type="number" min="0" step="1" value="100" />
       </label>
@@ -646,6 +681,7 @@
   <script src="../../exportPdfHelper.js"></script>
   <script src="../../staging_rates.js"></script>
   <script src="./icon-manifest.js"></script>
+  <script src="./erg-isolation-data.js"></script>
   <script src="./app.js"></script>
 </body>
 </html>

@@ -1055,6 +1055,11 @@ button.danger { background: rgba(178,58,72,0.14); color: #f4c9ce; border-color: 
 .isolation-modal-card {
   width: min(720px, 100%);
 }
+.isolation-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
 .isolation-field {
   display: grid;
   gap: 6px;
@@ -1082,6 +1087,11 @@ button.danger { background: rgba(178,58,72,0.14); color: #f4c9ce; border-color: 
 }
 .isolation-field.hidden {
   display: none;
+}
+@media (max-width: 720px) {
+  .isolation-grid {
+    grid-template-columns: 1fr;
+  }
 }
 .export-option-group {
   display: grid;
