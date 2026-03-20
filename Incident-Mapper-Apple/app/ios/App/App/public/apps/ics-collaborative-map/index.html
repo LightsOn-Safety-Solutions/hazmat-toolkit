@@ -28,6 +28,7 @@
           <button id="endSessionBtn" class="danger hidden" type="button">End Session</button>
         </div>
         <div class="topbar-action-row topbar-action-row-secondary">
+          <button id="superAdminWorkspaceBtn" class="secondary hidden" type="button">Super Admin</button>
           <button id="ics202WorkspaceBtn" class="secondary hidden" type="button">ICS 202</button>
           <button id="isolationToolBtn" class="secondary hidden" type="button">Isolation Tool</button>
           <button id="guidedModeBtn" class="secondary hidden" type="button">10-Minute IC Mode</button>
@@ -432,6 +433,91 @@
         </aside>
       </section>
     </main>
+
+    <section id="superAdminWorkspace" class="super-admin-workspace hidden" aria-hidden="true">
+      <div class="super-admin-topbar">
+        <div class="super-admin-topbar-copy">
+          <div class="eyebrow">Hazmat ToolK.I.T.</div>
+          <h2>Super Admin Workspace</h2>
+          <p>Review licensed departments, users, and mutual-aid access from one dedicated control surface.</p>
+        </div>
+        <div class="super-admin-topbar-actions">
+          <button id="superAdminRefreshBtn" class="secondary" type="button">Refresh</button>
+          <button id="superAdminBackBtn" class="primary" type="button">Back to Workspace</button>
+        </div>
+      </div>
+      <div class="super-admin-body">
+        <aside class="super-admin-nav">
+          <button id="superAdminTabOverview" class="secondary active" type="button">Overview</button>
+          <button id="superAdminTabOrganizations" class="secondary" type="button">Departments</button>
+          <button id="superAdminTabUsers" class="secondary" type="button">Users</button>
+          <button id="superAdminTabAccess" class="secondary" type="button">Access</button>
+        </aside>
+        <div class="super-admin-content">
+          <section id="superAdminOverviewPanel" class="super-admin-panel">
+            <div id="superAdminOverviewStats" class="super-admin-stat-grid"></div>
+            <div class="panel compact">
+              <h3>Recent Departments</h3>
+              <div id="superAdminRecentOrganizations" class="session-list"></div>
+            </div>
+          </section>
+
+          <section id="superAdminOrganizationsPanel" class="super-admin-panel hidden">
+            <div class="panel compact">
+              <h3>Provision Department</h3>
+              <div class="super-admin-form-grid">
+                <label class="field-block">
+                  Department / Station
+                  <input id="superAdminOrgNameInput" type="text" placeholder="The Woodlands Station 2" />
+                </label>
+                <label class="field-block">
+                  County
+                  <input id="superAdminCountyNameInput" type="text" placeholder="Montgomery County" />
+                </label>
+                <label class="field-block">
+                  Seat Limit
+                  <input id="superAdminSeatLimitInput" type="number" min="0" placeholder="12" />
+                </label>
+                <label class="field-block">
+                  License Status
+                  <select id="superAdminLicenseStatusSelect">
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </label>
+                <label class="field-block">
+                  First Admin Name
+                  <input id="superAdminFirstAdminNameInput" type="text" placeholder="Station admin name" />
+                </label>
+                <label class="field-block">
+                  First Admin Email
+                  <input id="superAdminFirstAdminEmailInput" type="email" placeholder="admin@agency.org" />
+                </label>
+              </div>
+              <button id="superAdminCreateOrgBtn" class="primary" type="button">Create Department License</button>
+            </div>
+            <div class="panel compact">
+              <h3>Departments</h3>
+              <div id="superAdminOrganizationsList" class="session-list"></div>
+            </div>
+          </section>
+
+          <section id="superAdminUsersPanel" class="super-admin-panel hidden">
+            <div class="panel compact">
+              <h3>All Licensed Users</h3>
+              <div id="superAdminUsersList" class="session-list"></div>
+            </div>
+          </section>
+
+          <section id="superAdminAccessPanel" class="super-admin-panel hidden">
+            <div class="panel compact">
+              <h3>Mutual-Aid Session Access</h3>
+              <div id="superAdminAccessList" class="session-list"></div>
+            </div>
+          </section>
+        </div>
+      </div>
+    </section>
 
     <section id="ics202Workspace" class="ics202-workspace hidden" aria-hidden="true">
       <div class="ics202-topbar">

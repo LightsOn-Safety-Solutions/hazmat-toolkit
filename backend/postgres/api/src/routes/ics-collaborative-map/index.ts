@@ -125,6 +125,29 @@ type UpdateOrganizationMemberBody = {
   isActive?: boolean;
 };
 
+type CreateSuperAdminOrganizationBody = {
+  organizationName?: string;
+  countyName?: string;
+  seatLimit?: number | string | null;
+  licenseStatus?: string;
+  firstAdminName?: string;
+  firstAdminEmail?: string;
+};
+
+type UpdateSuperAdminOrganizationBody = {
+  organizationName?: string;
+  countyName?: string | null;
+  seatLimit?: number | string | null;
+  licenseStatus?: string;
+};
+
+type UpdateSuperAdminUserBody = {
+  displayName?: string;
+  isAdmin?: boolean;
+  isActive?: boolean;
+  organizationId?: string;
+};
+
 type LockBody = {
   baseVersion?: number;
 };
@@ -163,6 +186,46 @@ type CollabOrganizationRow = {
   county_id: string | null;
   county_name: string | null;
   created_at: string;
+  updated_at: string;
+};
+
+type CollabSuperAdminRow = {
+  id: string;
+  trainer_ref: string;
+  email: string;
+  display_name: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+type SuperAdminOrganizationRow = CollabOrganizationRow & {
+  member_count: number;
+  admin_count: number;
+  seats_used: number;
+  session_count: number;
+};
+
+type SuperAdminOverviewRow = {
+  organization_count: string;
+  active_license_count: string;
+  county_count: string;
+  user_count: string;
+  active_user_count: string;
+  shared_session_count: string;
+  active_session_count: string;
+};
+
+type SuperAdminSessionAccessRow = {
+  session_id: string;
+  incident_name: string;
+  session_status: SessionStatus;
+  owner_organization_id: string | null;
+  owner_organization_name: string | null;
+  shared_organization_id: string;
+  shared_organization_name: string;
+  shared_county_name: string | null;
+  operational_period_end: string;
   updated_at: string;
 };
 
@@ -264,6 +327,213 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
       });
     } catch (error) {
       return sendTrainerError(reply, request, error, 'Failed to fetch department license context.');
+    }
+  });
+
+  app.get('/v1/ics-collab/super-admin/context', async (request, reply) => {
+    try {
+      const trainer = await requireTrainerIdentity(app, request.headers);
+      const superAdmin = await requireSuperAdmin(app.pg, trainer);
+      return reply.send({
+        profile: mapSuperAdmin(superAdmin)
+      });
+    } catch (error) {
+      return sendTrainerError(reply, request, error, 'Failed to fetch super admin context.');
+    }
+  });
+
+  app.get('/v1/ics-collab/super-admin/overview', async (request, reply) => {
+    try {
+      const trainer = await requireTrainerIdentity(app, request.headers);
+      const superAdmin = await requireSuperAdmin(app.pg, trainer);
+      const [overview, organizations] = await Promise.all([
+        fetchSuperAdminOverview(app.pg),
+        listSuperAdminOrganizations(app.pg)
+      ]);
+      return reply.send({
+        profile: mapSuperAdmin(superAdmin),
+        counts: mapSuperAdminOverview(overview),
+        recentOrganizations: organizations.slice(0, 5).map(mapSuperAdminOrganization)
+      });
+    } catch (error) {
+      return sendTrainerError(reply, request, error, 'Failed to fetch super admin overview.');
+    }
+  });
+
+  app.get('/v1/ics-collab/super-admin/organizations', async (request, reply) => {
+    try {
+      const trainer = await requireTrainerIdentity(app, request.headers);
+      await requireSuperAdmin(app.pg, trainer);
+      const organizations = await listSuperAdminOrganizations(app.pg);
+      return reply.send(organizations.map(mapSuperAdminOrganization));
+    } catch (error) {
+      return sendTrainerError(reply, request, error, 'Failed to fetch organizations.');
+    }
+  });
+
+  app.post<{ Body: CreateSuperAdminOrganizationBody }>('/v1/ics-collab/super-admin/organizations', async (request, reply) => {
+    try {
+      const trainer = await requireTrainerIdentity(app, request.headers);
+      await requireSuperAdmin(app.pg, trainer);
+      const organizationName = normalizeRequiredText(request.body?.organizationName, 'organizationName');
+      const countyName = normalizeOptionalText(request.body?.countyName);
+      const firstAdminName = normalizeOptionalText(request.body?.firstAdminName);
+      const firstAdminEmail = normalizeEmail(request.body?.firstAdminEmail);
+      const licenseStatus = normalizeLicenseStatus(request.body?.licenseStatus) ?? 'active';
+      const seatLimit = normalizeSeatLimit(request.body?.seatLimit);
+      if (!organizationName) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'organizationName is required.' });
+      }
+      if ((firstAdminName && !firstAdminEmail) || (!firstAdminName && firstAdminEmail)) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'Provide both firstAdminName and firstAdminEmail, or leave both blank.' });
+      }
+      if (firstAdminEmail) {
+        const existingMember = await fetchLicensedCollabMembership(app.pg, firstAdminEmail);
+        if (existingMember) {
+          return reply.code(409).send({ error: 'MEMBER_EXISTS', message: 'That first-admin email is already assigned to a department.' });
+        }
+      }
+      const countyId = countyName ? await upsertCounty(app.pg, countyName) : null;
+      const organization = await createOrganization(app.pg, {
+        organizationName,
+        countyId,
+        licenseStatus,
+        seatLimit
+      });
+      if (!organization) {
+        return reply.code(500).send({ error: 'CREATE_FAILED', message: 'Unable to create organization.' });
+      }
+      let firstAdmin = null;
+      if (firstAdminName && firstAdminEmail) {
+        firstAdmin = await upsertOrganizationMember(app.pg, {
+          organizationId: organization.id,
+          trainerRef: firstAdminEmail,
+          email: firstAdminEmail,
+          displayName: firstAdminName,
+          isAdmin: true,
+          isActive: true
+        });
+      }
+      const fullOrganization = await fetchSuperAdminOrganizationByID(app.pg, organization.id);
+      return reply.code(201).send({
+        organization: fullOrganization ? mapSuperAdminOrganization(fullOrganization) : null,
+        firstAdmin: firstAdmin ? mapOrganizationRosterMember(firstAdmin) : null
+      });
+    } catch (error) {
+      return sendTrainerError(reply, request, error, 'Failed to create organization.');
+    }
+  });
+
+  app.patch<{ Params: { organizationId: string }; Body: UpdateSuperAdminOrganizationBody }>('/v1/ics-collab/super-admin/organizations/:organizationId', async (request, reply) => {
+    try {
+      const trainer = await requireTrainerIdentity(app, request.headers);
+      await requireSuperAdmin(app.pg, trainer);
+      const organizationId = normalizeUUID(request.params.organizationId);
+      if (!organizationId) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'Valid organizationId is required.' });
+      }
+      const existing = await fetchOrganizationByID(app.pg, organizationId);
+      if (!existing) {
+        return reply.code(404).send({ error: 'NOT_FOUND', message: 'Organization not found.' });
+      }
+      const nextOrganizationName = normalizeOptionalText(request.body?.organizationName) ?? existing.organization_name;
+      const requestedCountyName = request.body?.countyName === null ? null : normalizeOptionalText(request.body?.countyName ?? undefined);
+      const nextLicenseStatus = normalizeLicenseStatus(request.body?.licenseStatus) ?? existing.license_status;
+      const nextSeatLimit = request.body?.seatLimit === undefined
+        ? existing.seat_limit
+        : normalizeSeatLimit(request.body?.seatLimit);
+      if (!nextOrganizationName) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'organizationName is required.' });
+      }
+      if (nextSeatLimit != null) {
+        const activeCount = await countActiveOrganizationMembers(app.pg, organizationId);
+        if (activeCount > nextSeatLimit) {
+          return reply.code(409).send({ error: 'SEAT_LIMIT_TOO_LOW', message: 'Seat limit cannot be lower than the current active user count.' });
+        }
+      }
+      const countyId = requestedCountyName == null
+        ? null
+        : await upsertCounty(app.pg, requestedCountyName);
+      const updated = await updateOrganization(app.pg, {
+        organizationId,
+        organizationName: nextOrganizationName,
+        countyId,
+        licenseStatus: nextLicenseStatus,
+        seatLimit: nextSeatLimit
+      });
+      return reply.send({
+        organization: updated ? mapSuperAdminOrganization(updated) : null
+      });
+    } catch (error) {
+      return sendTrainerError(reply, request, error, 'Failed to update organization.');
+    }
+  });
+
+  app.get('/v1/ics-collab/super-admin/users', async (request, reply) => {
+    try {
+      const trainer = await requireTrainerIdentity(app, request.headers);
+      await requireSuperAdmin(app.pg, trainer);
+      const users = await listSuperAdminUsers(app.pg);
+      return reply.send(users.map(mapSuperAdminUser));
+    } catch (error) {
+      return sendTrainerError(reply, request, error, 'Failed to fetch super admin users.');
+    }
+  });
+
+  app.patch<{ Params: { memberId: string }; Body: UpdateSuperAdminUserBody }>('/v1/ics-collab/super-admin/users/:memberId', async (request, reply) => {
+    try {
+      const trainer = await requireTrainerIdentity(app, request.headers);
+      await requireSuperAdmin(app.pg, trainer);
+      const memberId = normalizeUUID(request.params.memberId);
+      if (!memberId) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'Valid memberId is required.' });
+      }
+      const existing = await fetchOrganizationMemberByID(app.pg, memberId);
+      if (!existing) {
+        return reply.code(404).send({ error: 'NOT_FOUND', message: 'User not found.' });
+      }
+      const nextOrganizationId = normalizeUUID(request.body?.organizationId ?? undefined) ?? existing.organization_id;
+      const nextDisplayName = normalizeOptionalText(request.body?.displayName) ?? existing.display_name;
+      const nextIsAdmin = typeof request.body?.isAdmin === 'boolean' ? request.body.isAdmin : existing.is_admin;
+      const nextIsActive = typeof request.body?.isActive === 'boolean' ? request.body.isActive : existing.is_active;
+      if (!nextDisplayName) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'displayName is required.' });
+      }
+      const organization = await fetchOrganizationByID(app.pg, nextOrganizationId);
+      if (!organization) {
+        return reply.code(404).send({ error: 'NOT_FOUND', message: 'Target organization not found.' });
+      }
+      const activatingSeat = (!existing.is_active && nextIsActive) || (existing.organization_id !== nextOrganizationId && nextIsActive);
+      if (activatingSeat && organization.seat_limit != null) {
+        const activeCount = await countActiveOrganizationMembers(app.pg, nextOrganizationId);
+        const occupiedSeat = existing.organization_id === nextOrganizationId && existing.is_active ? 1 : 0;
+        if (activeCount - occupiedSeat >= organization.seat_limit) {
+          return reply.code(409).send({ error: 'SEAT_LIMIT_REACHED', message: 'Seat limit reached for the target department license.' });
+        }
+      }
+      const updated = await updateOrganizationMemberAsSuperAdmin(app.pg, {
+        memberId,
+        organizationId: nextOrganizationId,
+        displayName: nextDisplayName,
+        isAdmin: nextIsAdmin,
+        isActive: nextIsActive
+      });
+      return reply.send({
+        user: updated ? mapSuperAdminUser(updated) : null
+      });
+    } catch (error) {
+      return sendTrainerError(reply, request, error, 'Failed to update super admin user.');
+    }
+  });
+
+  app.get('/v1/ics-collab/super-admin/access', async (request, reply) => {
+    try {
+      const trainer = await requireTrainerIdentity(app, request.headers);
+      await requireSuperAdmin(app.pg, trainer);
+      const access = await listSuperAdminSessionAccess(app.pg);
+      return reply.send(access.map(mapSuperAdminAccess));
+    } catch (error) {
+      return sendTrainerError(reply, request, error, 'Failed to fetch session access.');
     }
   });
 
@@ -1743,6 +2013,17 @@ function ensureOrganizationAdmin(membership: CollabOrgMembershipRow) {
   }
 }
 
+async function requireSuperAdmin(
+  pool: { query: PoolClient['query'] },
+  trainer: { trainerRef: string; displayName: string }
+) {
+  const superAdmin = await fetchSuperAdmin(pool, trainer.trainerRef);
+  if (!superAdmin || !superAdmin.is_active) {
+    throw new TrainerForbiddenError('Super admin access is required.');
+  }
+  return superAdmin;
+}
+
 async function nextSessionVersion(pool: { query: PoolClient['query'] }, sessionID: string) {
   const result = await pool.query<{ last_mutation_version: string }>(
     `
@@ -1890,6 +2171,31 @@ async function fetchLicensedCollabMembership(
   return result.rows[0] ?? null;
 }
 
+async function fetchSuperAdmin(
+  pool: { query: PoolClient['query'] },
+  trainerRef: string
+) {
+  const normalized = trainerRef.trim().toLowerCase();
+  const result = await pool.query<CollabSuperAdminRow>(
+    `
+      select
+        id::text as id,
+        trainer_ref,
+        email,
+        display_name,
+        is_active,
+        created_at,
+        updated_at
+      from collab_super_admins
+      where lower(trainer_ref) = $1
+         or lower(email) = $1
+      limit 1
+    `,
+    [normalized]
+  );
+  return result.rows[0] ?? null;
+}
+
 async function ensureOrganizationSessionAccess(
   pool: { query: PoolClient['query'] },
   session: CollabSessionRow,
@@ -1957,6 +2263,68 @@ async function countActiveOrganizationMembers(pool: { query: PoolClient['query']
     [organizationId]
   );
   return Number(result.rows[0]?.count ?? 0);
+}
+
+async function listSuperAdminOrganizations(pool: { query: PoolClient['query'] }) {
+  const result = await pool.query<SuperAdminOrganizationRow>(
+    `
+      select
+        org.id::text as id,
+        org.organization_name,
+        org.license_status,
+        org.seat_limit,
+        org.county_id::text as county_id,
+        county.county_name,
+        org.created_at,
+        org.updated_at,
+        count(distinct m.id)::int as member_count,
+        count(distinct case when m.is_admin then m.id end)::int as admin_count,
+        count(distinct case when m.is_active then m.id end)::int as seats_used,
+        count(distinct s.id)::int as session_count
+      from collab_organizations org
+      left join collab_counties county
+        on county.id = org.county_id
+      left join collab_org_members m
+        on m.organization_id = org.id
+      left join collab_map_sessions s
+        on s.organization_id = org.id
+      group by org.id, county.county_name
+      order by lower(org.organization_name)
+    `
+  );
+  return result.rows;
+}
+
+async function fetchSuperAdminOrganizationByID(pool: { query: PoolClient['query'] }, organizationId: string) {
+  const result = await pool.query<SuperAdminOrganizationRow>(
+    `
+      select
+        org.id::text as id,
+        org.organization_name,
+        org.license_status,
+        org.seat_limit,
+        org.county_id::text as county_id,
+        county.county_name,
+        org.created_at,
+        org.updated_at,
+        count(distinct m.id)::int as member_count,
+        count(distinct case when m.is_admin then m.id end)::int as admin_count,
+        count(distinct case when m.is_active then m.id end)::int as seats_used,
+        count(distinct s.id)::int as session_count
+      from collab_organizations org
+      left join collab_counties county
+        on county.id = org.county_id
+      left join collab_org_members m
+        on m.organization_id = org.id
+      left join collab_map_sessions s
+        on s.organization_id = org.id
+      where org.id = $1::uuid
+      group by org.id, county.county_name
+      limit 1
+    `,
+    [organizationId]
+  );
+  return result.rows[0] ?? null;
 }
 
 async function fetchOrganizationMemberByID(pool: { query: PoolClient['query'] }, memberId: string) {
@@ -2079,6 +2447,46 @@ async function updateOrganizationMember(
   return member ? ((await fetchOrganizationMemberByID(pool, member.id)) ?? member) : null;
 }
 
+async function updateOrganizationMemberAsSuperAdmin(
+  pool: { query: PoolClient['query'] },
+  params: {
+    memberId: string;
+    organizationId: string;
+    displayName: string;
+    isAdmin: boolean;
+    isActive: boolean;
+  }
+) {
+  const result = await pool.query<CollabOrgMembershipRow>(
+    `
+      update collab_org_members
+      set
+        organization_id = $2::uuid,
+        display_name = $3,
+        is_admin = $4,
+        is_active = $5
+      where id = $1::uuid
+      returning
+        id::text as id,
+        organization_id::text as organization_id,
+        trainer_id::text as trainer_id,
+        trainer_ref,
+        email,
+        display_name,
+        is_admin,
+        is_active,
+        null::text as organization_name,
+        'active'::text as license_status,
+        null::int as seat_limit,
+        null::text as county_id,
+        null::text as county_name
+    `,
+    [params.memberId, params.organizationId, params.displayName, params.isAdmin, params.isActive]
+  );
+  const member = result.rows[0];
+  return member ? ((await fetchOrganizationMemberByID(pool, member.id)) ?? member) : null;
+}
+
 async function fetchOrganizationByID(pool: { query: PoolClient['query'] }, organizationId: string) {
   const result = await pool.query<CollabOrganizationRow>(
     `
@@ -2102,6 +2510,71 @@ async function fetchOrganizationByID(pool: { query: PoolClient['query'] }, organ
   return result.rows[0] ?? null;
 }
 
+async function createOrganization(
+  pool: { query: PoolClient['query'] },
+  params: {
+    organizationName: string;
+    countyId: string | null;
+    licenseStatus: LicenseStatus;
+    seatLimit: number | null;
+  }
+) {
+  const result = await pool.query<{ id: string }>(
+    `
+      insert into collab_organizations (
+        county_id,
+        organization_name,
+        license_status,
+        seat_limit
+      )
+      values ($1::uuid, $2, $3, $4)
+      returning id::text as id
+    `,
+    [params.countyId, params.organizationName, params.licenseStatus, params.seatLimit]
+  );
+  const organizationId = result.rows[0]?.id;
+  return organizationId ? await fetchOrganizationByID(pool, organizationId) : null;
+}
+
+async function updateOrganization(
+  pool: { query: PoolClient['query'] },
+  params: {
+    organizationId: string;
+    organizationName: string;
+    countyId: string | null;
+    licenseStatus: LicenseStatus;
+    seatLimit: number | null;
+  }
+) {
+  await pool.query(
+    `
+      update collab_organizations
+      set
+        county_id = $2::uuid,
+        organization_name = $3,
+        license_status = $4,
+        seat_limit = $5
+      where id = $1::uuid
+    `,
+    [params.organizationId, params.countyId, params.organizationName, params.licenseStatus, params.seatLimit]
+  );
+  return await fetchSuperAdminOrganizationByID(pool, params.organizationId);
+}
+
+async function upsertCounty(pool: { query: PoolClient['query'] }, countyName: string) {
+  const result = await pool.query<{ id: string }>(
+    `
+      insert into collab_counties (county_name)
+      values ($1)
+      on conflict (county_name)
+      do update set county_name = excluded.county_name
+      returning id::text as id
+    `,
+    [countyName]
+  );
+  return result.rows[0]?.id ?? null;
+}
+
 async function listSessionSharedOrganizations(pool: { query: PoolClient['query'] }, sessionId: string) {
   const result = await pool.query<CollabOrganizationRow>(
     `
@@ -2123,6 +2596,79 @@ async function listSessionSharedOrganizations(pool: { query: PoolClient['query']
       order by lower(org.organization_name)
     `,
     [sessionId]
+  );
+  return result.rows;
+}
+
+async function listSuperAdminUsers(pool: { query: PoolClient['query'] }) {
+  const result = await pool.query<CollabOrgMembershipRow>(
+    `
+      select
+        m.id::text as id,
+        m.organization_id::text as organization_id,
+        m.trainer_id::text as trainer_id,
+        m.trainer_ref,
+        m.email,
+        m.display_name,
+        m.is_admin,
+        m.is_active,
+        org.organization_name,
+        org.license_status,
+        org.seat_limit,
+        org.county_id::text as county_id,
+        county.county_name
+      from collab_org_members m
+      join collab_organizations org
+        on org.id = m.organization_id
+      left join collab_counties county
+        on county.id = org.county_id
+      order by lower(org.organization_name), lower(m.display_name), lower(m.email)
+    `
+  );
+  return result.rows;
+}
+
+async function fetchSuperAdminOverview(pool: { query: PoolClient['query'] }) {
+  const result = await pool.query<SuperAdminOverviewRow>(
+    `
+      select
+        (select count(*)::text from collab_organizations) as organization_count,
+        (select count(*)::text from collab_organizations where license_status = 'active') as active_license_count,
+        (select count(*)::text from collab_counties) as county_count,
+        (select count(*)::text from collab_org_members) as user_count,
+        (select count(*)::text from collab_org_members where is_active = true) as active_user_count,
+        (select count(distinct session_id)::text from collab_map_session_org_access) as shared_session_count,
+        (select count(*)::text from collab_map_sessions where session_status = 'active') as active_session_count
+    `
+  );
+  return result.rows[0] ?? null;
+}
+
+async function listSuperAdminSessionAccess(pool: { query: PoolClient['query'] }) {
+  const result = await pool.query<SuperAdminSessionAccessRow>(
+    `
+      select
+        s.id::text as session_id,
+        s.incident_name,
+        s.session_status,
+        owner.id::text as owner_organization_id,
+        owner.organization_name as owner_organization_name,
+        shared.id::text as shared_organization_id,
+        shared.organization_name as shared_organization_name,
+        shared_county.county_name as shared_county_name,
+        s.operational_period_end,
+        s.updated_at
+      from collab_map_session_org_access soa
+      join collab_map_sessions s
+        on s.id = soa.session_id
+      left join collab_organizations owner
+        on owner.id = s.organization_id
+      join collab_organizations shared
+        on shared.id = soa.organization_id
+      left join collab_counties shared_county
+        on shared_county.id = shared.county_id
+      order by s.updated_at desc, lower(s.incident_name), lower(shared.organization_name)
+    `
   );
   return result.rows;
 }
@@ -2291,6 +2837,75 @@ function mapOrganizationSummary(row: CollabOrgMembershipRow, seatsUsed: number) 
   };
 }
 
+function mapSuperAdmin(row: CollabSuperAdminRow) {
+  return {
+    id: row.id,
+    trainerRef: row.trainer_ref,
+    email: row.email,
+    displayName: row.display_name,
+    isActive: row.is_active
+  };
+}
+
+function mapSuperAdminOverview(row: SuperAdminOverviewRow | null) {
+  return {
+    organizations: Number(row?.organization_count ?? 0),
+    activeLicenses: Number(row?.active_license_count ?? 0),
+    counties: Number(row?.county_count ?? 0),
+    users: Number(row?.user_count ?? 0),
+    activeUsers: Number(row?.active_user_count ?? 0),
+    sharedSessions: Number(row?.shared_session_count ?? 0),
+    activeSessions: Number(row?.active_session_count ?? 0)
+  };
+}
+
+function mapSuperAdminOrganization(row: SuperAdminOrganizationRow) {
+  return {
+    id: row.id,
+    organizationName: row.organization_name,
+    countyId: row.county_id,
+    countyName: row.county_name,
+    licenseStatus: row.license_status,
+    seatLimit: row.seat_limit,
+    memberCount: Number(row.member_count ?? 0),
+    adminCount: Number(row.admin_count ?? 0),
+    seatsUsed: Number(row.seats_used ?? 0),
+    sessionCount: Number(row.session_count ?? 0),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at
+  };
+}
+
+function mapSuperAdminUser(row: CollabOrgMembershipRow) {
+  return {
+    id: row.id,
+    trainerRef: row.trainer_ref,
+    email: row.email,
+    displayName: row.display_name,
+    isAdmin: row.is_admin,
+    isActive: row.is_active,
+    organizationId: row.organization_id,
+    organizationName: row.organization_name,
+    countyName: row.county_name,
+    licenseStatus: row.license_status
+  };
+}
+
+function mapSuperAdminAccess(row: SuperAdminSessionAccessRow) {
+  return {
+    sessionId: row.session_id,
+    incidentName: row.incident_name,
+    sessionStatus: row.session_status,
+    ownerOrganizationId: row.owner_organization_id,
+    ownerOrganizationName: row.owner_organization_name,
+    sharedOrganizationId: row.shared_organization_id,
+    sharedOrganizationName: row.shared_organization_name,
+    sharedCountyName: row.shared_county_name,
+    operationalPeriodEnd: row.operational_period_end,
+    updatedAt: row.updated_at
+  };
+}
+
 function mapObject(row: CollabObjectRow) {
   return {
     id: row.id,
@@ -2337,6 +2952,17 @@ function normalizeOptionalText(value: string | undefined) {
 function normalizeEmail(value: string | undefined) {
   const normalized = normalizeOptionalText(value);
   return normalized ? normalized.toLowerCase() : null;
+}
+
+function normalizeLicenseStatus(value: string | undefined): LicenseStatus | null {
+  const normalized = normalizeOptionalText(value)?.toLowerCase();
+  return normalized === 'active' || normalized === 'inactive' ? normalized : null;
+}
+
+function normalizeSeatLimit(value: number | string | null | undefined) {
+  if (value === null || value === undefined || value === '') return null;
+  const parsed = typeof value === 'number' ? value : Number.parseInt(String(value), 10);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function normalizeJoinCode(value: string | undefined) {
