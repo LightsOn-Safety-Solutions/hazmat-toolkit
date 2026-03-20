@@ -90,8 +90,8 @@ body { height: 100vh; overflow: hidden; }
   overflow: hidden;
 }
 .landing-panel-commander {
-  display: grid;
-  grid-template-rows: auto auto auto minmax(0, 1fr);
+  display: flex;
+  align-content: start;
 }
 .landing-panel-join {
   display: grid;
@@ -627,6 +627,7 @@ body { height: 100vh; overflow: hidden; }
 }
 .landing-session-list {
   min-height: 0;
+  max-height: 340px;
   overflow: auto;
   padding-right: 4px;
 }
@@ -640,6 +641,9 @@ body { height: 100vh; overflow: hidden; }
 .join-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
+.create-session-grid {
+  align-items: start;
+}
 .join-grid > :first-child,
 .join-grid > :nth-child(2) {
   grid-column: span 2;
@@ -652,6 +656,22 @@ body { height: 100vh; overflow: hidden; }
 .field-block-incident,
 .field-block-role {
   min-width: 0;
+}
+.create-session-grid .field-block,
+.create-session-grid .field-block input {
+  min-width: 0;
+}
+.create-session-grid input[type="datetime-local"] {
+  max-width: 100%;
+  min-width: 0;
+  font-size: 13px;
+  padding-inline: 10px;
+}
+.create-session-grid input[type="datetime-local"]::-webkit-date-and-time-value {
+  text-align: left;
+}
+.create-session-grid input[type="datetime-local"]::-webkit-datetime-edit {
+  font-size: inherit;
 }
 .landing-note {
   margin-top: auto;
@@ -1235,6 +1255,16 @@ button.danger { background: rgba(178,58,72,0.14); color: #f4c9ce; border-color: 
 
 .session-card, .participant-card, .guided-step, .palette-group {
   padding: var(--space-3);
+}
+.session-card {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.session-card strong,
+.session-card .muted {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .palette-group-toggle {
