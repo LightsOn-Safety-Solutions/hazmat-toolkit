@@ -1431,6 +1431,24 @@
     }
   }
 
+  async function addSuperAdminOrganizationMember(organizationId, payload, successMessage) {
+    if (!state.superAdminContext?.email) {
+      setStatus("Super admin access is required.");
+      return;
+    }
+    try {
+      await apiFetch(`/v1/ics-collab/super-admin/organizations/${encodeURIComponent(organizationId)}/members`, {
+        method: "POST",
+        actorType: "commander",
+        body: payload
+      });
+      await refreshSuperAdminWorkspace();
+      setStatus(successMessage);
+    } catch (error) {
+      setStatus(formatError(error));
+    }
+  }
+
   async function updateSuperAdminUser(memberId, payload, successMessage) {
     if (!state.superAdminContext?.email) {
       setStatus("Super admin access is required.");
@@ -3373,6 +3391,27 @@
       statusSelect.value = organization.licenseStatus || "active";
       fields.append(countyInput, seatInput, statusSelect);
 
+      const addMemberFields = document.createElement("div");
+      addMemberFields.className = "super-admin-inline-grid";
+      const memberNameInput = document.createElement("input");
+      memberNameInput.type = "text";
+      memberNameInput.placeholder = "Add user name";
+      const memberEmailInput = document.createElement("input");
+      memberEmailInput.type = "email";
+      memberEmailInput.placeholder = "Add user email";
+      const memberAdminLabel = document.createElement("label");
+      memberAdminLabel.className = "inline-checkbox";
+      memberAdminLabel.innerHTML = '<input type="checkbox" /> <span>Department Admin</span>';
+      const memberAdminInput = memberAdminLabel.querySelector("input");
+      const memberActiveLabel = document.createElement("label");
+      memberActiveLabel.className = "inline-checkbox";
+      memberActiveLabel.innerHTML = '<input type="checkbox" checked /> <span>Active</span>';
+      const memberActiveInput = memberActiveLabel.querySelector("input");
+      const memberOptions = document.createElement("div");
+      memberOptions.className = "row department-admin-member-actions";
+      memberOptions.append(memberAdminLabel, memberActiveLabel);
+      addMemberFields.append(memberNameInput, memberEmailInput, memberOptions);
+
       const actions = document.createElement("div");
       actions.className = "row department-admin-member-actions";
       const saveBtn = document.createElement("button");
@@ -3390,13 +3429,35 @@
           `${organization.organizationName} updated.`
         );
       });
-      actions.append(saveBtn);
+      const addMemberBtn = document.createElement("button");
+      addMemberBtn.className = "secondary";
+      addMemberBtn.type = "button";
+      addMemberBtn.textContent = "Add User";
+      addMemberBtn.addEventListener("click", () => {
+        const displayName = memberNameInput.value.trim();
+        const email = memberEmailInput.value.trim().toLowerCase();
+        if (!displayName || !email) {
+          setStatus("Enter the new user name and email.");
+          return;
+        }
+        void addSuperAdminOrganizationMember(
+          organization.id,
+          {
+            displayName,
+            email,
+            isAdmin: Boolean(memberAdminInput?.checked),
+            isActive: Boolean(memberActiveInput?.checked)
+          },
+          `${displayName} added to ${organization.organizationName}.`
+        );
+      });
+      actions.append(saveBtn, addMemberBtn);
 
       card.innerHTML = `
         <strong>${escapeHtml(organization.organizationName)}</strong>
         <div class="muted">${escapeHtml(organization.memberCount)} users · ${escapeHtml(organization.adminCount)} admins · ${escapeHtml(organization.sessionCount)} sessions</div>
       `;
-      card.append(fields, actions);
+      card.append(fields, addMemberFields, actions);
       elements.superAdminOrganizationsList.appendChild(card);
     });
   }

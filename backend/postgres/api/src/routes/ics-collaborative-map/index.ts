@@ -469,6 +469,50 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
+  app.post<{ Params: { organizationId: string }; Body: CreateOrganizationMemberBody }>('/v1/ics-collab/super-admin/organizations/:organizationId/members', async (request, reply) => {
+    try {
+      const trainer = await requireTrainerIdentity(app, request.headers);
+      await requireSuperAdmin(app.pg, trainer);
+      const organizationId = normalizeUUID(request.params.organizationId);
+      const email = normalizeEmail(request.body?.email);
+      const displayName = normalizeRequiredText(request.body?.displayName, 'displayName');
+      const isAdmin = request.body?.isAdmin === true;
+      const isActive = request.body?.isActive !== false;
+      if (!organizationId) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'Valid organizationId is required.' });
+      }
+      if (!email || !displayName) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'email and displayName are required.' });
+      }
+      const organization = await fetchOrganizationByID(app.pg, organizationId);
+      if (!organization) {
+        return reply.code(404).send({ error: 'NOT_FOUND', message: 'Organization not found.' });
+      }
+      const existingMember = await fetchLicensedCollabMembership(app.pg, email);
+      if (existingMember && existingMember.organization_id !== organizationId) {
+        return reply.code(409).send({ error: 'MEMBER_ASSIGNED_ELSEWHERE', message: 'That email is already assigned to another department.' });
+      }
+      const activeCount = await countActiveOrganizationMembers(app.pg, organizationId);
+      const activatingNewSeat = isActive && (!existingMember || !existingMember.is_active);
+      if (activatingNewSeat && organization.seat_limit != null && activeCount >= organization.seat_limit) {
+        return reply.code(409).send({ error: 'SEAT_LIMIT_REACHED', message: 'Seat limit reached for this department license.' });
+      }
+      const created = await upsertOrganizationMember(app.pg, {
+        organizationId,
+        trainerRef: email,
+        email,
+        displayName,
+        isAdmin,
+        isActive
+      });
+      return reply.code(201).send({
+        member: mapOrganizationRosterMember(created)
+      });
+    } catch (error) {
+      return sendTrainerError(reply, request, error, 'Failed to add user to department.');
+    }
+  });
+
   app.get('/v1/ics-collab/super-admin/users', async (request, reply) => {
     try {
       const trainer = await requireTrainerIdentity(app, request.headers);
