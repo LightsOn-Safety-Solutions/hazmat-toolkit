@@ -347,6 +347,25 @@
       overflow: hidden;
     }
 
+    .subpanel-stack {
+      display: grid;
+      gap: 0;
+    }
+
+    .subpanel {
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+      margin-top: 12px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .subpanel:first-child {
+      border-top: 0;
+      padding-top: 0;
+      margin-top: 0;
+    }
+
     .compact-panel .card-body {
       padding-top: 12px;
     }
@@ -438,9 +457,9 @@
                 <div class="dim-badge" data-dim-for="accountCard">--</div>
               </div>
               <div class="panel-header-actions">
-                <div class="badge" data-dim-target="commanderAuthBtnRef">#commanderAuthBtn</div>
+                <div class="badge" data-dim-target="commanderAuthBtnRef">#commanderAuthBtn (Signed In when authenticated, disabled)</div>
                 <div class="dim-badge" data-dim-for="commanderAuthBtnRef">--</div>
-                <div class="badge" data-dim-target="commanderSignOutBtnRef">#commanderSignOutBtn</div>
+                <div class="badge" data-dim-target="commanderSignOutBtnRef">#commanderSignOutBtn (enabled when authenticated)</div>
                 <div class="dim-badge" data-dim-for="commanderSignOutBtnRef">--</div>
               </div>
               <div class="field-grid">
@@ -695,61 +714,53 @@
       <div class="layout-shell">
         <div class="left-stack">
           <div class="compact-panel">
-            <button class="card-toggle" type="button" data-toggle="sessionPanelRef">
-              <span>Session</span>
+            <button class="card-toggle" type="button" data-toggle="incidentOverviewPanelRef">
+              <span>Incident Overview</span>
               <span>−</span>
             </button>
-            <div id="sessionPanelRef" class="card-body">
+            <div id="incidentOverviewPanelRef" class="card-body">
               <div class="container-head">
-                <div class="container-name">#sessionPanel</div>
-                <div class="dim-badge" data-dim-for="sessionPanelRef">--</div>
+                <div class="container-name">#incidentOverviewPanel</div>
+                <div class="dim-badge" data-dim-for="incidentOverviewPanelRef">--</div>
               </div>
-              <div class="container-name">#sessionPanelBody</div>
-              <div class="container-name">#sessionMeta</div>
-              <div class="container-name">#sessionFocusPrompt</div>
-            </div>
-          </div>
-
-          <div class="compact-panel">
-            <button class="card-toggle" type="button" data-toggle="sessionPeriodRef">
-              <span>Operational Period</span>
-              <span>+</span>
-            </button>
-            <div id="sessionPeriodRef" class="card-body hidden">
-              <div class="container-head">
-                <div class="container-name">#sessionPeriodPanel</div>
-                <div class="dim-badge" data-dim-for="sessionPeriodRef">--</div>
-              </div>
-              <div class="container-name">#sessionOpStartInput</div>
-              <div class="container-name">#sessionOpEndInput</div>
-              <div class="container-name">#updateOperationalPeriodBtn</div>
-            </div>
-          </div>
-
-          <div class="compact-panel">
-            <button class="card-toggle" type="button" data-toggle="incidentCommandRef">
-              <span>Incident Command</span>
-              <span>+</span>
-            </button>
-            <div id="incidentCommandRef" class="card-body hidden">
-              <div class="container-head">
-                <div class="container-name">#incidentCommandPanel</div>
-                <div class="dim-badge" data-dim-for="incidentCommandRef">--</div>
-              </div>
-              <div class="container-name">#sessionIncidentCommanderNameInput</div>
-              <div class="container-name">#updateIncidentCommandBtn</div>
-            </div>
-          </div>
-
-          <div class="compact-panel">
-            <button class="card-toggle" type="button" data-toggle="participantsRef">
-              <span>Participants</span>
-              <span>+</span>
-            </button>
-            <div id="participantsRef" class="card-body hidden">
-              <div class="container-head">
-                <div class="container-name">#participantsPanel</div>
-                <div class="dim-badge" data-dim-for="participantsRef">--</div>
+              <div class="container-name">#incidentOverviewPanelBody</div>
+              <div class="subpanel-stack">
+                <div class="subpanel">
+                  <div class="container-head">
+                    <div class="container-name">#sessionPanel</div>
+                    <div class="dim-badge" data-dim-for="sessionPanelRef">--</div>
+                  </div>
+                  <div class="container-name">#sessionPanelBody</div>
+                  <div class="container-name">#sessionMeta</div>
+                  <div class="container-name">#sessionFocusPrompt</div>
+                </div>
+                <div class="subpanel">
+                  <div class="container-head">
+                    <div class="container-name">#sessionPeriodPanel</div>
+                    <div class="dim-badge" data-dim-for="sessionPeriodRef">--</div>
+                  </div>
+                  <div class="container-name">#sessionPeriodPanelBody</div>
+                  <div class="container-name">#sessionOpStartInput</div>
+                  <div class="container-name">#sessionOpEndInput</div>
+                  <div class="container-name">#updateOperationalPeriodBtn</div>
+                </div>
+                <div class="subpanel">
+                  <div class="container-head">
+                    <div class="container-name">#incidentCommandPanel</div>
+                    <div class="dim-badge" data-dim-for="incidentCommandRef">--</div>
+                  </div>
+                  <div class="container-name">#incidentCommandPanelBody</div>
+                  <div class="container-name">#sessionIncidentCommanderNameInput</div>
+                  <div class="container-name">#updateIncidentCommandBtn</div>
+                </div>
+                <div class="subpanel">
+                  <div class="container-head">
+                    <div class="container-name">#participantsPanel</div>
+                    <div class="dim-badge" data-dim-for="participantsRef">--</div>
+                  </div>
+                  <div class="container-name">#participantsPanelBody</div>
+                  <div class="container-name">#participantList</div>
+                </div>
               </div>
             </div>
           </div>
@@ -917,6 +928,7 @@
         'joinCard',
         'whatHappensCard',
         'runningSessionsCard',
+        'incidentOverviewPanelRef',
         'sessionPanelRef',
         'sessionPeriodRef',
         'incidentCommandRef',

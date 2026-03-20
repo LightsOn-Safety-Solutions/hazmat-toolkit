@@ -996,10 +996,11 @@
   async function hydrateAuthUI() {
     await loadRuntimeMetaConfig();
     const authReady = hasSupabaseAuthConfig();
-    elements.commanderAuthBtn.disabled = !authReady;
+    elements.commanderAuthBtn.disabled = !authReady || Boolean(state.commanderAuth?.accessToken);
     if (!authReady) {
       setStatus("Session owner auth needs Supabase public config.");
     }
+    renderCommanderAuthPanels();
   }
 
   function resolveThemeMode(mode) {
@@ -1034,7 +1035,9 @@
     state.authTab = tab;
     elements.signInTabBtn.classList.toggle("active", tab === "signin");
     elements.signUpTabBtn.classList.toggle("active", tab === "signup");
-    elements.commanderAuthBtn.textContent = tab === "signin" ? "Sign In" : "Create Account";
+    if (!state.commanderAuth?.accessToken) {
+      elements.commanderAuthBtn.textContent = tab === "signin" ? "Sign In" : "Create Account";
+    }
   }
 
   async function onCommanderAuth() {
@@ -1813,12 +1816,16 @@
 
   function renderCommanderAuthPanels() {
     const signedIn = Boolean(state.commanderAuth?.accessToken);
+    const authReady = hasSupabaseAuthConfig();
     elements.commanderSignedInSummary.classList.toggle("hidden", !signedIn);
     elements.authFields.classList.toggle("hidden", signedIn);
     if (signedIn) {
       elements.commanderSummaryName.textContent = `Session Owner: ${state.commanderAuth?.displayName || "Signed in"}`;
       elements.commanderSummaryEmail.textContent = state.commanderAuth?.email || "";
     }
+    elements.commanderAuthBtn.textContent = signedIn ? "Signed In" : (state.authTab === "signin" ? "Sign In" : "Create Account");
+    elements.commanderAuthBtn.disabled = signedIn || !authReady;
+    elements.commanderSignOutBtn.disabled = !signedIn;
     elements.createSessionPanel.classList.toggle("hidden", false);
     elements.createSessionPanel.classList.toggle("locked", !signedIn);
     elements.createSessionLockedNote.classList.toggle("hidden", signedIn);
