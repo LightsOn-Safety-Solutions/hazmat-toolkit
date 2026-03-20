@@ -59,7 +59,10 @@
                   <h3>Account</h3>
                   <p class="muted">An authenticated account is required for creating or joining any collaborative session.</p>
                 </div>
-                <button id="commanderSignOutBtn" class="secondary hidden" type="button">Sign Out</button>
+                <div class="landing-card-header-actions">
+                  <button id="commanderAuthBtn" class="primary" type="button">Sign In</button>
+                  <button id="commanderSignOutBtn" class="secondary hidden" type="button">Sign Out</button>
+                </div>
               </div>
 
               <div id="commanderSignedInSummary" class="account-summary hidden">
@@ -73,9 +76,6 @@
                 <input id="commanderPasswordInput" type="password" placeholder="Password" />
               </div>
 
-              <div class="row">
-                <button id="commanderAuthBtn" class="primary" type="button">Sign In</button>
-              </div>
             </div>
 
             <div id="createSessionPanel" class="landing-card stack locked">
@@ -108,7 +108,7 @@
                   <input id="guidedSetupDefaultInput" type="checkbox" disabled />
                   <span>Start this session with the 10-Minute IC Mode workflow</span>
                 </label>
-                <div class="focus-setup-block">
+                <div id="createSessionFocusBlock" class="focus-setup-block">
                   <span id="createSessionFocusBadge" class="focus-badge pending">Set Initial Hazard / Focus</span>
                   <p id="createSessionFocusPrompt" class="focus-prompt">After launch, place a Hazard Source so everyone joins centered on the incident.</p>
                 </div>

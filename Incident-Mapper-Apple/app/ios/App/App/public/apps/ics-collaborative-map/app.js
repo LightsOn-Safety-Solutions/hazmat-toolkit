@@ -170,6 +170,7 @@
     opEndInput: document.getElementById("opEndInput"),
     guidedSetupDefaultInput: document.getElementById("guidedSetupDefaultInput"),
     createSessionBtn: document.getElementById("createSessionBtn"),
+    createSessionFocusBlock: document.getElementById("createSessionFocusBlock"),
     createSessionFocusBadge: document.getElementById("createSessionFocusBadge"),
     createSessionFocusPrompt: document.getElementById("createSessionFocusPrompt"),
     joinCodeInput: document.getElementById("joinCodeInput"),
@@ -691,6 +692,7 @@
     elements.paletteSearchInput.addEventListener("input", onPaletteSearchInput);
     elements.clearPaletteSearchBtn.addEventListener("click", clearPaletteSearch);
     elements.createSessionBtn.addEventListener("click", onCreateSession);
+    elements.guidedSetupDefaultInput.addEventListener("change", renderCreateSessionFocusVisibility);
     elements.joinSessionBtn.addEventListener("click", onJoinSession);
     elements.startGuidedSetupBtn.addEventListener("click", () => toggleGuidedMode(true));
     elements.guidedModeBtn.addEventListener("click", () => toggleGuidedMode(!state.guidedMode));
@@ -1807,6 +1809,11 @@
     }
   }
 
+  function renderCreateSessionFocusVisibility() {
+    if (!elements.createSessionFocusBlock || !elements.guidedSetupDefaultInput) return;
+    elements.createSessionFocusBlock.classList.toggle("hidden", !elements.guidedSetupDefaultInput.checked);
+  }
+
   function toggleWeatherPanel() {
     if (!state.activeSession && !isScenarioReviewMode()) return;
     state.weatherPanelOpen = !state.weatherPanelOpen;
@@ -2708,6 +2715,7 @@
     joinControls.forEach((element) => {
       if (element) element.disabled = !signedIn;
     });
+    renderCreateSessionFocusVisibility();
   }
 
   function renderCommanderSessions(sessions) {

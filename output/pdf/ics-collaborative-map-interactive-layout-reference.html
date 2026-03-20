@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ICS Collaborative Map Interactive Layout Reference</title>
+  <style>
+    :root {
+      --bg: #091018;
+      --shell: #0d1620;
+      --panel: #15202d;
+      --card: #202e3f;
+      --line: #465464;
+      --text: #f5f7fa;
+      --muted: #9eb0c2;
+      --accent: #f3c613;
+      --good: #88c97f;
+      --radius-lg: 20px;
+      --radius-md: 16px;
+      --radius-sm: 12px;
+      --space-1: 6px;
+      --space-2: 10px;
+      --space-3: 14px;
+      --space-4: 18px;
+      --space-5: 24px;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+
+    .shell {
+      min-height: 100vh;
+      padding: 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .topbar,
+    .statusbar,
+    .surface {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--shell);
+    }
+
+    .topbar {
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+
+    .topbar h1 {
+      margin: 0;
+      font-size: 28px;
+    }
+
+    .topbar .muted {
+      width: 100%;
+      font-size: 14px;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 0 14px;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: #1a2635;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .statusbar {
+      padding: 10px 16px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .mode-switch {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .surface {
+      padding: 18px;
+    }
+
+    .landing-shell {
+      display: grid;
+      grid-template-columns: 1.35fr 1fr;
+      gap: 18px;
+    }
+
+    .layout-shell {
+      display: grid;
+      grid-template-columns: 280px minmax(0, 1fr) 360px;
+      gap: 18px;
+    }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--panel);
+      padding: 14px;
+      display: grid;
+      gap: 14px;
+      min-width: 0;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .panel-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .panel-header h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: var(--card);
+      overflow: hidden;
+    }
+
+    .card-toggle {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 16px;
+      background: transparent;
+      color: var(--text);
+      border: 0;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+      text-align: left;
+    }
+
+    .card-body {
+      padding: 0 16px 16px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .container-name {
+      font-weight: 700;
+      color: var(--accent);
+      font-size: 12px;
+      letter-spacing: 0.02em;
+      word-break: break-word;
+    }
+
+    .container-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .dim-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 24px;
+      padding: 0 8px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--good);
+      font-size: 11px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .muted {
+      color: var(--muted);
+    }
+
+    .field-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .field {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      background: #1a2635;
+      display: grid;
+      gap: 6px;
+      min-width: 0;
+    }
+
+    .field label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+    }
+
+    .field-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .field .value {
+      min-height: 22px;
+      font-size: 14px;
+    }
+
+    .field-control {
+      min-height: 38px;
+      width: 100%;
+      padding: 8px 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.04);
+      display: flex;
+      align-items: center;
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .field-control.fixed-162x50 {
+      width: 162px;
+      height: 50px;
+      min-height: 50px;
+    }
+
+    .field-control.half-width {
+      width: 50%;
+    }
+
+    .inline-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .focus-callout,
+    .placeholder-block {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      padding: 12px;
+      background: #1a2635;
+      display: grid;
+      gap: 8px;
+    }
+
+    .map-stage {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-lg);
+      background: var(--panel);
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+    }
+
+    .map-canvas {
+      position: relative;
+      min-height: 640px;
+      border: 1px solid var(--line);
+      border-radius: 20px;
+      background:
+        linear-gradient(90deg, transparent 24%, rgba(255,255,255,0.03) 25%, transparent 26%, transparent 74%, rgba(255,255,255,0.03) 75%, transparent 76%),
+        linear-gradient(transparent 24%, rgba(255,255,255,0.03) 25%, transparent 26%, transparent 74%, rgba(255,255,255,0.03) 75%, transparent 76%),
+        #d7d1a9;
+      background-size: 160px 160px;
+      overflow: hidden;
+    }
+
+    .map-label,
+    .floating-control {
+      position: absolute;
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: rgba(9, 16, 24, 0.9);
+      color: var(--text);
+      padding: 10px 12px;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .map-label small,
+    .floating-control small {
+      display: block;
+      margin-top: 4px;
+      color: var(--muted);
+      font-weight: 400;
+      font-size: 11px;
+    }
+
+    .map-label .dim-badge,
+    .floating-control .dim-badge {
+      margin-top: 6px;
+      width: fit-content;
+    }
+
+    .right-stack,
+    .left-stack {
+      display: grid;
+      gap: 14px;
+      align-content: start;
+    }
+
+    .compact-panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-md);
+      background: var(--card);
+      overflow: hidden;
+    }
+
+    .compact-panel .card-body {
+      padding-top: 12px;
+    }
+
+    .legend {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 12px;
+      margin-top: 14px;
+    }
+
+    .legend-item {
+      border: 1px solid var(--line);
+      border-radius: var(--radius-sm);
+      background: #1a2635;
+      padding: 12px;
+      display: grid;
+      gap: 6px;
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      background: rgba(243, 198, 19, 0.1);
+      color: var(--accent);
+      width: fit-content;
+    }
+
+    .section-title {
+      margin: 0 0 8px;
+      font-size: 20px;
+    }
+
+    @media (max-width: 1200px) {
+      .landing-shell,
+      .layout-shell {
+        grid-template-columns: 1fr;
+      }
+      .map-canvas {
+        min-height: 480px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <div class="topbar">
+      <div>
+        <div class="container-name">.shell > .topbar</div>
+        <h1>ICS Collaborative Map Interactive Layout Reference</h1>
+        <div class="muted">A clickable naming reference that mimics the real structure without loading live map or app data.</div>
+      </div>
+      <div class="mode-switch">
+        <button class="pill" data-surface="landing">Landing / Sign-In View</button>
+        <button class="pill" data-surface="workspace">Live Workspace View</button>
+      </div>
+    </div>
+
+    <div class="statusbar">
+      <span class="container-name">#statusBar</span>
+      <span> Use this page to point at a specific container, card, panel, or field when describing UI issues.</span>
+    </div>
+
+    <section id="landingSurface" class="surface">
+      <div class="container-name">.layout > #landingView.landing</div>
+      <h2 class="section-title">Landing / Sign-In Layout</h2>
+      <div class="landing-shell">
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="container-name">.panel.landing-panel.landing-panel-commander</div>
+              <h2>Session Owner Column</h2>
+            </div>
+          </div>
+
+          <div class="card">
+            <button class="card-toggle" type="button" data-toggle="accountCard">
+              <span>Account</span>
+              <span>−</span>
+            </button>
+            <div id="accountCard" class="card-body">
+              <div class="container-head">
+                <div class="container-name">.landing-card (Account)</div>
+                <div class="dim-badge" data-dim-for="accountCard">--</div>
+              </div>
+              <div class="panel-header-actions">
+                <div class="badge" data-dim-target="commanderAuthBtnRef">#commanderAuthBtn</div>
+                <div class="dim-badge" data-dim-for="commanderAuthBtnRef">--</div>
+                <div class="badge" data-dim-target="commanderSignOutBtnRef">#commanderSignOutBtn</div>
+                <div class="dim-badge" data-dim-for="commanderSignOutBtnRef">--</div>
+              </div>
+              <div class="field-grid">
+                <div class="field">
+                  <div class="field-top">
+                    <label>#commanderNameInput</label>
+                    <div class="dim-badge" data-dim-for="commanderNameField">--</div>
+                  </div>
+                  <div class="value">Session owner display name</div>
+                </div>
+                <div class="field">
+                  <div class="field-top">
+                    <label>#commanderEmailInput</label>
+                    <div class="dim-badge" data-dim-for="commanderEmailField">--</div>
+                  </div>
+                  <div class="value">Email</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <button class="card-toggle" type="button" data-toggle="createSessionCard">
+              <span>Create New Session</span>
+              <span>−</span>
+            </button>
+            <div id="createSessionCard" class="card-body">
+              <div class="container-head">
+                <div class="container-name">#createSessionPanel.landing-card.stack.locked</div>
+                <div class="dim-badge" data-dim-for="createSessionCard">--</div>
+              </div>
+              <div class="muted">Everything below is the inner structure of the Create Session card.</div>
+              <div class="legend">
+                <div class="legend-item">
+                  <div class="container-head">
+                    <div class="container-name">#createSessionPanelToggle</div>
+                    <div class="dim-badge" data-dim-for="createSessionToggleRef">--</div>
+                  </div>
+                  <div class="muted">Collapse / expand button for the card header.</div>
+                </div>
+                <div class="legend-item">
+                  <div class="container-head">
+                    <div class="container-name">#createSessionPanelBody</div>
+                    <div class="dim-badge" data-dim-for="createSessionBodyRef">--</div>
+                  </div>
+                  <div class="muted">Expandable body container.</div>
+                </div>
+                <div class="legend-item">
+                  <div class="container-head">
+                    <div class="container-name">#createSessionLockedNote.inline-note</div>
+                    <div class="dim-badge" data-dim-for="createSessionLockedNoteRef">--</div>
+                  </div>
+                  <div class="muted">Locked-state helper message.</div>
+                </div>
+                <div class="legend-item">
+                  <div class="container-head">
+                    <div class="container-name">.stack.create-session-grid</div>
+                    <div class="dim-badge" data-dim-for="createSessionGridRef">--</div>
+                  </div>
+                  <div class="muted">Two-column field layout for the form body.</div>
+                </div>
+              </div>
+              <div class="field-grid">
+                <div class="field">
+                  <div class="field-top">
+                    <label>.field-block.field-block-incident</label>
+                    <div class="dim-badge" data-dim-for="incidentFieldRef">--</div>
+                  </div>
+                  <div class="container-name">#incidentNameInput</div>
+                  <div class="field-control fixed-162x50" data-dim-target="incidentControlRef">Incident Name</div>
+                  <div class="dim-badge" data-dim-for="incidentControlRef">--</div>
+                </div>
+                <div class="field">
+                  <div class="field-top">
+                    <label>.field-block.field-block-role</label>
+                    <div class="dim-badge" data-dim-for="roleFieldRef">--</div>
+                  </div>
+                  <div class="container-name">#initialIncidentCommanderRoleInput</div>
+                  <div class="field-control fixed-162x50" data-dim-target="roleControlRef">Initial Incident Commander</div>
+                  <div class="dim-badge" data-dim-for="roleControlRef">--</div>
+                </div>
+                <div class="field">
+                  <div class="field-top">
+                    <label>.field-block</label>
+                    <div class="dim-badge" data-dim-for="opStartFieldRef">--</div>
+                  </div>
+                  <div class="container-name">#opStartInput</div>
+                  <div class="field-control half-width" data-dim-target="opStartControlRef">Operational Period Start</div>
+                  <div class="dim-badge" data-dim-for="opStartControlRef">--</div>
+                </div>
+                <div class="field">
+                  <div class="field-top">
+                    <label>.field-block</label>
+                    <div class="dim-badge" data-dim-for="opEndFieldRef">--</div>
+                  </div>
+                  <div class="container-name">#opEndInput</div>
+                  <div class="field-control half-width" data-dim-target="opEndControlRef">Operational Period End</div>
+                  <div class="dim-badge" data-dim-for="opEndControlRef">--</div>
+                </div>
+              </div>
+              <div class="placeholder-block">
+                <div class="container-head">
+                  <div class="container-name">.inline-checkbox > #guidedSetupDefaultInput</div>
+                  <div class="dim-badge" data-dim-for="guidedSetupRef">--</div>
+                </div>
+                <label class="inline-row" style="cursor:pointer;">
+                  <input id="interactiveGuidedSetupToggle" type="checkbox" />
+                  <span class="muted">Checked = show the focus block</span>
+                </label>
+                <div class="muted">Start this session with the 10-Minute IC Mode workflow</div>
+              </div>
+              <div id="interactiveFocusSetupRef" class="focus-callout hidden">
+                <div class="container-head">
+                  <div class="container-name">.focus-setup-block</div>
+                  <div class="dim-badge" data-dim-for="focusSetupRef">--</div>
+                </div>
+                <div class="inline-row">
+                  <div class="badge" data-dim-target="focusBadgeRef">#createSessionFocusBadge</div>
+                  <div class="dim-badge" data-dim-for="focusBadgeRef">--</div>
+                </div>
+                <div class="container-head">
+                  <div class="container-name">#createSessionFocusPrompt</div>
+                  <div class="dim-badge" data-dim-for="focusPromptRef">--</div>
+                </div>
+                <div class="muted" data-dim-target="focusPromptRef">After launch, place a Hazard Source so everyone joins centered on the incident.</div>
+              </div>
+              <div class="inline-row">
+                <div class="badge" data-dim-target="createSessionBtnRef">#createSessionBtn.primary</div>
+                <div class="dim-badge" data-dim-for="createSessionBtnRef">--</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <button class="card-toggle" type="button" data-toggle="reviewSessionsCard">
+              <span>Review Sessions</span>
+              <span>+</span>
+            </button>
+            <div id="reviewSessionsCard" class="card-body hidden">
+              <div class="container-head">
+                <div class="container-name">#sessionListPanel</div>
+                <div class="dim-badge" data-dim-for="reviewSessionsCard">--</div>
+              </div>
+              <div class="container-name">#sessionListPanelBody</div>
+              <div class="container-head">
+                <div class="container-name">#commanderSessionList.landing-session-list</div>
+                <div class="dim-badge" data-dim-for="commanderSessionListRef">--</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <button class="card-toggle" type="button" data-toggle="scenarioReviewCard">
+              <span>Review Scenario</span>
+              <span>+</span>
+            </button>
+            <div id="scenarioReviewCard" class="card-body hidden">
+              <div class="container-head">
+                <div class="container-name">#scenarioReviewPanel</div>
+                <div class="dim-badge" data-dim-for="scenarioReviewCard">--</div>
+              </div>
+              <div class="container-name">#scenarioReviewPanelBody</div>
+              <div class="inline-row">
+                <div class="badge" data-dim-target="loadScenarioBtnRef">#loadScenarioBtn.primary</div>
+                <div class="dim-badge" data-dim-for="loadScenarioBtnRef">--</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header">
+            <div>
+              <div class="container-name">.panel.landing-panel.landing-panel-join</div>
+              <h2>Join Column</h2>
+            </div>
+          </div>
+
+          <div class="card">
+            <button class="card-toggle" type="button" data-toggle="joinCard">
+              <span>Join Session</span>
+              <span>−</span>
+            </button>
+            <div id="joinCard" class="card-body">
+              <div class="container-head">
+                <div class="container-name">#joinSessionPanelBody</div>
+                <div class="dim-badge" data-dim-for="joinCard">--</div>
+              </div>
+              <div class="field-grid">
+                <div class="field">
+                  <div class="field-top"><label>#joinCodeInput</label><div class="dim-badge" data-dim-for="joinCodeField">--</div></div>
+                  <div class="field-control" data-dim-target="joinCodeControlRef">Join code</div>
+                  <div class="dim-badge" data-dim-for="joinCodeControlRef">--</div>
+                </div>
+                <div class="field">
+                  <div class="field-top"><label>#joinDisplayNameInput</label><div class="dim-badge" data-dim-for="joinDisplayField">--</div></div>
+                  <div class="field-control" data-dim-target="joinDisplayControlRef">Display name</div>
+                  <div class="dim-badge" data-dim-for="joinDisplayControlRef">--</div>
+                </div>
+                <div class="field">
+                  <div class="field-top"><label>#joinPermissionSelect</label><div class="dim-badge" data-dim-for="joinPermissionField">--</div></div>
+                  <div class="field-control" data-dim-target="joinPermissionControlRef">Permission</div>
+                  <div class="dim-badge" data-dim-for="joinPermissionControlRef">--</div>
+                </div>
+                <div class="field">
+                  <div class="field-top"><label>#joinRoleSelect</label><div class="dim-badge" data-dim-for="joinRoleField">--</div></div>
+                  <div class="field-control" data-dim-target="joinRoleControlRef">Role</div>
+                  <div class="dim-badge" data-dim-for="joinRoleControlRef">--</div>
+                </div>
+              </div>
+              <div class="inline-row">
+                <div class="badge" data-dim-target="joinBtnRef">#joinSessionBtn.primary</div>
+                <div class="dim-badge" data-dim-for="joinBtnRef">--</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <button class="card-toggle" type="button" data-toggle="whatHappensCard">
+              <span>What Happens Next</span>
+              <span>+</span>
+            </button>
+            <div id="whatHappensCard" class="card-body hidden">
+              <div class="container-head">
+                <div class="container-name">#whatHappensPanelBody</div>
+                <div class="dim-badge" data-dim-for="whatHappensCard">--</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <button class="card-toggle" type="button" data-toggle="runningSessionsCard">
+              <span>Currently Running Sessions</span>
+              <span>+</span>
+            </button>
+            <div id="runningSessionsCard" class="card-body hidden">
+              <div class="container-head">
+                <div class="container-name">#activeSessionGalleryPanel</div>
+                <div class="dim-badge" data-dim-for="runningSessionsCard">--</div>
+              </div>
+              <div class="container-name">#activeSessionGalleryPanelBody</div>
+              <div class="container-name">#activeSessionGallery</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="workspaceSurface" class="surface hidden">
+      <div class="container-name">.layout > #appView.app</div>
+      <h2 class="section-title">Live Workspace Layout</h2>
+      <div class="layout-shell">
+        <div class="left-stack">
+          <div class="compact-panel">
+            <button class="card-toggle" type="button" data-toggle="sessionPanelRef">
+              <span>Session</span>
+              <span>−</span>
+            </button>
+            <div id="sessionPanelRef" class="card-body">
+              <div class="container-head">
+                <div class="container-name">#sessionPanel</div>
+                <div class="dim-badge" data-dim-for="sessionPanelRef">--</div>
+              </div>
+              <div class="container-name">#sessionPanelBody</div>
+              <div class="container-name">#sessionMeta</div>
+              <div class="container-name">#sessionFocusPrompt</div>
+            </div>
+          </div>
+
+          <div class="compact-panel">
+            <button class="card-toggle" type="button" data-toggle="sessionPeriodRef">
+              <span>Operational Period</span>
+              <span>+</span>
+            </button>
+            <div id="sessionPeriodRef" class="card-body hidden">
+              <div class="container-head">
+                <div class="container-name">#sessionPeriodPanel</div>
+                <div class="dim-badge" data-dim-for="sessionPeriodRef">--</div>
+              </div>
+              <div class="container-name">#sessionOpStartInput</div>
+              <div class="container-name">#sessionOpEndInput</div>
+              <div class="container-name">#updateOperationalPeriodBtn</div>
+            </div>
+          </div>
+
+          <div class="compact-panel">
+            <button class="card-toggle" type="button" data-toggle="incidentCommandRef">
+              <span>Incident Command</span>
+              <span>+</span>
+            </button>
+            <div id="incidentCommandRef" class="card-body hidden">
+              <div class="container-head">
+                <div class="container-name">#incidentCommandPanel</div>
+                <div class="dim-badge" data-dim-for="incidentCommandRef">--</div>
+              </div>
+              <div class="container-name">#sessionIncidentCommanderNameInput</div>
+              <div class="container-name">#updateIncidentCommandBtn</div>
+            </div>
+          </div>
+
+          <div class="compact-panel">
+            <button class="card-toggle" type="button" data-toggle="participantsRef">
+              <span>Participants</span>
+              <span>+</span>
+            </button>
+            <div id="participantsRef" class="card-body hidden">
+              <div class="container-head">
+                <div class="container-name">#participantsPanel</div>
+                <div class="dim-badge" data-dim-for="participantsRef">--</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="compact-panel">
+            <button class="card-toggle" type="button" data-toggle="palettesRef">
+              <span>Palettes</span>
+              <span>+</span>
+            </button>
+            <div id="palettesRef" class="card-body hidden">
+              <div class="container-head">
+                <div class="container-name">#palettesPanel</div>
+                <div class="dim-badge" data-dim-for="palettesRef">--</div>
+              </div>
+              <div class="container-name">#paletteSearchInput</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="map-stage">
+          <div class="container-head">
+            <div class="container-name">.map-stage</div>
+            <div class="dim-badge" data-dim-for="mapStage">--</div>
+          </div>
+          <div class="map-canvas">
+            <div class="map-label" style="left: 18px; top: 18px;">
+              #map
+              <small>Leaflet map surface</small>
+              <div class="dim-badge" data-dim-for="mapCanvas">--</div>
+            </div>
+            <div class="floating-control" style="right: 18px; top: 18px;">
+              .map-style-dock
+              <small>Wx / styles / focus</small>
+              <div class="dim-badge" data-dim-for="mapStyleDock">--</div>
+            </div>
+            <div class="floating-control" style="left: 18px; bottom: 18px;">
+              #drawControls
+              <small>Geometry / draw action bar</small>
+              <div class="dim-badge" data-dim-for="drawControlsRef">--</div>
+            </div>
+            <div class="map-label" style="left: 140px; top: 120px;">
+              #hazardSourceLayer
+              <small>Example object layer label</small>
+            </div>
+            <div class="map-label" style="left: 340px; top: 260px;">
+              #incidentFocus
+              <small>Reference label for centered view</small>
+            </div>
+          </div>
+        </div>
+
+        <div class="right-stack">
+          <div class="compact-panel">
+            <button class="card-toggle" type="button" data-toggle="quickFlowRef">
+              <span>10-Minute IC Mode</span>
+              <span>+</span>
+            </button>
+            <div id="quickFlowRef" class="card-body hidden">
+              <div class="container-head">
+                <div class="container-name">#quickFlowPanel</div>
+                <div class="dim-badge" data-dim-for="quickFlowRef">--</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="compact-panel">
+            <button class="card-toggle" type="button" data-toggle="afterActionRef">
+              <span>After-Action Mode</span>
+              <span>+</span>
+            </button>
+            <div id="afterActionRef" class="card-body hidden">
+              <div class="container-head">
+                <div class="container-name">#afterActionPanel</div>
+                <div class="dim-badge" data-dim-for="afterActionRef">--</div>
+              </div>
+              <div class="container-name">#playbackLoadBtn</div>
+              <div class="container-name">#exportScenarioBtn</div>
+            </div>
+          </div>
+
+          <div class="compact-panel">
+            <button class="card-toggle" type="button" data-toggle="costSummaryRef">
+              <span>Cost Summary</span>
+              <span>−</span>
+            </button>
+            <div id="costSummaryRef" class="card-body">
+              <div class="container-head">
+                <div class="container-name">#costSummaryPanel</div>
+                <div class="dim-badge" data-dim-for="costSummaryRef">--</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="compact-panel">
+            <button class="card-toggle" type="button" data-toggle="selectedItemRef">
+              <span>Selected Item</span>
+              <span>−</span>
+            </button>
+            <div id="selectedItemRef" class="card-body">
+              <div class="container-head">
+                <div class="container-name">#selectedObjectPanel</div>
+                <div class="dim-badge" data-dim-for="selectedItemRef">--</div>
+              </div>
+              <div class="container-name">#selectedObjectMeta</div>
+              <div class="container-name">#saveSelectedObjectBtn</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const landingSurface = document.getElementById('landingSurface');
+    const workspaceSurface = document.getElementById('workspaceSurface');
+    const interactiveGuidedSetupToggle = document.getElementById('interactiveGuidedSetupToggle');
+    const interactiveFocusSetupRef = document.getElementById('interactiveFocusSetupRef');
+    const mapStage = document.querySelector('.map-stage');
+    const mapCanvas = document.querySelector('.map-canvas');
+    const mapStyleDock = document.querySelector('.map-style-dock, .floating-control');
+
+    document.querySelectorAll('[data-surface]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const target = button.getAttribute('data-surface');
+        landingSurface.classList.toggle('hidden', target !== 'landing');
+        workspaceSurface.classList.toggle('hidden', target !== 'workspace');
+        requestAnimationFrame(updateDimensions);
+      });
+    });
+
+    document.querySelectorAll('[data-toggle]').forEach((button) => {
+      button.addEventListener('click', () => {
+        const id = button.getAttribute('data-toggle');
+        const body = document.getElementById(id);
+        const symbol = button.lastElementChild;
+        const isHidden = body.classList.toggle('hidden');
+        symbol.textContent = isHidden ? '+' : '−';
+        requestAnimationFrame(updateDimensions);
+      });
+    });
+
+    function syncInteractiveGuidedSetup() {
+      if (!interactiveGuidedSetupToggle || !interactiveFocusSetupRef) return;
+      interactiveFocusSetupRef.classList.toggle('hidden', !interactiveGuidedSetupToggle.checked);
+      requestAnimationFrame(updateDimensions);
+    }
+
+    interactiveGuidedSetupToggle?.addEventListener('change', syncInteractiveGuidedSetup);
+
+    function setDim(label, el) {
+      const badge = document.querySelector(`[data-dim-for="${label}"]`);
+      if (!badge || !el) return;
+      const rect = el.getBoundingClientRect();
+      const width = Math.round(rect.width);
+      const height = Math.round(rect.height);
+      badge.textContent = `${width}px × ${height}px`;
+    }
+
+    function updateDimensions() {
+      [
+        'accountCard',
+        'createSessionCard',
+        'reviewSessionsCard',
+        'scenarioReviewCard',
+        'joinCard',
+        'whatHappensCard',
+        'runningSessionsCard',
+        'sessionPanelRef',
+        'sessionPeriodRef',
+        'incidentCommandRef',
+        'participantsRef',
+        'palettesRef',
+        'quickFlowRef',
+        'afterActionRef',
+        'costSummaryRef',
+        'selectedItemRef',
+      ].forEach((id) => setDim(id, document.getElementById(id)));
+
+      const fieldMap = {
+        commanderNameField: '#accountCard .field:nth-child(1)',
+        commanderEmailField: '#accountCard .field:nth-child(2)',
+        commanderAuthBtnRef: '[data-dim-target="commanderAuthBtnRef"]',
+        commanderSignOutBtnRef: '[data-dim-target="commanderSignOutBtnRef"]',
+        createSessionToggleRef: '[data-toggle="createSessionCard"]',
+        createSessionBodyRef: '#createSessionCard',
+        createSessionLockedNoteRef: '#createSessionCard .legend .legend-item:nth-child(3)',
+        createSessionGridRef: '#createSessionCard .field-grid',
+        incidentFieldRef: '#createSessionCard .field-grid .field:nth-child(1)',
+        roleFieldRef: '#createSessionCard .field-grid .field:nth-child(2)',
+        opStartFieldRef: '#createSessionCard .field-grid .field:nth-child(3)',
+        opEndFieldRef: '#createSessionCard .field-grid .field:nth-child(4)',
+        incidentControlRef: '[data-dim-target="incidentControlRef"]',
+        roleControlRef: '[data-dim-target="roleControlRef"]',
+        opStartControlRef: '[data-dim-target="opStartControlRef"]',
+        opEndControlRef: '[data-dim-target="opEndControlRef"]',
+        guidedSetupRef: '#createSessionCard .placeholder-block',
+        focusSetupRef: '#createSessionCard .focus-callout',
+        focusBadgeRef: '[data-dim-target="focusBadgeRef"]',
+        focusPromptRef: '[data-dim-target="focusPromptRef"]',
+        createSessionBtnRef: '[data-dim-target="createSessionBtnRef"]',
+        commanderSessionListRef: '#reviewSessionsCard .container-head:last-child',
+        loadScenarioBtnRef: '[data-dim-target="loadScenarioBtnRef"]',
+        joinCodeField: '#joinCard .field:nth-child(1)',
+        joinDisplayField: '#joinCard .field:nth-child(2)',
+        joinPermissionField: '#joinCard .field:nth-child(3)',
+        joinRoleField: '#joinCard .field:nth-child(4)',
+        joinCodeControlRef: '[data-dim-target="joinCodeControlRef"]',
+        joinDisplayControlRef: '[data-dim-target="joinDisplayControlRef"]',
+        joinPermissionControlRef: '[data-dim-target="joinPermissionControlRef"]',
+        joinRoleControlRef: '[data-dim-target="joinRoleControlRef"]',
+        joinBtnRef: '[data-dim-target="joinBtnRef"]',
+      };
+
+      Object.entries(fieldMap).forEach(([label, selector]) => {
+        setDim(label, document.querySelector(selector));
+      });
+
+      setDim('mapStage', document.querySelector('.map-stage'));
+      setDim('mapCanvas', document.querySelector('.map-canvas'));
+      setDim('mapStyleDock', document.querySelector('.floating-control[style*="right: 18px; top: 18px;"]'));
+      setDim('drawControlsRef', document.querySelector('.floating-control[style*="left: 18px; bottom: 18px;"]'));
+    }
+
+    window.addEventListener('resize', updateDimensions);
+    window.addEventListener('load', updateDimensions);
+    syncInteractiveGuidedSetup();
+  </script>
+</body>
+</html>

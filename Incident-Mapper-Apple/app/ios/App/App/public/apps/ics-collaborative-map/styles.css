@@ -621,6 +621,13 @@ body { height: 100vh; overflow: hidden; }
   gap: var(--space-3);
   margin-bottom: var(--space-2);
 }
+.landing-card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
 .landing-card-header h3,
 .landing-note h3 {
   margin: 0 0 6px;
@@ -661,11 +668,20 @@ body { height: 100vh; overflow: hidden; }
 .create-session-grid .field-block input {
   min-width: 0;
 }
+.create-session-grid #incidentNameInput,
+.create-session-grid #initialIncidentCommanderRoleInput {
+  width: 162px;
+  height: 50px;
+}
 .create-session-grid input[type="datetime-local"] {
   max-width: 100%;
   min-width: 0;
   font-size: 13px;
   padding-inline: 10px;
+}
+.create-session-grid #opStartInput,
+.create-session-grid #opEndInput {
+  width: 50%;
 }
 .create-session-grid input[type="datetime-local"]::-webkit-date-and-time-value {
   text-align: left;
