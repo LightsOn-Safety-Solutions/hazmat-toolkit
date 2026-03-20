@@ -9,13 +9,17 @@
   const STORAGE_KEYS = {
     commanderAuth: "icsCollabCommanderAuth",
     participantAuth: "icsCollabParticipantAuth",
-    ics202Draft: "icsCollabIcs202Draft_v1"
+    ics202Draft: "icsCollabIcs202Draft_v1",
+    themeMode: "icsCollabThemeMode_v1"
   };
   const POLL_INTERVAL_MS = 4000;
   const UPDATE_FLUSH_MS = 10000;
   const WEATHER_REFRESH_MS = 5 * 60 * 1000;
   const WEATHER_API_BASE_URL = (config.weatherApiBaseUrl || "https://api.open-meteo.com/v1/forecast").replace(/\/$/, "");
   const ICON_MANIFEST_URL = "./icon-manifest.json";
+  const themeMediaQuery = window.matchMedia
+    ? window.matchMedia("(prefers-color-scheme: dark)")
+    : null;
   const ERG_WIND_BUCKETS = ["low", "moderate", "high"];
   const ICON_MARKER_OBJECT_TYPE = "IconMarker";
   const IS_TOUCH_PREFERRED = Boolean(
@@ -212,6 +216,7 @@
     mapStyleCloseBtn: document.getElementById("mapStyleCloseBtn"),
     mapStyleTray: document.getElementById("mapStyleTray"),
     mapStyleTrayGrid: document.getElementById("mapStyleTrayGrid"),
+    themeModeSelect: document.getElementById("themeModeSelect"),
     leaveSessionBtn: document.getElementById("leaveSessionBtn"),
     sessionSignOutBtn: document.getElementById("sessionSignOutBtn"),
     showViewerQrBtn: document.getElementById("showViewerQrBtn"),
@@ -391,6 +396,7 @@
     scenarioReview: null,
     rightSidebarCollapsed: false,
     mapStyleTrayOpen: false,
+    themeMode: "auto",
     incidentFocusSignature: "",
     weatherPanelOpen: false,
     weatherLoading: false,
@@ -417,6 +423,19 @@
   };
 
   async function init() {
+    loadThemeMode();
+    if (themeMediaQuery) {
+      const onSchemeChange = () => {
+        if (state.themeMode === "auto") {
+          applyThemeMode("auto", { persist: false });
+        }
+      };
+      if (typeof themeMediaQuery.addEventListener === "function") {
+        themeMediaQuery.addEventListener("change", onSchemeChange);
+      } else if (typeof themeMediaQuery.addListener === "function") {
+        themeMediaQuery.addListener(onSchemeChange);
+      }
+    }
     await loadIconManifest();
     loadErgIsolationCatalog();
     ensureIcs202Draft();
@@ -739,6 +758,9 @@
     elements.guidedSetupToggle.addEventListener("change", (event) => toggleGuidedMode(event.target.checked));
     elements.mapStyleLauncherBtn.addEventListener("click", toggleMapStyleTray);
     elements.mapStyleCloseBtn.addEventListener("click", closeMapStyleTray);
+    elements.themeModeSelect?.addEventListener("change", (event) => {
+      applyThemeMode(event.target.value, { notify: true });
+    });
     elements.leaveSessionBtn.addEventListener("click", leaveCurrentSession);
     elements.sessionSignOutBtn.addEventListener("click", signOutCommander);
     elements.showViewerQrBtn.addEventListener("click", showViewerQrModal);
@@ -954,6 +976,34 @@
     if (!authReady) {
       setStatus("Session owner auth needs Supabase public config.");
     }
+  }
+
+  function resolveThemeMode(mode) {
+    if (mode === "light") return "light";
+    if (mode === "dark") return "dark";
+    return themeMediaQuery?.matches ? "dark" : "light";
+  }
+
+  function applyThemeMode(mode, options = {}) {
+    const normalized = (mode === "light" || mode === "dark" || mode === "auto") ? mode : "auto";
+    const persist = options.persist !== false;
+    const notify = options.notify === true;
+    state.themeMode = normalized;
+    const resolved = resolveThemeMode(normalized);
+    document.body.dataset.theme = resolved;
+    if (elements.themeModeSelect) elements.themeModeSelect.value = normalized;
+    if (persist) {
+      window.localStorage.setItem(STORAGE_KEYS.themeMode, normalized);
+    }
+    if (notify) {
+      const label = normalized === "auto" ? `Auto (${resolved})` : resolved[0].toUpperCase() + resolved.slice(1);
+      setStatus(`Theme: ${label}`);
+    }
+  }
+
+  function loadThemeMode() {
+    const saved = window.localStorage.getItem(STORAGE_KEYS.themeMode) || "auto";
+    applyThemeMode(saved, { persist: false });
   }
 
   function setAuthTab(tab) {
