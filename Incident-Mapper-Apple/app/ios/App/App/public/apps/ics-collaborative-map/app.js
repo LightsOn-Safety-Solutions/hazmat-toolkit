@@ -2825,6 +2825,7 @@
     sessions.forEach((session) => {
       const card = document.createElement("div");
       card.className = "session-card";
+      const visibleStatus = effectiveSessionStatus(session).toUpperCase();
       const top = document.createElement("div");
       top.className = "session-card-top";
       const content = document.createElement("div");
@@ -2833,7 +2834,7 @@
       title.textContent = session.incidentName;
       const meta = document.createElement("div");
       meta.className = "muted";
-      meta.textContent = `${session.status.toUpperCase()} · ${formatDateTime(session.operationalPeriodStart)} to ${formatDateTime(session.operationalPeriodEnd)}`;
+      meta.textContent = `${visibleStatus} · ${formatDateTime(session.operationalPeriodStart)} to ${formatDateTime(session.operationalPeriodEnd)}`;
       const row = document.createElement("div");
       row.className = "row session-card-actions";
       const joinCode = document.createElement("span");
@@ -2888,11 +2889,12 @@
     sessions.forEach((session) => {
       const card = document.createElement("div");
       card.className = "session-card";
+      const visibleStatus = effectiveSessionStatus(session).toUpperCase();
       const title = document.createElement("strong");
       title.textContent = session.incidentName;
       const meta = document.createElement("div");
       meta.className = "muted";
-      meta.textContent = `Owner: ${session.ownerName} · ${formatDateTime(session.operationalPeriodStart)} to ${formatDateTime(session.operationalPeriodEnd)}`;
+      meta.textContent = `Owner: ${session.ownerName} · ${visibleStatus} · ${formatDateTime(session.operationalPeriodStart)} to ${formatDateTime(session.operationalPeriodEnd)}`;
       const role = document.createElement("div");
       role.className = "muted";
       role.textContent = `Incident Commander: ${session.commanderName}`;
