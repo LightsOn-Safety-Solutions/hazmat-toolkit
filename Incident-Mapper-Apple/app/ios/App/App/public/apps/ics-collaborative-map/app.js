@@ -381,6 +381,8 @@
     authTab: "signin",
     commanderAuth: loadStoredJSON(STORAGE_KEYS.commanderAuth),
     participantAuth: loadStoredJSON(STORAGE_KEYS.participantAuth),
+    organizationContext: null,
+    organizationRoster: [],
     activeSession: null,
     actor: null,
     snapshotLoaded: false,
@@ -1143,6 +1145,13 @@
   async function refreshCommanderSessions() {
     if (!state.commanderAuth?.accessToken) return;
     await refreshCommanderTokenIfNeeded();
+    const orgContext = await loadOrganizationContext();
+    if (!orgContext) {
+      renderCommanderSessions([]);
+      renderActiveSessionGallery([]);
+      renderCommanderAuthPanels();
+      return;
+    }
     const [sessions, activeSessions] = await Promise.all([
       apiFetch("/v1/ics-collab/sessions", { actorType: "commander" }),
       apiFetch("/v1/ics-collab/sessions/active", { actorType: "commander" })
@@ -1153,6 +1162,29 @@
     elements.sessionListPanel.classList.remove("hidden");
     elements.activeSessionGalleryPanel.classList.remove("hidden");
     elements.commanderSignOutBtn.classList.remove("hidden");
+    renderCommanderAuthPanels();
+  }
+
+  async function loadOrganizationContext() {
+    if (!state.commanderAuth?.accessToken) {
+      state.organizationContext = null;
+      state.organizationRoster = [];
+      return null;
+    }
+    try {
+      const result = await apiFetch("/v1/ics-collab/org/me", { actorType: "commander" });
+      state.organizationContext = result?.membership || null;
+      state.organizationRoster = Array.isArray(result?.roster) ? result.roster : [];
+      return state.organizationContext;
+    } catch (error) {
+      state.organizationContext = {
+        error: formatError(error),
+        licenseStatus: "inactive",
+        isActive: false
+      };
+      state.organizationRoster = [];
+      return null;
+    }
   }
 
   async function openViewerSession(joinCode) {
@@ -1181,6 +1213,10 @@
   async function onCreateSession() {
     if (!state.commanderAuth?.accessToken) {
       setStatus("Sign in as session owner before creating a session.");
+      return;
+    }
+    if (!hasActiveOrganizationAccess()) {
+      setStatus(state.organizationContext?.error || "Your account is not assigned to an active department license.");
       return;
     }
     const incidentName = elements.incidentNameInput.value.trim();
@@ -1216,6 +1252,10 @@
   async function onJoinSession() {
     if (!state.commanderAuth?.accessToken) {
       setStatus("Sign in with an account before joining a session.");
+      return;
+    }
+    if (!hasActiveOrganizationAccess()) {
+      setStatus(state.organizationContext?.error || "Your account is not assigned to an active department license.");
       return;
     }
     const joinCode = elements.joinCodeInput.value.trim().toUpperCase();
@@ -1421,6 +1461,8 @@
       }
     }
     state.commanderAuth = null;
+    state.organizationContext = null;
+    state.organizationRoster = [];
     persistJSON(STORAGE_KEYS.commanderAuth, null);
     elements.createSessionPanel.classList.add("hidden");
     elements.sessionListPanel.classList.add("hidden");
@@ -1814,24 +1856,49 @@
     }
   }
 
+  function hasActiveOrganizationAccess() {
+    return Boolean(
+      state.organizationContext
+      && state.organizationContext.isActive !== false
+      && state.organizationContext.licenseStatus === "active"
+      && !state.organizationContext.error
+    );
+  }
+
   function renderCommanderAuthPanels() {
     const signedIn = Boolean(state.commanderAuth?.accessToken);
     const authReady = hasSupabaseAuthConfig();
+    const licensed = hasActiveOrganizationAccess();
     elements.commanderSignedInSummary.classList.toggle("hidden", !signedIn);
     elements.authFields.classList.toggle("hidden", signedIn);
     if (signedIn) {
       elements.commanderSummaryName.textContent = `Session Owner: ${state.commanderAuth?.displayName || "Signed in"}`;
-      elements.commanderSummaryEmail.textContent = state.commanderAuth?.email || "";
+      const summaryParts = [state.commanderAuth?.email || ""];
+      if (state.organizationContext?.organizationName) {
+        summaryParts.push(state.organizationContext.organizationName);
+      }
+      if (state.organizationContext?.countyName) {
+        summaryParts.push(state.organizationContext.countyName);
+      }
+      if (state.organizationContext?.error) {
+        summaryParts.push(state.organizationContext.error);
+      }
+      elements.commanderSummaryEmail.textContent = summaryParts.filter(Boolean).join(" · ");
     }
     elements.commanderAuthBtn.textContent = signedIn ? "Signed In" : (state.authTab === "signin" ? "Sign In" : "Create Account");
     elements.commanderAuthBtn.disabled = signedIn || !authReady;
     elements.commanderSignOutBtn.disabled = !signedIn;
     elements.createSessionPanel.classList.toggle("hidden", false);
-    elements.createSessionPanel.classList.toggle("locked", !signedIn);
-    elements.createSessionLockedNote.classList.toggle("hidden", signedIn);
-    elements.sessionListPanel.classList.toggle("hidden", !signedIn);
-    elements.scenarioReviewPanel.classList.toggle("hidden", !signedIn);
-    elements.activeSessionGalleryPanel.classList.toggle("hidden", !signedIn);
+    elements.createSessionPanel.classList.toggle("locked", !signedIn || !licensed);
+    elements.createSessionLockedNote.classList.toggle("hidden", signedIn && licensed);
+    if (elements.createSessionLockedNote) {
+      elements.createSessionLockedNote.textContent = !signedIn
+        ? "Sign in first to unlock session creation."
+        : (state.organizationContext?.error || "Your account is not assigned to an active department license.");
+    }
+    elements.sessionListPanel.classList.toggle("hidden", !signedIn || !licensed);
+    elements.scenarioReviewPanel.classList.toggle("hidden", !signedIn || !licensed);
+    elements.activeSessionGalleryPanel.classList.toggle("hidden", !signedIn || !licensed);
     elements.commanderSignOutBtn.classList.toggle("hidden", !signedIn);
     elements.sessionSignOutBtn.classList.toggle("hidden", !signedIn || (!state.activeSession && !isScenarioReviewMode()));
     elements.closeScenarioReviewBtn.classList.toggle("hidden", !isScenarioReviewMode());
@@ -1845,8 +1912,13 @@
     elements.showViewerQrBtn.classList.toggle("hidden", !viewerQrAllowed || !state.activeSession || state.viewerMode || isScenarioReviewMode());
     elements.toggleViewerAccessBtn.classList.toggle("hidden", !viewerToggleVisible || !state.activeSession || state.viewerMode || isScenarioReviewMode());
     elements.toggleViewerAccessBtn.textContent = isViewerAccessEnabled() ? "Disable Viewer Access" : "Enable Viewer Access";
-    elements.joinLockedNote.classList.toggle("hidden", signedIn);
-    toggleLandingCardAccess(signedIn);
+    elements.joinLockedNote.classList.toggle("hidden", signedIn && licensed);
+    if (elements.joinLockedNote) {
+      elements.joinLockedNote.textContent = !signedIn
+        ? "Sign in with an account first, then join with the session code."
+        : (state.organizationContext?.error || "Your account is not assigned to an active department license.");
+    }
+    toggleLandingCardAccess(signedIn && licensed);
   }
 
   function incidentFocusSignatureFor(point) {
@@ -2788,7 +2860,7 @@
     elements.rightSidebarCollapseBtn.setAttribute("aria-label", state.rightSidebarCollapsed ? "Expand right panel" : "Collapse right panel");
   }
 
-  function toggleLandingCardAccess(signedIn) {
+  function toggleLandingCardAccess(enabled) {
     const createControls = [
       elements.incidentNameInput,
       elements.commanderRoleSelect,
@@ -2805,10 +2877,10 @@
       elements.joinSessionBtn
     ];
     createControls.forEach((element) => {
-      if (element) element.disabled = !signedIn;
+      if (element) element.disabled = !enabled;
     });
     joinControls.forEach((element) => {
-      if (element) element.disabled = !signedIn;
+      if (element) element.disabled = !enabled;
     });
     renderCreateSessionFocusVisibility();
   }
@@ -2834,7 +2906,10 @@
       title.textContent = session.incidentName;
       const meta = document.createElement("div");
       meta.className = "muted";
-      meta.textContent = `${visibleStatus} · ${formatDateTime(session.operationalPeriodStart)} to ${formatDateTime(session.operationalPeriodEnd)}`;
+      const accessLabel = session.accessType === "shared"
+        ? `SHARED · ${session.organizationName || "Outside Department"}`
+        : (session.organizationName || "Department");
+      meta.textContent = `${visibleStatus} · ${accessLabel} · ${formatDateTime(session.operationalPeriodStart)} to ${formatDateTime(session.operationalPeriodEnd)}`;
       const row = document.createElement("div");
       row.className = "row session-card-actions";
       const joinCode = document.createElement("span");
@@ -2843,8 +2918,14 @@
       const openBtn = document.createElement("button");
       openBtn.className = "secondary";
       openBtn.type = "button";
-      openBtn.textContent = "Open";
+      openBtn.textContent = session.isOwner ? "Open" : "Use Code";
       openBtn.addEventListener("click", async () => {
+        if (!session.isOwner) {
+          elements.joinCodeInput.value = session.joinCode;
+          elements.joinCodeInput.focus();
+          setStatus(`Loaded join code for ${session.incidentName}.`);
+          return;
+        }
         try {
           const snapshot = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(session.id)}/snapshot`, {
             actorType: "commander"
@@ -2894,7 +2975,7 @@
       title.textContent = session.incidentName;
       const meta = document.createElement("div");
       meta.className = "muted";
-      meta.textContent = `Owner: ${session.ownerName} · ${visibleStatus} · ${formatDateTime(session.operationalPeriodStart)} to ${formatDateTime(session.operationalPeriodEnd)}`;
+      meta.textContent = `Owner: ${session.ownerName} · ${session.organizationName || "Department"} · ${visibleStatus} · ${formatDateTime(session.operationalPeriodStart)} to ${formatDateTime(session.operationalPeriodEnd)}`;
       const role = document.createElement("div");
       role.className = "muted";
       role.textContent = `Incident Commander: ${session.commanderName}`;
@@ -2955,6 +3036,10 @@
     const ownerParticipant = state.participants.find((participant) => participant.permissionTier === "commander");
     appendMetaRow(elements.sessionMeta, "Incident", session.incidentName);
     appendMetaRow(elements.sessionMeta, isScenarioReviewMode() ? "Source" : "Session Owner", isScenarioReviewMode() ? (state.scenarioReview?.fileName || "Scenario file") : (ownerParticipant ? ownerParticipant.displayName : "Owner"));
+    if (!isScenarioReviewMode()) {
+      appendMetaRow(elements.sessionMeta, "Department", session.organizationName || "Legacy Session");
+      appendMetaRow(elements.sessionMeta, "Access", session.accessType === "shared" ? "Mutual Aid / Shared" : "Department");
+    }
     appendMetaRow(elements.sessionMeta, "Incident Commander", `${session.commanderName} · ${session.commanderICSRole}`);
     appendMetaRow(elements.sessionMeta, "Status", visibleStatus);
     appendMetaRow(elements.sessionMeta, "Incident Focus", getIncidentFocusPoint() ? "Set" : "Not set");

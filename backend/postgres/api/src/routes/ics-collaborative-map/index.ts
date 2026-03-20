@@ -54,6 +54,7 @@ const OBJECT_TYPES = [
 
 const GEOMETRY_TYPES = ['point', 'line', 'polygon'] as const;
 const SESSION_STATUSES = ['active', 'ended', 'expired'] as const;
+const LICENSE_STATUSES = ['active', 'inactive'] as const;
 const EDIT_LOCK_MS = 30_000;
 const PARTICIPANT_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const ACTIVE_PARTICIPANT_WINDOW_MS = 30_000;
@@ -62,6 +63,7 @@ type PermissionTier = (typeof PERMISSION_TIERS)[number];
 type GeometryType = (typeof GEOMETRY_TYPES)[number];
 type ObjectType = (typeof OBJECT_TYPES)[number];
 type SessionStatus = (typeof SESSION_STATUSES)[number];
+type LicenseStatus = (typeof LICENSE_STATUSES)[number];
 
 type CreateSessionBody = {
   incidentName?: string;
@@ -106,6 +108,10 @@ type UpdateViewerAccessBody = {
   enabled?: boolean;
 };
 
+type UpdateSessionOrgAccessBody = {
+  organizationId?: string;
+};
+
 type LockBody = {
   baseVersion?: number;
 };
@@ -118,6 +124,9 @@ type MutationHistoryQuery = {
 type CollabSessionRow = {
   id: string;
   trainer_ref: string;
+  organization_id: string | null;
+  organization_name: string | null;
+  county_name: string | null;
   incident_name: string;
   commander_name: string;
   commander_ics_role: string;
@@ -131,6 +140,33 @@ type CollabSessionRow = {
   ended_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type CollabOrganizationRow = {
+  id: string;
+  organization_name: string;
+  license_status: LicenseStatus;
+  seat_limit: number | null;
+  county_id: string | null;
+  county_name: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+type CollabOrgMembershipRow = {
+  id: string;
+  organization_id: string;
+  trainer_id: string | null;
+  trainer_ref: string;
+  email: string;
+  display_name: string;
+  is_admin: boolean;
+  is_active: boolean;
+  organization_name: string;
+  license_status: LicenseStatus;
+  seat_limit: number | null;
+  county_id: string | null;
+  county_name: string | null;
 };
 
 type CollabParticipantRow = {
@@ -202,6 +238,22 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
     }
   }));
 
+  app.get('/v1/ics-collab/org/me', async (request, reply) => {
+    try {
+      const trainer = await requireTrainerIdentity(app, request.headers);
+      const membership = await requireLicensedCollabMembership(app.pg, trainer);
+      const roster = membership.is_admin
+        ? await listOrganizationMembers(app.pg, membership.organization_id)
+        : [];
+      return reply.send({
+        membership: mapOrganizationMembership(membership),
+        roster: roster.map(mapOrganizationRosterMember)
+      });
+    } catch (error) {
+      return sendTrainerError(reply, request, error, 'Failed to fetch department license context.');
+    }
+  });
+
   app.get<{ Params: { joinCode: string } }>('/v1/ics-collab/view/:joinCode', async (request, reply) => {
     try {
       const joinCode = normalizeJoinCode(request.params.joinCode);
@@ -252,11 +304,15 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
   app.get('/v1/ics-collab/sessions', async (request, reply) => {
     try {
       const trainer = await requireTrainerIdentity(app, request.headers);
+      const membership = await requireLicensedCollabMembership(app.pg, trainer);
       const result = await app.pg.query<CollabSessionRow>(
         `
           select
             id::text as id,
             trainer_ref,
+            s.organization_id::text as organization_id,
+            org.organization_name,
+            county.county_name,
             incident_name,
             commander_name,
             commander_ics_role,
@@ -268,15 +324,32 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
             operational_period_end,
             last_mutation_version::text as last_mutation_version,
             ended_at,
-            created_at,
-            updated_at
-          from collab_map_sessions
-          where trainer_ref = $1
-          order by created_at desc
+            s.created_at,
+            s.updated_at
+          from collab_map_sessions s
+          left join collab_organizations org
+            on org.id = s.organization_id
+          left join collab_counties county
+            on county.id = org.county_id
+          where (
+            s.organization_id = $1::uuid
+            or exists (
+              select 1
+              from collab_map_session_org_access soa
+              where soa.session_id = s.id
+                and soa.organization_id = $1::uuid
+            )
+            or (s.organization_id is null and s.trainer_ref = $2)
+          )
+          order by s.created_at desc
         `,
-        [trainer.trainerRef]
+        [membership.organization_id, trainer.trainerRef]
       );
-      return reply.send(result.rows.map((row) => mapSession(row, app.config.icsCollabPublicBaseUrl ?? request.headers.origin)));
+      return reply.send(result.rows.map((row) => ({
+        ...mapSession(row, app.config.icsCollabPublicBaseUrl ?? request.headers.origin),
+        isOwner: row.trainer_ref === trainer.trainerRef,
+        accessType: row.organization_id && row.organization_id === membership.organization_id ? 'owned' : (row.organization_id ? 'shared' : 'legacy')
+      })));
     } catch (error) {
       return sendTrainerError(reply, request, error, 'Failed to list collaborative sessions.');
     }
@@ -285,6 +358,7 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
   app.get('/v1/ics-collab/sessions/active', async (request, reply) => {
     try {
       const trainer = await requireTrainerIdentity(app, request.headers);
+      const membership = await requireLicensedCollabMembership(app.pg, trainer);
       const result = await app.pg.query<{
         id: string;
         incident_name: string;
@@ -295,6 +369,8 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
         owner_name: string | null;
         owner_trainer_ref: string;
         commander_name: string;
+        organization_id: string | null;
+        organization_name: string | null;
       }>(
         `
           select
@@ -306,14 +382,29 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
             s.session_status,
             t.display_name as owner_name,
             s.trainer_ref as owner_trainer_ref,
-            s.commander_name
+            s.commander_name,
+            s.organization_id::text as organization_id,
+            org.organization_name
           from collab_map_sessions s
           left join trainers t
             on t.trainer_ref = s.trainer_ref
+          left join collab_organizations org
+            on org.id = s.organization_id
           where s.session_status = 'active'
             and s.operational_period_end > now()
+            and (
+              s.organization_id = $1::uuid
+              or exists (
+                select 1
+                from collab_map_session_org_access soa
+                where soa.session_id = s.id
+                  and soa.organization_id = $1::uuid
+              )
+              or (s.organization_id is null and s.trainer_ref = $2)
+            )
           order by s.created_at desc
-        `
+        `,
+        [membership.organization_id, trainer.trainerRef]
       );
       return reply.send(result.rows.map((row) => ({
         id: row.id,
@@ -325,6 +416,9 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
         ownerName: row.owner_name ?? 'Owner',
         ownerTrainerRef: row.owner_trainer_ref,
         commanderName: row.commander_name,
+        organizationId: row.organization_id,
+        organizationName: row.organization_name,
+        accessType: row.organization_id && row.organization_id === membership.organization_id ? 'owned' : (row.organization_id ? 'shared' : 'legacy'),
         isOwner: row.owner_trainer_ref === trainer.trainerRef
       })));
     } catch (error) {
@@ -346,6 +440,7 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
 
     try {
       const trainer = await requireTrainerIdentity(app, request.headers);
+      const membership = await requireLicensedCollabMembership(app.pg, trainer);
       const client = await app.pg.connect();
       try {
         await client.query('BEGIN');
@@ -357,6 +452,7 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
             insert into collab_map_sessions (
               trainer_id,
               trainer_ref,
+              organization_id,
               incident_name,
               commander_name,
               commander_ics_role,
@@ -367,10 +463,13 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
               operational_period_start,
               operational_period_end
             )
-            values ($1::uuid, $2, $3, $4, $5, $6, $7::timestamptz, 'active', $8::timestamptz, $9::timestamptz)
+            values ($1::uuid, $2, $3::uuid, $4, $5, $6, $7, $8::timestamptz, true, 'active', $9::timestamptz, $10::timestamptz)
             returning
               id::text as id,
               trainer_ref,
+              organization_id::text as organization_id,
+              null::text as organization_name,
+              null::text as county_name,
               incident_name,
               commander_name,
               commander_ics_role,
@@ -388,6 +487,7 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
           [
             trainerRow?.id ?? null,
             trainer.trainerRef,
+            membership.organization_id,
             incidentName,
             normalizeOptionalText(request.body?.commanderName) ?? trainer.displayName,
             commanderICSRole,
@@ -398,6 +498,8 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
           ]
         );
         const session = sessionInsert.rows[0];
+        session.organization_name = membership.organization_name;
+        session.county_name = membership.county_name;
 
         const commanderParticipantInsert = await client.query<CollabParticipantRow>(
           `
@@ -465,10 +567,12 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
     try {
       await client.query('BEGIN');
       const identity = await requireTrainerIdentity(app, request.headers);
+      const membership = await requireLicensedCollabMembership(client, identity);
       const session = await fetchSessionByJoinCode(client, joinCode);
       if (!session) {
         throw new NotFoundError('Session not found for join code.');
       }
+      await ensureOrganizationSessionAccess(client, session, membership.organization_id, identity.trainerRef);
       const refreshedSession = await refreshSessionStatusIfExpired(client, session.id);
       const effectivePermission: PermissionTier = refreshedSession.session_status === 'active' ? requestedPermission : 'observer';
       const token = createParticipantToken();
@@ -595,7 +699,7 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
       if (!operationalPeriodStart || !operationalPeriodEnd || operationalPeriodEnd <= operationalPeriodStart) {
         return reply.code(400).send({ error: 'BAD_REQUEST', message: 'Valid operationalPeriodStart and operationalPeriodEnd are required.' });
       }
-      const result = await app.pg.query<CollabSessionRow>(
+      await app.pg.query<CollabSessionRow>(
         `
           update collab_map_sessions
           set
@@ -604,26 +708,11 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
             session_status = case when session_status = 'ended' then session_status else 'active' end,
             ended_at = case when session_status = 'ended' then ended_at else null end
           where id = $1::uuid
-          returning
-            id::text as id,
-            trainer_ref,
-            incident_name,
-            commander_name,
-            commander_ics_role,
-            join_code,
-            join_code_expires_at,
-            viewer_access_enabled,
-            session_status,
-            operational_period_start,
-            operational_period_end,
-            last_mutation_version::text as last_mutation_version,
-            ended_at,
-            created_at,
-            updated_at
         `,
         [actor.session.id, operationalPeriodStart.toISOString(), operationalPeriodEnd.toISOString()]
       );
-      return reply.send(mapSession(result.rows[0], app.config.icsCollabPublicBaseUrl ?? request.headers.origin));
+      const refreshed = await fetchSessionByID(app.pg, actor.session.id);
+      return reply.send(mapSession(refreshed ?? actor.session, app.config.icsCollabPublicBaseUrl ?? request.headers.origin));
     } catch (error) {
       return sendRouteError(reply, request, error, 'Failed to update operational period.');
     }
@@ -636,33 +725,18 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
       if (!commanderName) {
         return reply.code(400).send({ error: 'BAD_REQUEST', message: 'commanderName is required.' });
       }
-      const result = await app.pg.query<CollabSessionRow>(
+      await app.pg.query<CollabSessionRow>(
         `
           update collab_map_sessions
           set
             commander_name = $2,
             commander_ics_role = 'Incident Commander'
           where id = $1::uuid
-          returning
-            id::text as id,
-            trainer_ref,
-            incident_name,
-            commander_name,
-            commander_ics_role,
-            join_code,
-            join_code_expires_at,
-            viewer_access_enabled,
-            session_status,
-            operational_period_start,
-            operational_period_end,
-            last_mutation_version::text as last_mutation_version,
-            ended_at,
-            created_at,
-            updated_at
         `,
         [actor.session.id, commanderName]
       );
-      return reply.send(mapSession(result.rows[0], app.config.icsCollabPublicBaseUrl ?? request.headers.origin));
+      const refreshed = await fetchSessionByID(app.pg, actor.session.id);
+      return reply.send(mapSession(refreshed ?? actor.session, app.config.icsCollabPublicBaseUrl ?? request.headers.origin));
     } catch (error) {
       return sendRouteError(reply, request, error, 'Failed to update Incident Commander assignment.');
     }
@@ -679,28 +753,84 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
           update collab_map_sessions
           set viewer_access_enabled = $2
           where id = $1::uuid
-          returning
-            id::text as id,
-            trainer_ref,
-            incident_name,
-            commander_name,
-            commander_ics_role,
-            join_code,
-            join_code_expires_at,
-            viewer_access_enabled,
-            session_status,
-            operational_period_start,
-            operational_period_end,
-            last_mutation_version::text as last_mutation_version,
-            ended_at,
-            created_at,
-            updated_at
         `,
         [actor.session.id, request.body.enabled]
       );
-      return reply.send(mapSession(result.rows[0], app.config.icsCollabPublicBaseUrl ?? request.headers.origin));
+      const refreshed = await fetchSessionByID(app.pg, actor.session.id);
+      return reply.send(mapSession(refreshed ?? actor.session, app.config.icsCollabPublicBaseUrl ?? request.headers.origin));
     } catch (error) {
       return sendRouteError(reply, request, error, 'Failed to update viewer access.');
+    }
+  });
+
+  app.get<{ Params: { sessionId: string } }>('/v1/ics-collab/sessions/:sessionId/access', async (request, reply) => {
+    try {
+      const actor = await resolveSessionActor(app, request.params.sessionId, request.headers.authorization, { requireCommander: true });
+      ensureOwningCommander(actor);
+      const sharedOrganizations = await listSessionSharedOrganizations(app.pg, actor.session.id);
+      return reply.send({
+        ownerOrganizationId: actor.session.organization_id,
+        ownerOrganizationName: actor.session.organization_name,
+        sharedOrganizations: sharedOrganizations.map(mapSharedOrganization)
+      });
+    } catch (error) {
+      return sendRouteError(reply, request, error, 'Failed to fetch collaborative session access.');
+    }
+  });
+
+  app.post<{ Params: { sessionId: string }; Body: UpdateSessionOrgAccessBody }>('/v1/ics-collab/sessions/:sessionId/access/organizations', async (request, reply) => {
+    try {
+      const actor = await resolveSessionActor(app, request.params.sessionId, request.headers.authorization, { requireCommander: true });
+      ensureOwningCommander(actor);
+      const organizationId = normalizeUUID(request.body?.organizationId);
+      if (!organizationId) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'organizationId is required.' });
+      }
+      if (organizationId === actor.session.organization_id) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'Session owner organization already has access.' });
+      }
+      const organization = await fetchOrganizationByID(app.pg, organizationId);
+      if (!organization || organization.license_status !== 'active') {
+        return reply.code(404).send({ error: 'NOT_FOUND', message: 'Active organization not found.' });
+      }
+      await app.pg.query(
+        `
+          insert into collab_map_session_org_access (session_id, organization_id)
+          values ($1::uuid, $2::uuid)
+          on conflict (session_id, organization_id) do nothing
+        `,
+        [actor.session.id, organizationId]
+      );
+      const sharedOrganizations = await listSessionSharedOrganizations(app.pg, actor.session.id);
+      return reply.send({
+        ownerOrganizationId: actor.session.organization_id,
+        ownerOrganizationName: actor.session.organization_name,
+        sharedOrganizations: sharedOrganizations.map(mapSharedOrganization)
+      });
+    } catch (error) {
+      return sendRouteError(reply, request, error, 'Failed to grant collaborative session access.');
+    }
+  });
+
+  app.delete<{ Params: { sessionId: string; organizationId: string } }>('/v1/ics-collab/sessions/:sessionId/access/organizations/:organizationId', async (request, reply) => {
+    try {
+      const actor = await resolveSessionActor(app, request.params.sessionId, request.headers.authorization, { requireCommander: true });
+      ensureOwningCommander(actor);
+      const organizationId = normalizeUUID(request.params.organizationId);
+      if (!organizationId) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'Valid organizationId is required.' });
+      }
+      await app.pg.query(
+        `
+          delete from collab_map_session_org_access
+          where session_id = $1::uuid
+            and organization_id = $2::uuid
+        `,
+        [actor.session.id, organizationId]
+      );
+      return reply.code(204).send();
+    } catch (error) {
+      return sendRouteError(reply, request, error, 'Failed to revoke collaborative session access.');
     }
   });
 
@@ -889,8 +1019,8 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
             operational_period_end,
             last_mutation_version::text as last_mutation_version,
             ended_at,
-            created_at,
-            updated_at
+            s.created_at,
+            s.updated_at
         `,
         [actor.session.id]
       );
@@ -1267,6 +1397,9 @@ async function fetchSessionByID(pool: { query: PoolClient['query'] }, sessionID:
       select
         id::text as id,
         trainer_ref,
+        s.organization_id::text as organization_id,
+        org.organization_name,
+        county.county_name,
         incident_name,
         commander_name,
         commander_ics_role,
@@ -1275,12 +1408,16 @@ async function fetchSessionByID(pool: { query: PoolClient['query'] }, sessionID:
         viewer_access_enabled,
         session_status,
         operational_period_start,
-        operational_period_end,
-        last_mutation_version::text as last_mutation_version,
-        ended_at,
-        created_at,
-        updated_at
-      from collab_map_sessions
+            operational_period_end,
+            last_mutation_version::text as last_mutation_version,
+            ended_at,
+            s.created_at,
+            s.updated_at
+      from collab_map_sessions s
+      left join collab_organizations org
+        on org.id = s.organization_id
+      left join collab_counties county
+        on county.id = org.county_id
       where id = $1::uuid
       limit 1
     `,
@@ -1295,6 +1432,9 @@ async function fetchSessionByJoinCode(pool: { query: PoolClient['query'] }, join
       select
         id::text as id,
         trainer_ref,
+        s.organization_id::text as organization_id,
+        org.organization_name,
+        county.county_name,
         incident_name,
         commander_name,
         commander_ics_role,
@@ -1306,9 +1446,13 @@ async function fetchSessionByJoinCode(pool: { query: PoolClient['query'] }, join
         operational_period_end,
         last_mutation_version::text as last_mutation_version,
         ended_at,
-        created_at,
-        updated_at
-      from collab_map_sessions
+        s.created_at,
+        s.updated_at
+      from collab_map_sessions s
+      left join collab_organizations org
+        on org.id = s.organization_id
+      left join collab_counties county
+        on county.id = org.county_id
       where join_code = $1
       limit 1
     `,
@@ -1465,6 +1609,12 @@ function canManageMapNotes(actor: SessionActor) {
   return MAP_NOTE_ALLOWED_ROLES.includes(actor.participant.ics_role as (typeof MAP_NOTE_ALLOWED_ROLES)[number]);
 }
 
+function ensureOwningCommander(actor: SessionActor) {
+  if (actor.actorType !== 'commander' || actor.trainerRef !== actor.session.trainer_ref) {
+    throw new TrainerForbiddenError('Only the owning session commander can manage department access.');
+  }
+}
+
 async function nextSessionVersion(pool: { query: PoolClient['query'] }, sessionID: string) {
   const result = await pool.query<{ last_mutation_version: string }>(
     `
@@ -1564,6 +1714,158 @@ async function refreshSessionStatusIfExpired(pool: { query: PoolClient['query'] 
   return session;
 }
 
+async function requireLicensedCollabMembership(
+  pool: { query: PoolClient['query'] },
+  trainer: { trainerRef: string; displayName: string }
+) {
+  const membership = await fetchLicensedCollabMembership(pool, trainer.trainerRef);
+  if (!membership || !membership.is_active) {
+    throw new TrainerForbiddenError('Your account is not assigned to an active department license.');
+  }
+  if (membership.license_status !== 'active') {
+    throw new TrainerForbiddenError('Your department license is inactive.');
+  }
+  return membership;
+}
+
+async function fetchLicensedCollabMembership(
+  pool: { query: PoolClient['query'] },
+  trainerRef: string
+) {
+  const normalized = trainerRef.trim().toLowerCase();
+  const result = await pool.query<CollabOrgMembershipRow>(
+    `
+      select
+        m.id::text as id,
+        m.organization_id::text as organization_id,
+        m.trainer_id::text as trainer_id,
+        m.trainer_ref,
+        m.email,
+        m.display_name,
+        m.is_admin,
+        m.is_active,
+        org.organization_name,
+        org.license_status,
+        org.seat_limit,
+        org.county_id::text as county_id,
+        county.county_name
+      from collab_org_members m
+      join collab_organizations org
+        on org.id = m.organization_id
+      left join collab_counties county
+        on county.id = org.county_id
+      where lower(m.trainer_ref) = $1
+      limit 1
+    `,
+    [normalized]
+  );
+  return result.rows[0] ?? null;
+}
+
+async function ensureOrganizationSessionAccess(
+  pool: { query: PoolClient['query'] },
+  session: CollabSessionRow,
+  organizationId: string,
+  trainerRef: string
+) {
+  if (!session.organization_id) {
+    if (session.trainer_ref === trainerRef) return;
+    throw new TrainerForbiddenError('This collaborative session is not available to your department.');
+  }
+  if (session.organization_id === organizationId) return;
+  const shared = await pool.query<{ exists: boolean }>(
+    `
+      select true as exists
+      from collab_map_session_org_access
+      where session_id = $1::uuid
+        and organization_id = $2::uuid
+      limit 1
+    `,
+    [session.id, organizationId]
+  );
+  if (shared.rowCount === 0) {
+    throw new TrainerForbiddenError('Your department does not have access to this collaborative session.');
+  }
+}
+
+async function listOrganizationMembers(pool: { query: PoolClient['query'] }, organizationId: string) {
+  const result = await pool.query<CollabOrgMembershipRow>(
+    `
+      select
+        m.id::text as id,
+        m.organization_id::text as organization_id,
+        m.trainer_id::text as trainer_id,
+        m.trainer_ref,
+        m.email,
+        m.display_name,
+        m.is_admin,
+        m.is_active,
+        org.organization_name,
+        org.license_status,
+        org.seat_limit,
+        org.county_id::text as county_id,
+        county.county_name
+      from collab_org_members m
+      join collab_organizations org
+        on org.id = m.organization_id
+      left join collab_counties county
+        on county.id = org.county_id
+      where m.organization_id = $1::uuid
+      order by lower(m.display_name), lower(m.email)
+    `,
+    [organizationId]
+  );
+  return result.rows;
+}
+
+async function fetchOrganizationByID(pool: { query: PoolClient['query'] }, organizationId: string) {
+  const result = await pool.query<CollabOrganizationRow>(
+    `
+      select
+        org.id::text as id,
+        org.organization_name,
+        org.license_status,
+        org.seat_limit,
+        org.county_id::text as county_id,
+        county.county_name,
+        org.created_at,
+        org.updated_at
+      from collab_organizations org
+      left join collab_counties county
+        on county.id = org.county_id
+      where org.id = $1::uuid
+      limit 1
+    `,
+    [organizationId]
+  );
+  return result.rows[0] ?? null;
+}
+
+async function listSessionSharedOrganizations(pool: { query: PoolClient['query'] }, sessionId: string) {
+  const result = await pool.query<CollabOrganizationRow>(
+    `
+      select
+        org.id::text as id,
+        org.organization_name,
+        org.license_status,
+        org.seat_limit,
+        org.county_id::text as county_id,
+        county.county_name,
+        org.created_at,
+        org.updated_at
+      from collab_map_session_org_access soa
+      join collab_organizations org
+        on org.id = soa.organization_id
+      left join collab_counties county
+        on county.id = org.county_id
+      where soa.session_id = $1::uuid
+      order by lower(org.organization_name)
+    `,
+    [sessionId]
+  );
+  return result.rows;
+}
+
 async function upsertTrainer(
   client: PoolClient,
   trainerRef: string,
@@ -1639,6 +1941,9 @@ function mapSession(row: CollabSessionRow, publicBaseUrl?: string) {
   return {
     id: row.id,
     trainerRef: row.trainer_ref,
+    organizationId: row.organization_id,
+    organizationName: row.organization_name,
+    countyName: row.county_name,
     incidentName: row.incident_name,
     commanderName: row.commander_name,
     commanderICSRole: row.commander_ics_role,
@@ -1671,6 +1976,45 @@ function mapParticipant(row: CollabParticipantRow) {
     joinedAt: row.joined_at,
     lastSeenAt: row.last_seen_at,
     trainerRef: row.trainer_ref
+  };
+}
+
+function mapOrganizationMembership(row: CollabOrgMembershipRow) {
+  return {
+    id: row.id,
+    organizationId: row.organization_id,
+    organizationName: row.organization_name,
+    countyId: row.county_id,
+    countyName: row.county_name,
+    trainerRef: row.trainer_ref,
+    email: row.email,
+    displayName: row.display_name,
+    isAdmin: row.is_admin,
+    isActive: row.is_active,
+    licenseStatus: row.license_status,
+    seatLimit: row.seat_limit
+  };
+}
+
+function mapOrganizationRosterMember(row: CollabOrgMembershipRow) {
+  return {
+    id: row.id,
+    trainerRef: row.trainer_ref,
+    email: row.email,
+    displayName: row.display_name,
+    isAdmin: row.is_admin,
+    isActive: row.is_active
+  };
+}
+
+function mapSharedOrganization(row: CollabOrganizationRow) {
+  return {
+    id: row.id,
+    organizationName: row.organization_name,
+    countyId: row.county_id,
+    countyName: row.county_name,
+    licenseStatus: row.license_status,
+    seatLimit: row.seat_limit
   };
 }
 
