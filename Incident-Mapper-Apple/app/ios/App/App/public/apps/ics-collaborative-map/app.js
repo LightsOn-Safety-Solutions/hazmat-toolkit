@@ -4877,15 +4877,12 @@
       setStatus(validation.errors[0]);
       return;
     }
-    if (typeof window.html2canvas !== "function") {
-      setStatus("PDF export library unavailable.");
+    const exportLibraries = await ensureExportLibraries({ pdf: true });
+    if (!exportLibraries.ok) {
+      setStatus(exportLibraries.message);
       return;
     }
     const jspdfNs = window.jspdf;
-    if (!jspdfNs?.jsPDF) {
-      setStatus("PDF export library unavailable.");
-      return;
-    }
     try {
       renderIcs202PrintView();
       const canvas = await window.html2canvas(elements.ics202PrintRoot, {
@@ -7004,6 +7001,108 @@
     });
   }
 
+  const EXPORT_LIBRARY_CANDIDATES = {
+    html2canvas: [
+      "../../vendor/html2canvas-1.4.1.min.js",
+      "/vendor/html2canvas-1.4.1.min.js",
+      "../vendor/html2canvas-1.4.1.min.js",
+      "./vendor/html2canvas-1.4.1.min.js"
+    ],
+    jspdf: [
+      "../../vendor/jspdf-2.5.1.umd.min.js",
+      "/vendor/jspdf-2.5.1.umd.min.js",
+      "../vendor/jspdf-2.5.1.umd.min.js",
+      "./vendor/jspdf-2.5.1.umd.min.js"
+    ],
+    autotable: [
+      "../../vendor/jspdf-autotable-3.8.2.min.js",
+      "/vendor/jspdf-autotable-3.8.2.min.js",
+      "../vendor/jspdf-autotable-3.8.2.min.js",
+      "./vendor/jspdf-autotable-3.8.2.min.js"
+    ]
+  };
+  const exportLibraryPromises = new Map();
+
+  function hasExportLibrary(name) {
+    if (name === "html2canvas") return typeof window.html2canvas === "function";
+    if (name === "jspdf") return Boolean(window.jspdf?.jsPDF);
+    if (name === "autotable") {
+      return Boolean(window.jspdf?.jsPDF?.API?.autoTable || window.jspdf?.jsPDF?.API?.autoTableSetDefaults);
+    }
+    return false;
+  }
+
+  function loadScriptCandidate(src, globalCheck) {
+    return new Promise((resolve, reject) => {
+      if (globalCheck()) {
+        resolve(true);
+        return;
+      }
+      const existing = document.querySelector(`script[data-export-lib-src="${src}"]`);
+      if (existing) {
+        existing.addEventListener("load", () => resolve(true), { once: true });
+        existing.addEventListener("error", () => reject(new Error(`Failed to load ${src}`)), { once: true });
+        return;
+      }
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = true;
+      script.dataset.exportLibSrc = src;
+      script.onload = () => resolve(true);
+      script.onerror = () => reject(new Error(`Failed to load ${src}`));
+      document.head.appendChild(script);
+    });
+  }
+
+  async function ensureExportLibrary(name) {
+    if (hasExportLibrary(name)) return true;
+    if (exportLibraryPromises.has(name)) {
+      return exportLibraryPromises.get(name);
+    }
+    const promise = (async () => {
+      const candidates = EXPORT_LIBRARY_CANDIDATES[name] || [];
+      for (const src of candidates) {
+        try {
+          await loadScriptCandidate(src, () => hasExportLibrary(name));
+          if (hasExportLibrary(name)) {
+            return true;
+          }
+        } catch (_error) {
+          // Try the next candidate path.
+        }
+      }
+      return false;
+    })();
+    exportLibraryPromises.set(name, promise);
+    const loaded = await promise;
+    if (!loaded) {
+      exportLibraryPromises.delete(name);
+    }
+    return loaded;
+  }
+
+  async function ensureExportLibraries(options = {}) {
+    const needsPdf = Boolean(options.pdf);
+    const needsAutoTable = Boolean(options.autoTable);
+    const html2canvasReady = await ensureExportLibrary("html2canvas");
+    if (!html2canvasReady) {
+      return { ok: false, message: "Map capture library unavailable." };
+    }
+    if (needsPdf) {
+      const jspdfReady = await ensureExportLibrary("jspdf");
+      if (!jspdfReady) {
+        return { ok: false, message: "PDF library unavailable." };
+      }
+    }
+    if (needsAutoTable) {
+      const autoTableReady = await ensureExportLibrary("autotable");
+      if (!autoTableReady) {
+        return { ok: false, message: "PDF table library unavailable." };
+      }
+    }
+    return { ok: true };
+  }
+
   function buildMapPrintMarkup(imageDataUrl) {
     const incidentName = state.activeSession?.incidentName || state.scenarioReview?.incidentName || "Collaborative Incident";
     const exportedAt = new Date().toLocaleString();
@@ -7038,8 +7137,9 @@
       setStatus("Place one or more map items before printing the map.");
       return null;
     }
-    if (typeof window.html2canvas !== "function") {
-      setStatus("Map capture library unavailable.");
+    const exportLibraries = await ensureExportLibraries();
+    if (!exportLibraries.ok) {
+      setStatus(exportLibraries.message);
       return null;
     }
 
@@ -7134,6 +7234,11 @@
   async function exportMapPdf() {
     const capture = await captureBufferedMapImage();
     if (!capture) return;
+    const exportLibraries = await ensureExportLibraries({ pdf: true });
+    if (!exportLibraries.ok) {
+      setStatus(exportLibraries.message);
+      return;
+    }
     const jspdfNs = window.jspdf;
     if (!jspdfNs?.jsPDF) {
       setStatus("PDF library unavailable.");
@@ -7263,6 +7368,11 @@
     const rows = normalizeCostRowsForExport();
     if (!rows.length) {
       setStatus("No costed resources to export.");
+      return;
+    }
+    const exportLibraries = await ensureExportLibraries({ pdf: true, autoTable: true });
+    if (!exportLibraries.ok) {
+      setStatus(exportLibraries.message);
       return;
     }
     const jspdfNs = window.jspdf;
