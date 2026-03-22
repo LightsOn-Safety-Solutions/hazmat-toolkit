@@ -5860,6 +5860,33 @@
     setStatus("Printing ICS 207.");
   }
 
+  async function captureIcs207PrintCanvas() {
+    if (!elements.ics207PrintRoot || typeof window.html2canvas !== "function") {
+      throw new Error("ICS 207 print surface unavailable.");
+    }
+    const previousStyle = elements.ics207PrintRoot.getAttribute("style") || "";
+    elements.ics207PrintRoot.style.position = "fixed";
+    elements.ics207PrintRoot.style.left = "0";
+    elements.ics207PrintRoot.style.top = "0";
+    elements.ics207PrintRoot.style.opacity = "0";
+    elements.ics207PrintRoot.style.pointerEvents = "none";
+    elements.ics207PrintRoot.style.zIndex = "-1";
+    try {
+      await new Promise((resolve) => window.requestAnimationFrame(() => resolve()));
+      return await window.html2canvas(elements.ics207PrintRoot, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true
+      });
+    } finally {
+      if (previousStyle) {
+        elements.ics207PrintRoot.setAttribute("style", previousStyle);
+      } else {
+        elements.ics207PrintRoot.removeAttribute("style");
+      }
+    }
+  }
+
   async function exportIcs207Pdf() {
     const previewDraft = syncIcs207PreviewDraftFromInputs();
     if (!previewDraft) return;
@@ -5875,11 +5902,7 @@
     }
     try {
       await saveIcs207Snapshot(rendered.snapshot);
-      const canvas = await window.html2canvas(elements.ics207PrintRoot, {
-        backgroundColor: "#ffffff",
-        scale: 2,
-        useCORS: true
-      });
+      const canvas = await captureIcs207PrintCanvas();
       const { jsPDF } = window.jspdf;
       const pdf = new jsPDF({ unit: "pt", format: "letter", orientation: "landscape" });
       pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight());
