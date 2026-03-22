@@ -30,6 +30,7 @@
         <div class="topbar-action-row topbar-action-row-secondary">
           <button id="superAdminWorkspaceBtn" class="secondary hidden" type="button">Super Admin</button>
           <button id="ics202WorkspaceBtn" class="secondary hidden" type="button">ICS 202</button>
+          <button id="commandStructureWorkspaceBtn" class="secondary hidden" type="button">Command Structure</button>
           <button id="attachImageBtn" class="secondary hidden" type="button">Attach Image</button>
           <button id="isolationToolBtn" class="secondary hidden" type="button">Isolation Tool</button>
           <button id="guidedModeBtn" class="secondary hidden" type="button">10-Minute IC Mode</button>
@@ -716,6 +717,85 @@
       </div>
       <div id="ics202PrintRoot" class="ics202-print-root" aria-hidden="true"></div>
       <div id="mapPrintRoot" class="map-print-root" aria-hidden="true"></div>
+    </section>
+
+    <section id="commandStructureWorkspace" class="command-structure-workspace hidden" aria-hidden="true">
+      <div class="command-structure-topbar">
+        <div class="command-structure-topbar-copy">
+          <h2>ICS 207 - Command Structure</h2>
+          <p>Review the active incident organization, assign personnel to roles, and keep a clear command structure without leaving the collaborative map.</p>
+        </div>
+        <div class="command-structure-topbar-actions">
+          <button id="commandStructureBackBtn" class="secondary" type="button">Back to Map</button>
+        </div>
+      </div>
+      <div class="command-structure-body">
+        <div class="command-structure-shell">
+          <section class="command-structure-summary">
+            <div class="command-structure-summary-row">
+              <span class="command-structure-summary-label">Incident</span>
+              <strong id="commandStructureIncidentName">Not loaded</strong>
+            </div>
+            <div class="command-structure-summary-row">
+              <span class="command-structure-summary-label">Current User</span>
+              <strong id="commandStructureCurrentUser">Not assigned</strong>
+            </div>
+            <div class="command-structure-summary-row">
+              <span class="command-structure-summary-label">Assigned Roles</span>
+              <strong id="commandStructureAssignmentCount">0 / 0</strong>
+            </div>
+          </section>
+
+          <div class="command-structure-grid">
+            <section class="command-structure-chart-card">
+              <div class="command-structure-card-header">
+                <div>
+                  <h3>Incident Command Organization</h3>
+                  <p class="muted">Select any role box to assign or update personnel. This chart stays fixed to the standard ICS structure.</p>
+                </div>
+              </div>
+              <div class="command-structure-chart-scroll">
+                <div id="commandStructureChart" class="command-structure-chart" role="list" aria-label="ICS command structure chart"></div>
+              </div>
+            </section>
+
+            <aside id="commandStructureRolePanel" class="command-structure-role-panel">
+              <div id="commandStructureRoleEmpty" class="command-structure-role-empty">
+                <h3>Select a Role</h3>
+                <p class="muted">Tap a box in the command chart to view the role details and assign a person.</p>
+              </div>
+
+              <div id="commandStructureRoleEditor" class="command-structure-role-editor hidden">
+                <div class="command-structure-card-header">
+                  <div>
+                    <h3 id="commandStructureRoleTitle">Role</h3>
+                    <p id="commandStructureRolePath" class="muted">Role path</p>
+                  </div>
+                  <span id="commandStructureRoleStatus" class="command-structure-status-badge">Empty</span>
+                </div>
+
+                <div class="command-structure-role-meta">
+                  <div class="command-structure-summary-row">
+                    <span class="command-structure-summary-label">Current Assignee</span>
+                    <strong id="commandStructureAssignedUser">Unassigned</strong>
+                  </div>
+                </div>
+
+                <label class="command-structure-field">
+                  <span>Assign Person</span>
+                  <input id="commandStructureAssigneeInput" type="text" list="commandStructureAssigneeOptions" placeholder="Enter a name or choose an active participant" />
+                </label>
+                <datalist id="commandStructureAssigneeOptions"></datalist>
+
+                <div class="command-structure-role-actions">
+                  <button id="commandStructureAssignBtn" class="primary" type="button">Assign Person</button>
+                  <button id="commandStructureRemoveBtn" class="danger" type="button">Remove Assignment</button>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </div>
     </section>
   </div>
 

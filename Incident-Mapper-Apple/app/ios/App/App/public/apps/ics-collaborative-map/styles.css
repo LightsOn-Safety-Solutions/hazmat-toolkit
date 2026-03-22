@@ -405,6 +405,232 @@ body[data-theme="light"] .ics202-workspace {
 body[data-theme="light"] .ics202-topbar {
   background: linear-gradient(180deg,#f6f8fb,#eef2f7);
 }
+.command-structure-workspace {
+  position: fixed;
+  inset: 0;
+  z-index: 3200;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  background: linear-gradient(180deg, rgba(10,10,10,0.98), rgba(0,0,0,0.98));
+}
+body[data-theme="light"] .command-structure-workspace {
+  background: linear-gradient(180deg, rgba(243,245,248,0.98), rgba(238,242,247,0.98));
+}
+.command-structure-topbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+  padding: var(--space-5) var(--space-6);
+  border-bottom: 1px solid var(--stroke);
+  background: linear-gradient(180deg,#0a0a0a,#000000);
+  backdrop-filter: blur(12px);
+}
+body[data-theme="light"] .command-structure-topbar {
+  background: linear-gradient(180deg,#f6f8fb,#eef2f7);
+}
+.command-structure-topbar-copy h2 {
+  margin: 0;
+  font-size: var(--font-size-title);
+  line-height: 1.08;
+  font-family: "Depressionist 3 Revisited","Times New Roman",serif;
+}
+.command-structure-topbar-copy p {
+  margin: 4px 0 0;
+  max-width: 760px;
+  color: var(--muted);
+  font-size: var(--font-size-help);
+  line-height: 1.4;
+}
+.command-structure-topbar-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+.command-structure-body {
+  min-height: 0;
+  overflow: auto;
+  padding: var(--space-5) var(--space-6) 24px;
+}
+.command-structure-shell {
+  display: grid;
+  gap: var(--space-4);
+}
+.command-structure-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.command-structure-summary-row {
+  display: grid;
+  gap: 4px;
+}
+.command-structure-summary-label {
+  color: var(--muted);
+  font-size: var(--font-size-label);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.command-structure-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.6fr) minmax(300px, 0.75fr);
+  gap: var(--space-4);
+  align-items: start;
+}
+.command-structure-chart-card,
+.command-structure-role-panel {
+  border: 1px solid var(--stroke);
+  background: var(--panel-soft);
+  padding: var(--space-4);
+  box-shadow: var(--shadow);
+}
+.command-structure-chart-card,
+.command-structure-role-panel,
+.command-structure-summary {
+  border-radius: 0;
+}
+.command-structure-card-header {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-3);
+  align-items: flex-start;
+  margin-bottom: var(--space-3);
+}
+.command-structure-card-header h3 {
+  margin: 0 0 4px;
+  font-family: "Depressionist 3 Revisited","Times New Roman",serif;
+  letter-spacing: 0.02em;
+}
+.command-structure-chart-scroll {
+  overflow: auto;
+  padding-bottom: var(--space-2);
+}
+.command-structure-chart {
+  position: relative;
+  width: 1560px;
+  min-height: 1140px;
+  margin: 0 auto;
+  background:
+    linear-gradient(to bottom, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
+    repeating-linear-gradient(to bottom, transparent 0, transparent 39px, rgba(255,255,255,0.025) 40px),
+    repeating-linear-gradient(to right, transparent 0, transparent 39px, rgba(255,255,255,0.025) 40px);
+  border: 1px solid var(--stroke);
+}
+body[data-theme="light"] .command-structure-chart {
+  background:
+    linear-gradient(to bottom, rgba(255,255,255,0.9), rgba(249,250,252,0.92)),
+    repeating-linear-gradient(to bottom, transparent 0, transparent 39px, rgba(15,23,42,0.04) 40px),
+    repeating-linear-gradient(to right, transparent 0, transparent 39px, rgba(15,23,42,0.04) 40px);
+}
+.command-structure-connectors {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.command-structure-connectors path {
+  fill: none;
+  stroke: rgba(201,209,220,0.9);
+  stroke-width: 2;
+  stroke-linejoin: miter;
+  stroke-linecap: square;
+}
+body[data-theme="light"] .command-structure-connectors path {
+  stroke: rgba(31,41,55,0.72);
+}
+.command-structure-node {
+  position: absolute;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 2px solid #0f172a;
+  border-radius: 0;
+  background: #ffffff;
+  color: #0f172a;
+  text-align: center;
+  box-shadow: none;
+}
+.command-structure-node:hover {
+  transform: none;
+}
+.command-structure-node.empty {
+  background: #ffffff;
+}
+.command-structure-node.assigned {
+  background: #d8f0d2;
+}
+.command-structure-node.current-user {
+  border-color: #2563eb;
+  box-shadow: inset 0 0 0 1px rgba(37,99,235,0.25);
+}
+.command-structure-node.selected {
+  outline: 3px solid rgba(243,198,19,0.45);
+  outline-offset: 2px;
+}
+.command-structure-node-label {
+  display: block;
+  font-size: 0.92rem;
+  line-height: 1.1;
+  font-weight: 800;
+}
+.command-structure-node-assignee {
+  display: block;
+  font-size: 0.76rem;
+  line-height: 1.2;
+  color: #334155;
+}
+.command-structure-role-panel {
+  display: grid;
+  gap: var(--space-3);
+  position: sticky;
+  top: 0;
+}
+.command-structure-role-empty,
+.command-structure-role-editor {
+  display: grid;
+  gap: var(--space-3);
+}
+.command-structure-role-empty h3,
+.command-structure-role-editor h3 {
+  margin: 0;
+  font-family: "Depressionist 3 Revisited","Times New Roman",serif;
+}
+.command-structure-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--stroke);
+  background: #ffffff;
+  color: #0f172a;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.command-structure-status-badge.assigned {
+  background: #d8f0d2;
+}
+.command-structure-field {
+  display: grid;
+  gap: var(--space-1);
+}
+.command-structure-field > span {
+  color: var(--muted);
+  font-size: var(--font-size-label);
+}
+.command-structure-role-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+body[data-theme="light"] .command-structure-node {
+  color: #0f172a;
+}
 body[data-theme="light"] .weather-panel,
 body[data-theme="light"] .draw-controls,
 body[data-theme="light"] .leaflet-control-layers,
@@ -2254,6 +2480,13 @@ body[data-theme="light"] .geometry-handle {
   .map-style-tray-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+  .command-structure-summary,
+  .command-structure-grid {
+    grid-template-columns: 1fr;
+  }
+  .command-structure-role-panel {
+    position: static;
+  }
 }
 
 @media (max-width: 900px) {
@@ -2282,6 +2515,13 @@ body[data-theme="light"] .geometry-handle {
   }
   .map-style-tray-grid {
     grid-template-columns: 1fr;
+  }
+  .command-structure-topbar,
+  .command-structure-card-header {
+    flex-direction: column;
+  }
+  .command-structure-body {
+    padding-inline: var(--space-4);
   }
   body { overflow: auto; }
   .shell { height: auto; min-height: 100vh; }

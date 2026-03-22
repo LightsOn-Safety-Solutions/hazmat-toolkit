@@ -10,6 +10,7 @@
     commanderAuth: "icsCollabCommanderAuth",
     participantAuth: "icsCollabParticipantAuth",
     ics202Draft: "icsCollabIcs202Draft_v1",
+    commandStructureDraft: "icsCollabCommandStructureDraft_v1",
     themeMode: "icsCollabThemeMode_v1"
   };
   const POLL_INTERVAL_MS = 4000;
@@ -133,6 +134,55 @@
     "Protect exposures and maintain access/egress routes for mutual-aid resources.",
     "Complete responder accountability and confirm rehab/safety coverage for the operational period."
   ];
+  const COMMAND_STRUCTURE_CHART_SIZE = { width: 1560, height: 1140 };
+  const COMMAND_STRUCTURE_ROLE_DEFS = [
+    { roleId: "incident_commander", label: "Incident Commander", parent: null, x: 690, y: 36, width: 180, height: 64 },
+    { roleId: "public_information_officer", label: "Public Information Officer", parent: "incident_commander", x: 430, y: 170, width: 210, height: 64 },
+    { roleId: "safety_officer", label: "Safety Officer", parent: "incident_commander", x: 675, y: 170, width: 210, height: 64 },
+    { roleId: "liaison_officer", label: "Liaison Officer", parent: "incident_commander", x: 920, y: 170, width: 210, height: 64 },
+    { roleId: "operations_section", label: "Operations Section", parent: "incident_commander", x: 40, y: 320, width: 250, height: 68 },
+    { roleId: "planning_section", label: "Planning Section", parent: "incident_commander", x: 430, y: 320, width: 250, height: 68 },
+    { roleId: "logistics_section", label: "Logistics Section", parent: "incident_commander", x: 820, y: 320, width: 250, height: 68 },
+    { roleId: "finance_admin_section", label: "Finance / Admin Section", parent: "incident_commander", x: 1210, y: 320, width: 250, height: 68 },
+    { roleId: "staging_area", label: "Staging Area", parent: "operations_section", x: 40, y: 470, width: 165, height: 64 },
+    { roleId: "branches", label: "Branches", parent: "operations_section", x: 215, y: 470, width: 165, height: 64 },
+    { roleId: "divisions", label: "Divisions", parent: "operations_section", x: 40, y: 620, width: 165, height: 64 },
+    { roleId: "groups", label: "Groups", parent: "operations_section", x: 215, y: 620, width: 165, height: 64 },
+    { roleId: "strike_team", label: "Strike Team", parent: "operations_section", x: 40, y: 770, width: 165, height: 64 },
+    { roleId: "task_force", label: "Task Force", parent: "operations_section", x: 215, y: 770, width: 165, height: 64 },
+    { roleId: "single_resource", label: "Single Resource", parent: "operations_section", x: 40, y: 920, width: 165, height: 64 },
+    { roleId: "air_operations_branch", label: "Air Operations Branch", parent: "operations_section", x: 215, y: 920, width: 165, height: 64 },
+    { roleId: "resources_unit", label: "Resources Unit", parent: "planning_section", x: 430, y: 470, width: 165, height: 64 },
+    { roleId: "situation_unit", label: "Situation Unit", parent: "planning_section", x: 605, y: 470, width: 165, height: 64 },
+    { roleId: "documentation_unit", label: "Documentation Unit", parent: "planning_section", x: 430, y: 620, width: 165, height: 64 },
+    { roleId: "demobilization_unit", label: "Demobilization Unit", parent: "planning_section", x: 605, y: 620, width: 165, height: 64 },
+    { roleId: "service_branch", label: "Service Branch", parent: "logistics_section", x: 820, y: 470, width: 180, height: 64 },
+    { roleId: "support_branch", label: "Support Branch", parent: "logistics_section", x: 1015, y: 470, width: 180, height: 64 },
+    { roleId: "communications_unit", label: "Communications Unit", parent: "service_branch", x: 780, y: 620, width: 160, height: 64 },
+    { roleId: "medical_unit", label: "Medical Unit", parent: "service_branch", x: 950, y: 620, width: 160, height: 64 },
+    { roleId: "food_unit", label: "Food Unit", parent: "service_branch", x: 865, y: 770, width: 160, height: 64 },
+    { roleId: "supply_unit", label: "Supply Unit", parent: "support_branch", x: 1015, y: 620, width: 160, height: 64 },
+    { roleId: "facilities_unit", label: "Facilities Unit", parent: "support_branch", x: 1185, y: 620, width: 160, height: 64 },
+    { roleId: "ground_support_unit", label: "Ground Support Unit", parent: "support_branch", x: 1100, y: 770, width: 160, height: 64 },
+    { roleId: "time_unit", label: "Time Unit", parent: "finance_admin_section", x: 1210, y: 470, width: 165, height: 64 },
+    { roleId: "procurement_unit", label: "Procurement Unit", parent: "finance_admin_section", x: 1385, y: 470, width: 165, height: 64 },
+    { roleId: "compensation_claims_unit", label: "Compensation / Claims Unit", parent: "finance_admin_section", x: 1210, y: 620, width: 165, height: 64 },
+    { roleId: "cost_unit", label: "Cost Unit", parent: "finance_admin_section", x: 1385, y: 620, width: 165, height: 64 }
+  ];
+  const COMMAND_STRUCTURE_ROLE_BY_ID = Object.fromEntries(COMMAND_STRUCTURE_ROLE_DEFS.map((role) => [role.roleId, role]));
+  const COMMAND_STRUCTURE_ROLE_ID_BY_LABEL = Object.fromEntries(COMMAND_STRUCTURE_ROLE_DEFS.map((role) => [normalizeRoleKey(role.label), role.roleId]));
+  const COMMAND_STRUCTURE_ROLE_ALIASES = {
+    incidentcommander: "incident_commander",
+    publicinformationofficer: "public_information_officer",
+    publicinformationofficerpio: "public_information_officer",
+    safetyofficer: "safety_officer",
+    liaisonofficer: "liaison_officer",
+    operationssectionchief: "operations_section",
+    planningsectionchief: "planning_section",
+    logisticssectionchief: "logistics_section",
+    financeadminsectionchief: "finance_admin_section",
+    financeandadminsectionchief: "finance_admin_section"
+  };
 
   const ICON_MARKER_TEMPLATE = {
     objectType: ICON_MARKER_OBJECT_TYPE,
@@ -247,6 +297,7 @@
     exportCostCsvBtn: document.getElementById("exportCostCsvBtn"),
     exportCostPdfBtn: document.getElementById("exportCostPdfBtn"),
     ics202WorkspaceBtn: document.getElementById("ics202WorkspaceBtn"),
+    commandStructureWorkspaceBtn: document.getElementById("commandStructureWorkspaceBtn"),
     setIncidentFocusBtn: document.getElementById("setIncidentFocusBtn"),
     centerIncidentBtn: document.getElementById("centerIncidentBtn"),
     closeScenarioReviewBtn: document.getElementById("closeScenarioReviewBtn"),
@@ -386,6 +437,23 @@
     ics202ApprovedByDateTime: document.getElementById("ics202ApprovedByDateTime"),
     ics202Summary: document.getElementById("ics202Summary"),
     ics202PrintRoot: document.getElementById("ics202PrintRoot"),
+    commandStructureWorkspace: document.getElementById("commandStructureWorkspace"),
+    commandStructureBackBtn: document.getElementById("commandStructureBackBtn"),
+    commandStructureIncidentName: document.getElementById("commandStructureIncidentName"),
+    commandStructureCurrentUser: document.getElementById("commandStructureCurrentUser"),
+    commandStructureAssignmentCount: document.getElementById("commandStructureAssignmentCount"),
+    commandStructureChart: document.getElementById("commandStructureChart"),
+    commandStructureRolePanel: document.getElementById("commandStructureRolePanel"),
+    commandStructureRoleEmpty: document.getElementById("commandStructureRoleEmpty"),
+    commandStructureRoleEditor: document.getElementById("commandStructureRoleEditor"),
+    commandStructureRoleTitle: document.getElementById("commandStructureRoleTitle"),
+    commandStructureRolePath: document.getElementById("commandStructureRolePath"),
+    commandStructureRoleStatus: document.getElementById("commandStructureRoleStatus"),
+    commandStructureAssignedUser: document.getElementById("commandStructureAssignedUser"),
+    commandStructureAssigneeInput: document.getElementById("commandStructureAssigneeInput"),
+    commandStructureAssigneeOptions: document.getElementById("commandStructureAssigneeOptions"),
+    commandStructureAssignBtn: document.getElementById("commandStructureAssignBtn"),
+    commandStructureRemoveBtn: document.getElementById("commandStructureRemoveBtn"),
     superAdminWorkspace: document.getElementById("superAdminWorkspace"),
     superAdminBackBtn: document.getElementById("superAdminBackBtn"),
     superAdminRefreshBtn: document.getElementById("superAdminRefreshBtn"),
@@ -531,6 +599,9 @@
     playbackSavedSnapshot: null,
     ics202Open: false,
     ics202Draft: null,
+    commandStructureOpen: false,
+    commandStructureDraft: null,
+    commandStructureSelectedRoleId: "",
     superAdminOpen: false,
     superAdminTab: "overview",
     superAdminUsersOrgFilter: "",
@@ -556,6 +627,7 @@
     await loadIconManifest();
     loadErgIsolationCatalog();
     ensureIcs202Draft();
+    ensureCommandStructureDraft();
     if (elements.initialIncidentCommanderRoleInput) {
       elements.initialIncidentCommanderRoleInput.value = "Incident Commander";
     }
@@ -941,6 +1013,7 @@
   function closeScenarioReview() {
     if (!isScenarioReviewMode()) return;
     state.ics202Open = false;
+    state.commandStructureOpen = false;
     exitActiveWorkspace();
     renderAll();
     setStatus("Scenario review closed.");
@@ -1012,6 +1085,7 @@
     elements.isolationUseLiveWindToggle?.addEventListener("change", renderIsolationWindControls);
     elements.isolationManualOverrideToggle?.addEventListener("change", renderIsolationWindControls);
     elements.ics202WorkspaceBtn.addEventListener("click", openIcs202Workspace);
+    elements.commandStructureWorkspaceBtn?.addEventListener("click", openCommandStructureWorkspace);
     elements.setIncidentFocusBtn.addEventListener("click", onSetIncidentFocusAction);
     elements.centerIncidentBtn.addEventListener("click", onCenterIncidentAction);
     elements.closeScenarioReviewBtn.addEventListener("click", closeScenarioReview);
@@ -1123,6 +1197,7 @@
     });
     elements.superAdminCreateStandingAccessBtn?.addEventListener("click", onCreateStandingOrganizationAccess);
     bindIcs202Events();
+    bindCommandStructureEvents();
     window.addEventListener("resize", scheduleMapResizeRefresh);
   }
 
@@ -1921,6 +1996,9 @@
     state.drawState = null;
     state.qrPayload = state.qrPayload || JSON.stringify({ type: "ics_collab_join", joinCode: session.joinCode });
     state.ics202Open = false;
+    state.commandStructureOpen = false;
+    state.commandStructureSelectedRoleId = "";
+    state.commandStructureDraft = null;
     elements.landingView.classList.add("hidden");
     elements.appView.classList.remove("hidden");
     elements.shell.classList.toggle("viewer-mode", state.viewerMode);
@@ -2134,6 +2212,9 @@
     state.weatherTargetSignature = "";
     state.weatherFetchNonce = 0;
     state.ics202Open = false;
+    state.commandStructureOpen = false;
+    state.commandStructureDraft = null;
+    state.commandStructureSelectedRoleId = "";
     state.superAdminOpen = false;
     resetPlaybackHistoryForSession(null);
     cancelGeometryPreviewOnly();
@@ -2142,6 +2223,7 @@
     hideViewerQrModal();
     elements.landingView.classList.remove("hidden");
     elements.appView.classList.add("hidden");
+    elements.commandStructureWorkspace?.classList.add("hidden");
     elements.superAdminWorkspace?.classList.add("hidden");
     elements.shell.classList.remove("viewer-mode");
     if (elements.paletteSearchInput) elements.paletteSearchInput.value = "";
@@ -2297,6 +2379,7 @@
     renderModePanelCollapses();
     renderRightSidebarState();
     renderIcs202Workspace();
+    renderCommandStructureWorkspace();
     renderSuperAdminWorkspace();
     syncIncidentFocusLockState();
   }
@@ -2522,7 +2605,7 @@
     if (elements.forgotPasswordBtn) {
       elements.forgotPasswordBtn.disabled = !authReady;
     }
-    elements.superAdminWorkspaceBtn?.classList.toggle("hidden", !signedIn || !superAdmin || Boolean(state.activeSession) || isScenarioReviewMode() || state.viewerMode || state.ics202Open || state.superAdminOpen);
+    elements.superAdminWorkspaceBtn?.classList.toggle("hidden", !signedIn || !superAdmin || Boolean(state.activeSession) || isScenarioReviewMode() || state.viewerMode || state.ics202Open || state.commandStructureOpen || state.superAdminOpen);
     elements.departmentAdminPanel.classList.toggle("hidden", !orgAdmin);
     elements.createSessionPanel.classList.toggle("hidden", false);
     elements.createSessionPanel.classList.toggle("locked", !signedIn || !licensed);
@@ -2540,6 +2623,7 @@
     elements.closeScenarioReviewBtn.classList.toggle("hidden", !isScenarioReviewMode());
     elements.leaveSessionBtn.classList.toggle("hidden", !state.activeSession || isScenarioReviewMode());
     elements.ics202WorkspaceBtn.classList.toggle("hidden", (!(state.activeSession || isScenarioReviewMode()) || state.viewerMode));
+    elements.commandStructureWorkspaceBtn.classList.toggle("hidden", (!(state.activeSession || isScenarioReviewMode()) || state.viewerMode));
     elements.attachImageBtn.classList.toggle("hidden", !(Boolean(state.activeSession) || isScenarioReviewMode()) || state.viewerMode);
     elements.isolationToolBtn.classList.toggle("hidden", !(Boolean(state.activeSession) || isScenarioReviewMode()) || state.viewerMode);
     elements.setIncidentFocusBtn.classList.toggle("hidden", !state.activeSession || isScenarioReviewMode() || !isCommander() || Boolean(getIncidentFocusPoint()));
@@ -3583,6 +3667,7 @@
     if (!loaded) return;
     state.superAdminOpen = true;
     state.ics202Open = false;
+    state.commandStructureOpen = false;
     elements.landingView.classList.add("hidden");
     elements.appView.classList.add("hidden");
     renderAll();
@@ -4765,6 +4850,383 @@
     }
   }
 
+  function normalizeRoleKey(value) {
+    return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  }
+
+  function getCommandStructureStorageKey(sessionId = getWorkspaceSession()?.id) {
+    return `${STORAGE_KEYS.commandStructureDraft}:${String(sessionId || "default")}`;
+  }
+
+  function createEmptyCommandStructureDraft(session = getWorkspaceSession()) {
+    return {
+      incidentId: String(session?.id || ""),
+      roles: COMMAND_STRUCTURE_ROLE_DEFS.map((role) => ({
+        roleId: role.roleId,
+        label: role.label,
+        parent: role.parent,
+        assignedUser: null,
+        status: "empty"
+      }))
+    };
+  }
+
+  function sanitizeCommandStructureDraft(value, session = getWorkspaceSession()) {
+    const base = createEmptyCommandStructureDraft(session);
+    if (!value || typeof value !== "object") return base;
+    const incomingRoles = new Map(
+      Array.isArray(value.roles)
+        ? value.roles
+          .filter((role) => role && typeof role === "object")
+          .map((role) => [String(role.roleId || ""), role])
+        : []
+    );
+    return {
+      incidentId: String(value.incidentId || session?.id || ""),
+      roles: base.roles.map((role) => {
+        const incoming = incomingRoles.get(role.roleId);
+        const assignedName = String(incoming?.assignedUser?.name || "").trim();
+        const assignedUser = assignedName
+          ? {
+            userId: String(incoming?.assignedUser?.userId || ""),
+            name: assignedName
+          }
+          : null;
+        return {
+          roleId: role.roleId,
+          label: role.label,
+          parent: role.parent,
+          assignedUser,
+          status: assignedUser ? "assigned" : "empty"
+        };
+      })
+    };
+  }
+
+  function ensureCommandStructureDraft() {
+    const session = getWorkspaceSession();
+    if (!session) {
+      if (!state.commandStructureDraft) {
+        state.commandStructureDraft = createEmptyCommandStructureDraft(null);
+      }
+      return state.commandStructureDraft;
+    }
+    if (state.commandStructureDraft && String(state.commandStructureDraft.incidentId || "") === String(session.id)) {
+      prefillCommandStructureDraftFromWorkspace();
+      return state.commandStructureDraft;
+    }
+    const stored = loadStoredJSON(getCommandStructureStorageKey(session.id));
+    state.commandStructureDraft = sanitizeCommandStructureDraft(stored, session);
+    prefillCommandStructureDraftFromWorkspace();
+    return state.commandStructureDraft;
+  }
+
+  function saveCommandStructureDraft() {
+    const session = getWorkspaceSession();
+    const draft = ensureCommandStructureDraft();
+    if (!session || !draft) return;
+    persistJSON(getCommandStructureStorageKey(session.id), draft);
+  }
+
+  function mapRoleLabelToCommandStructureRoleId(roleLabel) {
+    const normalized = normalizeRoleKey(roleLabel);
+    if (!normalized) return "";
+    return COMMAND_STRUCTURE_ROLE_ALIASES[normalized] || COMMAND_STRUCTURE_ROLE_ID_BY_LABEL[normalized] || "";
+  }
+
+  function getCommandStructureCurrentUser() {
+    const actor = state.actor;
+    if (actor?.displayName) {
+      return {
+        userId: String(actor.id || state.participantAuth?.participantId || ""),
+        name: String(actor.displayName || "").trim(),
+        roleId: mapRoleLabelToCommandStructureRoleId(actor.icsRole || "")
+      };
+    }
+    if (state.commanderAuth?.displayName) {
+      return {
+        userId: String(state.commanderAuth.email || state.commanderAuth.displayName),
+        name: String(state.commanderAuth.displayName || "").trim(),
+        roleId: mapRoleLabelToCommandStructureRoleId(getWorkspaceSession()?.commanderICSRole || "Incident Commander")
+      };
+    }
+    return null;
+  }
+
+  function prefillCommandStructureDraftFromWorkspace() {
+    const draft = state.commandStructureDraft;
+    const session = getWorkspaceSession();
+    if (!draft || !session) return;
+    draft.incidentId = String(session.id || "");
+    const currentUser = getCommandStructureCurrentUser();
+    if (currentUser?.roleId) {
+      const role = draft.roles.find((entry) => entry.roleId === currentUser.roleId);
+      if (role && !String(role.assignedUser?.name || "").trim()) {
+        role.assignedUser = {
+          userId: currentUser.userId || "",
+          name: currentUser.name
+        };
+        role.status = "assigned";
+      }
+    }
+  }
+
+  function getCommandStructureRoleState(roleId) {
+    return ensureCommandStructureDraft().roles.find((role) => role.roleId === roleId) || null;
+  }
+
+  function getCommandStructureSelectedRole() {
+    return state.commandStructureSelectedRoleId ? getCommandStructureRoleState(state.commandStructureSelectedRoleId) : null;
+  }
+
+  function getCommandStructureRolePath(roleId) {
+    const labels = [];
+    let cursor = COMMAND_STRUCTURE_ROLE_BY_ID[roleId] || null;
+    while (cursor) {
+      labels.unshift(cursor.label);
+      cursor = cursor.parent ? COMMAND_STRUCTURE_ROLE_BY_ID[cursor.parent] : null;
+    }
+    return labels.join(" / ");
+  }
+
+  function getCommandStructureParticipantOptions() {
+    const options = new Map();
+    if (state.commanderAuth?.displayName) {
+      options.set(state.commanderAuth.displayName.toLowerCase(), {
+        userId: String(state.commanderAuth.email || state.commanderAuth.displayName),
+        name: state.commanderAuth.displayName
+      });
+    }
+    (Array.isArray(state.participants) ? state.participants : []).forEach((participant) => {
+      const name = String(participant?.displayName || "").trim();
+      if (!name) return;
+      options.set(name.toLowerCase(), {
+        userId: String(participant.id || ""),
+        name,
+        roleId: mapRoleLabelToCommandStructureRoleId(participant.icsRole || "")
+      });
+    });
+    const currentUser = getCommandStructureCurrentUser();
+    if (currentUser?.name) {
+      options.set(currentUser.name.toLowerCase(), {
+        userId: currentUser.userId || "",
+        name: currentUser.name,
+        roleId: currentUser.roleId || ""
+      });
+    }
+    return Array.from(options.values()).sort((left, right) => left.name.localeCompare(right.name));
+  }
+
+  function populateCommandStructureAssigneeOptions() {
+    if (!elements.commandStructureAssigneeOptions) return;
+    const options = getCommandStructureParticipantOptions();
+    elements.commandStructureAssigneeOptions.innerHTML = options.map((option) => {
+      const roleLabel = option.roleId ? (COMMAND_STRUCTURE_ROLE_BY_ID[option.roleId]?.label || "") : "";
+      const value = roleLabel ? `${option.name} (${roleLabel})` : option.name;
+      return `<option value="${escapeAttribute(value)}"></option>`;
+    }).join("");
+  }
+
+  function extractAssigneeName(value) {
+    return String(value || "").replace(/\s+\([^()]+\)\s*$/, "").trim();
+  }
+
+  function resolveCommandStructureAssignee(inputValue) {
+    const name = extractAssigneeName(inputValue);
+    if (!name) return null;
+    const matched = getCommandStructureParticipantOptions().find((option) => option.name.toLowerCase() === name.toLowerCase());
+    if (matched) return matched;
+    return {
+      userId: `manual:${slugifyFilename(name)}`,
+      name
+    };
+  }
+
+  function selectCommandStructureRole(roleId) {
+    if (!COMMAND_STRUCTURE_ROLE_BY_ID[roleId]) return;
+    state.commandStructureSelectedRoleId = roleId;
+    renderCommandStructureWorkspace();
+  }
+
+  function assignSelectedCommandStructureRole() {
+    const role = getCommandStructureSelectedRole();
+    if (!role) {
+      setStatus("Select a role first.");
+      return;
+    }
+    const assignee = resolveCommandStructureAssignee(elements.commandStructureAssigneeInput?.value);
+    if (!assignee) {
+      setStatus("Enter a person to assign.");
+      return;
+    }
+    role.assignedUser = {
+      userId: String(assignee.userId || ""),
+      name: assignee.name
+    };
+    role.status = "assigned";
+    saveCommandStructureDraft();
+    renderCommandStructureWorkspace();
+    setStatus(`${role.label} assigned to ${assignee.name}.`);
+  }
+
+  function removeSelectedCommandStructureRole() {
+    const role = getCommandStructureSelectedRole();
+    if (!role) {
+      setStatus("Select a role first.");
+      return;
+    }
+    if (!role.assignedUser) {
+      setStatus(`${role.label} is already unassigned.`);
+      return;
+    }
+    role.assignedUser = null;
+    role.status = "empty";
+    saveCommandStructureDraft();
+    renderCommandStructureWorkspace();
+    setStatus(`${role.label} assignment removed.`);
+  }
+
+  function buildCommandStructureConnectorMarkup() {
+    const paths = COMMAND_STRUCTURE_ROLE_DEFS
+      .filter((role) => role.parent)
+      .map((role) => {
+        const parent = COMMAND_STRUCTURE_ROLE_BY_ID[role.parent];
+        if (!parent) return "";
+        const parentX = parent.x + parent.width / 2;
+        const parentY = parent.y + parent.height;
+        const childX = role.x + role.width / 2;
+        const childY = role.y;
+        const midY = Math.round(parentY + (childY - parentY) / 2);
+        return `<path d="M ${parentX} ${parentY} V ${midY} H ${childX} V ${childY}" />`;
+      })
+      .filter(Boolean)
+      .join("");
+    return `
+      <svg class="command-structure-connectors" viewBox="0 0 ${COMMAND_STRUCTURE_CHART_SIZE.width} ${COMMAND_STRUCTURE_CHART_SIZE.height}" aria-hidden="true" focusable="false">
+        ${paths}
+      </svg>
+    `;
+  }
+
+  function renderCommandStructureChart() {
+    if (!elements.commandStructureChart) return;
+    const draft = ensureCommandStructureDraft();
+    const currentUser = getCommandStructureCurrentUser();
+    const nodes = COMMAND_STRUCTURE_ROLE_DEFS.map((roleDef) => {
+      const roleState = draft.roles.find((role) => role.roleId === roleDef.roleId) || {
+        assignedUser: null,
+        status: "empty"
+      };
+      const isAssigned = Boolean(String(roleState.assignedUser?.name || "").trim());
+      const isCurrentUser = Boolean(
+        currentUser?.name
+        && isAssigned
+        && (
+          String(roleState.assignedUser?.userId || "") === String(currentUser.userId || "")
+          || String(roleState.assignedUser?.name || "").trim().toLowerCase() === String(currentUser.name || "").trim().toLowerCase()
+        )
+      );
+      const classes = [
+        "command-structure-node",
+        isAssigned ? "assigned" : "empty",
+        isCurrentUser ? "current-user" : "",
+        state.commandStructureSelectedRoleId === roleDef.roleId ? "selected" : ""
+      ].filter(Boolean).join(" ");
+      return `
+        <button
+          class="${classes}"
+          type="button"
+          data-role-id="${escapeAttribute(roleDef.roleId)}"
+          style="left:${roleDef.x}px;top:${roleDef.y}px;width:${roleDef.width}px;height:${roleDef.height}px;"
+          aria-pressed="${state.commandStructureSelectedRoleId === roleDef.roleId ? "true" : "false"}"
+        >
+          <span class="command-structure-node-label">${escapeHtml(roleDef.label)}</span>
+          <span class="command-structure-node-assignee">${escapeHtml(roleState.assignedUser?.name || "Unassigned")}</span>
+        </button>
+      `;
+    }).join("");
+    elements.commandStructureChart.innerHTML = `${buildCommandStructureConnectorMarkup()}${nodes}`;
+    elements.commandStructureChart.querySelectorAll("[data-role-id]").forEach((node) => {
+      node.addEventListener("click", () => {
+        selectCommandStructureRole(node.dataset.roleId || "");
+      });
+    });
+  }
+
+  function renderCommandStructureRolePanel() {
+    const selected = getCommandStructureSelectedRole();
+    elements.commandStructureRoleEmpty?.classList.toggle("hidden", Boolean(selected));
+    elements.commandStructureRoleEditor?.classList.toggle("hidden", !selected);
+    if (!selected) return;
+    elements.commandStructureRoleTitle.textContent = selected.label;
+    elements.commandStructureRolePath.textContent = getCommandStructureRolePath(selected.roleId);
+    elements.commandStructureRoleStatus.textContent = selected.status === "assigned" ? "Assigned" : "Empty";
+    elements.commandStructureRoleStatus.classList.toggle("assigned", selected.status === "assigned");
+    elements.commandStructureAssignedUser.textContent = selected.assignedUser?.name || "Unassigned";
+    elements.commandStructureAssigneeInput.value = selected.assignedUser?.name || "";
+    elements.commandStructureRemoveBtn.disabled = !selected.assignedUser;
+  }
+
+  function renderCommandStructureSummary() {
+    const draft = ensureCommandStructureDraft();
+    const total = draft.roles.length;
+    const assignedCount = draft.roles.filter((role) => role.assignedUser?.name).length;
+    const session = getWorkspaceSession();
+    const currentUser = getCommandStructureCurrentUser();
+    elements.commandStructureIncidentName.textContent = session?.incidentName || "Not loaded";
+    elements.commandStructureCurrentUser.textContent = currentUser?.name
+      ? `${currentUser.name}${currentUser.roleId ? ` · ${COMMAND_STRUCTURE_ROLE_BY_ID[currentUser.roleId]?.label || ""}` : ""}`
+      : "Not assigned";
+    elements.commandStructureAssignmentCount.textContent = `${assignedCount} / ${total}`;
+  }
+
+  function renderCommandStructureWorkspace() {
+    if (!elements.commandStructureWorkspace) return;
+    const visible = Boolean(state.commandStructureOpen && (state.activeSession || isScenarioReviewMode()) && !state.viewerMode);
+    elements.commandStructureWorkspace.classList.toggle("hidden", !visible);
+    elements.commandStructureWorkspace.setAttribute("aria-hidden", String(!visible));
+    if (!visible) return;
+    ensureCommandStructureDraft();
+    prefillCommandStructureDraftFromWorkspace();
+    saveCommandStructureDraft();
+    populateCommandStructureAssigneeOptions();
+    renderCommandStructureSummary();
+    renderCommandStructureChart();
+    renderCommandStructureRolePanel();
+  }
+
+  function openCommandStructureWorkspace() {
+    if (!(state.activeSession || isScenarioReviewMode()) || state.viewerMode) return;
+    ensureCommandStructureDraft();
+    prefillCommandStructureDraftFromWorkspace();
+    if (!state.commandStructureSelectedRoleId) {
+      state.commandStructureSelectedRoleId = "incident_commander";
+    }
+    state.ics202Open = false;
+    state.commandStructureOpen = true;
+    renderAll();
+    setStatus("Command Structure workspace opened.");
+  }
+
+  function closeCommandStructureWorkspace() {
+    state.commandStructureOpen = false;
+    renderAll();
+    setStatus("Returned to map workspace.");
+  }
+
+  function bindCommandStructureEvents() {
+    if (!elements.commandStructureWorkspace) return;
+    elements.commandStructureBackBtn?.addEventListener("click", closeCommandStructureWorkspace);
+    elements.commandStructureAssignBtn?.addEventListener("click", assignSelectedCommandStructureRole);
+    elements.commandStructureRemoveBtn?.addEventListener("click", removeSelectedCommandStructureRole);
+    elements.commandStructureAssigneeInput?.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        assignSelectedCommandStructureRole();
+      }
+    });
+  }
+
   function createEmptyIcs202Draft() {
     return {
       incidentName: "",
@@ -5334,8 +5796,9 @@
     if (!(state.activeSession || isScenarioReviewMode()) || state.viewerMode) return;
     ensureIcs202Draft();
     prefillIcs202DraftFromWorkspace();
+    state.commandStructureOpen = false;
     state.ics202Open = true;
-    renderIcs202Workspace();
+    renderAll();
     setStatus("ICS 202 workspace opened.");
   }
 
