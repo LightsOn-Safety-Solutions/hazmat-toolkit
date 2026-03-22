@@ -5797,6 +5797,48 @@
     `;
   }
 
+  function printIcs207Document(snapshot) {
+    return new Promise((resolve, reject) => {
+      const iframe = document.createElement("iframe");
+      iframe.setAttribute("aria-hidden", "true");
+      iframe.style.position = "fixed";
+      iframe.style.right = "0";
+      iframe.style.bottom = "0";
+      iframe.style.width = "0";
+      iframe.style.height = "0";
+      iframe.style.border = "0";
+      const cleanup = () => {
+        window.setTimeout(() => iframe.remove(), 250);
+      };
+      iframe.onload = () => {
+        try {
+          const printWindow = iframe.contentWindow;
+          if (!printWindow) throw new Error("Print window unavailable.");
+          const finish = () => {
+            cleanup();
+            resolve();
+          };
+          printWindow.onafterprint = finish;
+          window.setTimeout(() => {
+            try {
+              printWindow.focus();
+              printWindow.print();
+              window.setTimeout(finish, 1000);
+            } catch (error) {
+              cleanup();
+              reject(error);
+            }
+          }, 300);
+        } catch (error) {
+          cleanup();
+          reject(error);
+        }
+      };
+      document.body.appendChild(iframe);
+      iframe.srcdoc = buildIcs207PrintDocument(snapshot);
+    });
+  }
+
   function tokenizeIcs207Path(path) {
     return String(path || "").trim().split(/\s+/).filter(Boolean);
   }
@@ -5970,19 +6012,13 @@
     void saveIcs207Snapshot(rendered.snapshot).catch((error) => {
       console.warn("Unable to save ICS 207 snapshot before print.", error);
     });
-    const printWindow = window.open("", "_blank", "noopener,noreferrer,width=1100,height=850");
-    if (!printWindow) {
-      setStatus("Allow pop-ups to print ICS 207.");
-      return;
+    try {
+      await printIcs207Document(rendered.snapshot);
+      setStatus("Printing ICS 207.");
+    } catch (error) {
+      console.error("ICS 207 print failed", error);
+      setStatus("ICS 207 print failed.");
     }
-    printWindow.document.open();
-    printWindow.document.write(buildIcs207PrintDocument(rendered.snapshot));
-    printWindow.document.close();
-    printWindow.focus();
-    window.setTimeout(() => {
-      printWindow.print();
-    }, 250);
-    setStatus("Printing ICS 207.");
   }
 
   async function exportIcs207Pdf() {
