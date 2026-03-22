@@ -2287,6 +2287,7 @@
     renderRightSidebarState();
     renderIcs202Workspace();
     renderSuperAdminWorkspace();
+    syncIncidentFocusLockState();
   }
 
   function renderGuidedControls() {
@@ -2552,6 +2553,26 @@
     return `${roundCoord(point.lat)},${roundCoord(point.lng)}:${String(point.label || "")}`;
   }
 
+  function requiresIncidentFocusLock() {
+    return Boolean(
+      state.activeSession
+      && !isScenarioReviewMode()
+      && !state.viewerMode
+      && isCommander()
+      && canCreateObjects()
+      && !getIncidentFocusPoint()
+    );
+  }
+
+  function isIncidentFocusPlacementActive() {
+    return Boolean(
+      requiresIncidentFocusLock()
+      && state.drawState
+      && state.drawState.mode === "create"
+      && state.drawState.template?.objectType === "HazardSource"
+    );
+  }
+
   function getIncidentFocusPoint() {
     const hazardSource = Array.from(state.objects.values()).find((object) => (
       object?.objectType === "HazardSource"
@@ -2570,6 +2591,8 @@
   function renderIncidentFocusUI() {
     const focusPoint = getIncidentFocusPoint();
     const focusSet = Boolean(focusPoint);
+    const focusLocked = requiresIncidentFocusLock();
+    const focusPlacementActive = isIncidentFocusPlacementActive();
     if (elements.createSessionFocusBadge) {
       elements.createSessionFocusBadge.textContent = focusSet ? "Incident Focus Set" : "Set Initial Hazard / Focus";
       elements.createSessionFocusBadge.classList.toggle("set", focusSet);
@@ -2592,14 +2615,38 @@
     }
     if (elements.setIncidentFocusBtn) {
       elements.setIncidentFocusBtn.disabled = !canCreateObjects();
+      elements.setIncidentFocusBtn.textContent = focusPlacementActive ? "Tap Map to Place Focus" : "Set Initial Focus";
+      elements.setIncidentFocusBtn.classList.toggle("attention", focusLocked);
     }
     if (elements.sessionFocusPrompt) {
       const showPrompt = Boolean(state.activeSession) && !isScenarioReviewMode() && isCommander() && !focusSet;
       elements.sessionFocusPrompt.classList.toggle("hidden", !showPrompt);
       elements.sessionFocusPrompt.textContent = showPrompt
-        ? "Set initial hazard/focus location by placing a Hazard Source. This helps everyone join centered on the incident."
+        ? (focusPlacementActive
+          ? "Tap the map to place the Hazard Source. Other controls are temporarily locked until the initial focus is set."
+          : "Select Set Initial Focus, then tap the map to place the Hazard Source. Other controls stay locked until the initial focus is set.")
         : "";
     }
+  }
+
+  function syncIncidentFocusLockState() {
+    if (!elements.appView) return;
+    const locked = requiresIncidentFocusLock();
+    elements.appView.classList.toggle("incident-focus-lock", locked);
+    elements.shell?.classList.toggle("incident-focus-lock", locked);
+    const interactive = elements.appView.querySelectorAll("button, input, select, textarea");
+    interactive.forEach((control) => {
+      const allowControl = control.id === "setIncidentFocusBtn";
+      if (locked && !allowControl) {
+        if (!control.disabled) {
+          control.disabled = true;
+          control.dataset.incidentFocusLocked = "1";
+        }
+      } else if (!locked && control.dataset.incidentFocusLocked === "1") {
+        control.disabled = false;
+        delete control.dataset.incidentFocusLocked;
+      }
+    });
   }
 
   function renderCreateSessionFocusVisibility() {
@@ -5843,6 +5890,10 @@
 
   function updateDrawControls() {
     const active = Boolean(state.drawState);
+    if (isIncidentFocusPlacementActive()) {
+      elements.drawControls.classList.add("hidden");
+      return;
+    }
     elements.drawControls.classList.toggle("hidden", !active);
     if (!active) return;
     const { template, mode, points = [] } = state.drawState;
