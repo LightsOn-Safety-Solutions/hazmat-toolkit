@@ -449,6 +449,7 @@
     commandStructureRoleTitle: document.getElementById("commandStructureRoleTitle"),
     commandStructureRolePath: document.getElementById("commandStructureRolePath"),
     commandStructureRoleStatus: document.getElementById("commandStructureRoleStatus"),
+    commandStructureClosePanelBtn: document.getElementById("commandStructureClosePanelBtn"),
     commandStructureAssignedUser: document.getElementById("commandStructureAssignedUser"),
     commandStructureAssigneeInput: document.getElementById("commandStructureAssigneeInput"),
     commandStructureAssigneeOptions: document.getElementById("commandStructureAssigneeOptions"),
@@ -602,6 +603,7 @@
     commandStructureOpen: false,
     commandStructureDraft: null,
     commandStructureSelectedRoleId: "",
+    commandStructurePanelOpen: false,
     superAdminOpen: false,
     superAdminTab: "overview",
     superAdminUsersOrgFilter: "",
@@ -1999,6 +2001,7 @@
     state.commandStructureOpen = false;
     state.commandStructureSelectedRoleId = "";
     state.commandStructureDraft = null;
+    state.commandStructurePanelOpen = false;
     elements.landingView.classList.add("hidden");
     elements.appView.classList.remove("hidden");
     elements.shell.classList.toggle("viewer-mode", state.viewerMode);
@@ -2215,6 +2218,7 @@
     state.commandStructureOpen = false;
     state.commandStructureDraft = null;
     state.commandStructureSelectedRoleId = "";
+    state.commandStructurePanelOpen = false;
     state.superAdminOpen = false;
     resetPlaybackHistoryForSession(null);
     cancelGeometryPreviewOnly();
@@ -5045,6 +5049,7 @@
   function selectCommandStructureRole(roleId) {
     if (!COMMAND_STRUCTURE_ROLE_BY_ID[roleId]) return;
     state.commandStructureSelectedRoleId = roleId;
+    state.commandStructurePanelOpen = true;
     renderCommandStructureWorkspace();
   }
 
@@ -5155,8 +5160,11 @@
 
   function renderCommandStructureRolePanel() {
     const selected = getCommandStructureSelectedRole();
-    elements.commandStructureRoleEmpty?.classList.toggle("hidden", Boolean(selected));
-    elements.commandStructureRoleEditor?.classList.toggle("hidden", !selected);
+    const panelOpen = Boolean(state.commandStructurePanelOpen);
+    elements.commandStructureRolePanel?.classList.toggle("is-open", panelOpen);
+    elements.commandStructureRolePanel?.classList.toggle("hidden", !panelOpen);
+    elements.commandStructureRoleEmpty?.classList.toggle("hidden", !panelOpen || Boolean(selected));
+    elements.commandStructureRoleEditor?.classList.toggle("hidden", !panelOpen || !selected);
     if (!selected) return;
     elements.commandStructureRoleTitle.textContent = selected.label;
     elements.commandStructureRolePath.textContent = getCommandStructureRolePath(selected.roleId);
@@ -5186,6 +5194,7 @@
     elements.commandStructureWorkspace.classList.toggle("hidden", !visible);
     elements.commandStructureWorkspace.setAttribute("aria-hidden", String(!visible));
     if (!visible) return;
+    elements.commandStructureWorkspace.classList.toggle("panel-open", Boolean(state.commandStructurePanelOpen));
     ensureCommandStructureDraft();
     prefillCommandStructureDraftFromWorkspace();
     saveCommandStructureDraft();
@@ -5204,19 +5213,28 @@
     }
     state.ics202Open = false;
     state.commandStructureOpen = true;
+    state.commandStructurePanelOpen = false;
     renderAll();
     setStatus("Command Structure workspace opened.");
   }
 
   function closeCommandStructureWorkspace() {
     state.commandStructureOpen = false;
+    state.commandStructurePanelOpen = false;
     renderAll();
     setStatus("Returned to map workspace.");
+  }
+
+  function closeCommandStructurePanel() {
+    state.commandStructurePanelOpen = false;
+    renderCommandStructureWorkspace();
+    setStatus("Role assignment panel hidden.");
   }
 
   function bindCommandStructureEvents() {
     if (!elements.commandStructureWorkspace) return;
     elements.commandStructureBackBtn?.addEventListener("click", closeCommandStructureWorkspace);
+    elements.commandStructureClosePanelBtn?.addEventListener("click", closeCommandStructurePanel);
     elements.commandStructureAssignBtn?.addEventListener("click", assignSelectedCommandStructureRole);
     elements.commandStructureRemoveBtn?.addEventListener("click", removeSelectedCommandStructureRole);
     elements.commandStructureAssigneeInput?.addEventListener("keydown", (event) => {
