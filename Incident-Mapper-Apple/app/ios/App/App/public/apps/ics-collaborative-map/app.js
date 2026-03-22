@@ -673,29 +673,86 @@
 
   function getAttachmentImages(object) {
     const fields = object?.fields || {};
+    if (Array.isArray(fields.attachmentFiles)) {
+      const storageImages = fields.attachmentFiles
+        .map(normalizeAttachmentEntry)
+        .filter(Boolean);
+      if (storageImages.length) return storageImages;
+    }
     if (Array.isArray(fields.attachmentImages)) {
-      return fields.attachmentImages.filter((entry) => (
-        entry
-        && typeof entry.dataUrl === "string"
-        && /^data:image\//i.test(entry.dataUrl)
-      ));
+      return fields.attachmentImages
+        .map(normalizeAttachmentEntry)
+        .filter(Boolean);
     }
     if (typeof fields.attachmentImage === "string" && /^data:image\//i.test(fields.attachmentImage)) {
-      return [{
+      return [normalizeAttachmentEntry({
         id: createLocalID(),
         name: fields.attachmentName || "Attached Image",
         dataUrl: fields.attachmentImage
-      }];
+      })].filter(Boolean);
     }
     return [];
+  }
+
+  function normalizeAttachmentEntry(entry) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
+    const source = (
+      (typeof entry.dataUrl === "string" && /^data:image\//i.test(entry.dataUrl) && entry.dataUrl)
+      || (typeof entry.publicUrl === "string" && entry.publicUrl)
+      || (typeof entry.url === "string" && entry.url)
+      || ""
+    );
+    if (!source) return null;
+    return {
+      id: entry.id || createLocalID(),
+      name: entry.name || "Attached Image",
+      dataUrl: typeof entry.dataUrl === "string" ? entry.dataUrl : "",
+      publicUrl: typeof entry.publicUrl === "string" ? entry.publicUrl : "",
+      url: typeof entry.url === "string" ? entry.url : "",
+      path: typeof entry.path === "string" ? entry.path : "",
+      contentType: typeof entry.contentType === "string" ? entry.contentType : "",
+      sizeBytes: Number.isFinite(Number(entry.sizeBytes)) ? Number(entry.sizeBytes) : null,
+      createdAt: typeof entry.createdAt === "string" ? entry.createdAt : ""
+    };
+  }
+
+  function getAttachmentImageSource(entry) {
+    return entry?.publicUrl || entry?.url || entry?.dataUrl || "";
   }
 
   function normalizeAttachmentFields(fields) {
     const working = { ...(fields || {}) };
     const images = getAttachmentImages({ fields: working });
-    working.attachmentImages = images;
+    working.attachmentFiles = images.map((entry) => {
+      const normalized = {
+        id: entry.id || createLocalID(),
+        name: entry.name || "Attached Image"
+      };
+      if (entry.path) normalized.path = entry.path;
+      if (entry.publicUrl) normalized.publicUrl = entry.publicUrl;
+      if (entry.url) normalized.url = entry.url;
+      if (entry.contentType) normalized.contentType = entry.contentType;
+      if (Number.isFinite(Number(entry.sizeBytes))) normalized.sizeBytes = Number(entry.sizeBytes);
+      if (entry.createdAt) normalized.createdAt = entry.createdAt;
+      if (entry.dataUrl) normalized.dataUrl = entry.dataUrl;
+      return normalized;
+    });
+    const legacyImages = images.filter((entry) => entry.dataUrl);
+    if (legacyImages.length) {
+      working.attachmentImages = legacyImages.map((entry) => ({
+        id: entry.id,
+        name: entry.name,
+        dataUrl: entry.dataUrl
+      }));
+    } else {
+      delete working.attachmentImages;
+    }
     if (!working.attachmentName && images[0]?.name) working.attachmentName = images[0].name;
-    if (!working.attachmentImage && images[0]?.dataUrl) working.attachmentImage = images[0].dataUrl;
+    if (images[0]?.dataUrl) {
+      working.attachmentImage = images[0].dataUrl;
+    } else {
+      delete working.attachmentImage;
+    }
     working.iconCategory = ATTACHMENT_CATEGORY;
     working.iconAssetPath = ATTACHMENT_PIN_SRC;
     working.iconMarkerSize = 42;
@@ -5855,13 +5912,13 @@
     }
   }
 
-  async function createObject(template, geometry) {
+  async function createObject(template, geometry, options = {}) {
     if (template?.objectType === MAP_NOTE_OBJECT_TYPE && !canManageMapNotes()) {
       setStatus("Only command staff can place map notes.");
       return;
     }
     if (isScenarioReviewMode()) {
-      const objectId = createLocalID();
+      const objectId = options.objectId || createLocalID();
       const object = {
         id: objectId,
         sessionId: state.scenarioReview.id,
@@ -5885,7 +5942,7 @@
       setStatus(`${template.label} placed in editable scenario.`);
       return;
     }
-    const objectId = createLocalID();
+    const objectId = options.objectId || createLocalID();
     const result = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/mutations`, {
       method: "POST",
       actorType: currentActorType(),
@@ -5905,7 +5962,41 @@
     setStatus(`${template.label} placed.`);
   }
 
+  async function buildAttachmentEntryForPlacement(payload, objectId) {
+    if (!isScenarioReviewMode() && sessionIsActive() && state.activeSession?.id) {
+      const result = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/attachments/import`, {
+        method: "POST",
+        actorType: currentActorType(),
+        body: {
+          objectId,
+          fileName: payload?.fileName || "Attached Image",
+          dataUrl: payload?.dataUrl || ""
+        }
+      });
+      const imported = normalizeAttachmentEntry(result?.file);
+      if (!imported) throw new Error("Attachment upload failed.");
+      return imported;
+    }
+    const localEntry = normalizeAttachmentEntry({
+      id: createLocalID(),
+      name: payload?.fileName || "Attached Image",
+      dataUrl: payload?.dataUrl || "",
+      contentType: inferDataUrlContentType(payload?.dataUrl || ""),
+      sizeBytes: estimateDataUrlBytes(payload?.dataUrl || ""),
+      createdAt: new Date().toISOString()
+    });
+    if (!localEntry) throw new Error("Attachment import failed.");
+    return localEntry;
+  }
+
+  function inferDataUrlContentType(dataUrl) {
+    const match = String(dataUrl || "").match(/^data:([^;,]+)[;,]/i);
+    return match ? match[1].toLowerCase() : "";
+  }
+
   async function placeAttachmentPinAt(latlng, payload) {
+    const objectId = createLocalID();
+    const attachmentEntry = await buildAttachmentEntryForPlacement(payload, objectId);
     const label = String(payload?.fileName || "Attached Image").replace(/\.[^.]+$/, "") || "Attached Image";
     const attachmentFields = normalizeAttachmentFields({
       notes: "",
@@ -5914,13 +6005,8 @@
       iconLabel: label,
       iconAssetPath: ATTACHMENT_PIN_SRC,
       iconMarkerSize: 42,
-      attachmentImage: payload?.dataUrl || "",
       attachmentName: payload?.fileName || "Attached Image",
-      attachmentImages: [{
-        id: createLocalID(),
-        name: payload?.fileName || "Attached Image",
-        dataUrl: payload?.dataUrl || ""
-      }]
+      attachmentFiles: [attachmentEntry]
     });
     const template = {
       ...ICON_MARKER_TEMPLATE,
@@ -5930,7 +6016,7 @@
     await createObject(template, {
       lat: roundCoord(latlng.lat),
       lng: roundCoord(latlng.lng)
-    });
+    }, { objectId });
   }
 
   async function appendAttachmentToObject(objectId, file) {
@@ -5946,44 +6032,44 @@
     }
     void prepareAttachmentPayload(file)
       .then(async (payload) => {
-      const nextFields = normalizeAttachmentFields({
-        ...(object.fields || {}),
-        attachmentImages: [
-          ...getAttachmentImages(object),
-          {
-            id: createLocalID(),
-            name: payload.fileName || file.name || `Attachment ${getAttachmentImages(object).length + 1}`,
-            dataUrl: payload.dataUrl
+        const attachmentEntry = await buildAttachmentEntryForPlacement(payload, object.id);
+        const nextFields = normalizeAttachmentFields({
+          ...(object.fields || {}),
+          attachmentFiles: [
+            ...getAttachmentImages(object),
+            {
+              ...attachmentEntry,
+              name: attachmentEntry.name || payload.fileName || file.name || `Attachment ${getAttachmentImages(object).length + 1}`
+            }
+          ]
+        });
+        try {
+          if (isScenarioReviewMode()) {
+            state.objects.set(object.id, {
+              ...object,
+              fields: nextFields,
+              updatedAt: new Date().toISOString()
+            });
+            syncMapObjects();
+            renderSelectedObject();
+            renderAll();
+          } else {
+            await queueUpdateMutation({
+              objectId: object.id,
+              mutationType: "update",
+              geometryType: object.geometryType,
+              geometry: object.geometry,
+              fields: nextFields,
+              baseVersion: object.version
+            }, true);
           }
-        ]
-      });
-      try {
-        if (isScenarioReviewMode()) {
-          state.objects.set(object.id, {
-            ...object,
-            fields: nextFields,
-            updatedAt: new Date().toISOString()
-          });
-          syncMapObjects();
-          renderSelectedObject();
-          renderAll();
-        } else {
-          await queueUpdateMutation({
-            objectId: object.id,
-            mutationType: "update",
-            geometryType: object.geometryType,
-            geometry: object.geometry,
-            fields: nextFields,
-            baseVersion: object.version
-          }, true);
+          state.attachmentPreview.objectId = object.id;
+          state.attachmentPreview.index = Math.max(0, nextFields.attachmentFiles.length - 1);
+          setStatus("Image added to pin.");
+          openAttachmentPreview(state.objects.get(object.id) || { ...object, fields: nextFields });
+        } catch (error) {
+          setStatus(formatError(error));
         }
-        state.attachmentPreview.objectId = object.id;
-        state.attachmentPreview.index = Math.max(0, nextFields.attachmentImages.length - 1);
-        setStatus("Image added to pin.");
-        openAttachmentPreview(state.objects.get(object.id) || { ...object, fields: nextFields });
-      } catch (error) {
-        setStatus(formatError(error));
-      }
       })
       .catch((error) => {
         setStatus(formatError(error));
@@ -6076,7 +6162,7 @@
     state.attachmentPreview.objectId = resolvedObject?.id || null;
     state.attachmentPreview.index = index;
     elements.attachmentPreviewTitle.textContent = resolvedObject?.fields?.attachmentName || resolvedObject?.fields?.iconLabel || "Attached Image";
-    elements.attachmentPreviewImage.src = active?.dataUrl || "";
+    elements.attachmentPreviewImage.src = getAttachmentImageSource(active);
     elements.attachmentPreviewMeta.textContent = active
       ? `${active.name || "Attached Image"} (${index + 1}/${images.length})`
       : "No images attached";
@@ -6118,7 +6204,7 @@
     ));
     const nextFields = normalizeAttachmentFields({
       ...(object.fields || {}),
-      attachmentImages: nextImages,
+      attachmentFiles: nextImages,
       attachmentName: nextImages[0]?.name || nextName
     });
     try {
@@ -6188,7 +6274,7 @@
 
       const nextFields = normalizeAttachmentFields({
         ...(object.fields || {}),
-        attachmentImages: nextImages,
+        attachmentFiles: nextImages,
         attachmentName: nextImages[0]?.name || "Attached Image"
       });
       if (isScenarioReviewMode()) {

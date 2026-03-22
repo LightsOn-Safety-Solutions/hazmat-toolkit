@@ -7,6 +7,8 @@ export type AppConfig = {
   joinCodeTtlMinutes: number;
   supabaseUrl: string | null;
   supabaseAnonKey: string | null;
+  supabaseServiceRoleKey: string | null;
+  icsCollabAttachmentsBucket: string;
   icsCollabPublicBaseUrl: string | null;
 };
 
@@ -43,6 +45,8 @@ export function loadConfig(): AppConfig {
     joinCodeTtlMinutes: envInt("JOIN_CODE_TTL_MINUTES", 60),
     supabaseUrl: envOptional("SUPABASE_URL"),
     supabaseAnonKey: envOptional("SUPABASE_ANON_KEY"),
+    supabaseServiceRoleKey: envOptional("SUPABASE_SERVICE_ROLE_KEY"),
+    icsCollabAttachmentsBucket: env("ICS_COLLAB_ATTACHMENTS_BUCKET", "ics-collab-attachments"),
     icsCollabPublicBaseUrl: envOptional("ICS_COLLAB_PUBLIC_BASE_URL")
   };
 }

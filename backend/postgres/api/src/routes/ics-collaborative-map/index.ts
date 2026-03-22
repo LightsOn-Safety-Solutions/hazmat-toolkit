@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync, FastifyReply, FastifyRequest } from 'fastify';
 import type { PoolClient } from 'pg';
 import { createHash, randomUUID } from 'node:crypto';
+import type { AppConfig } from '../../config.js';
 import { TrainerAuthError, TrainerForbiddenError, TrainerTargetNotFoundError } from '../_trainerAuth.js';
 import { requireTrainerIdentity } from '../_trainerIdentity.js';
 
@@ -94,6 +95,12 @@ type MutationBody = {
 };
 
 type MapMutationInput = NonNullable<MutationBody['mutations']>[number];
+
+type ImportAttachmentBody = {
+  objectId?: string;
+  fileName?: string;
+  dataUrl?: string;
+};
 
 type UpdateOperationalPeriodBody = {
   operationalPeriodStart?: string;
@@ -316,6 +323,12 @@ type SessionActor =
       session: CollabSessionRow;
       trainerRef: string;
     };
+
+type AttachmentStorageConfig = {
+  supabaseUrl: string;
+  supabaseServiceRoleKey: string;
+  bucket: string;
+};
 
 export const collabRoutes: FastifyPluginAsync = async (app) => {
   app.get('/v1/ics-collab/meta', async () => ({
@@ -1403,6 +1416,23 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
+  app.post<{ Params: { sessionId: string }; Body: ImportAttachmentBody }>('/v1/ics-collab/sessions/:sessionId/attachments/import', async (request, reply) => {
+    try {
+      const actor = await resolveSessionActor(app, request.params.sessionId, request.headers.authorization);
+      const session = await refreshSessionStatusIfExpired(app.pg, actor.session.id);
+      if (session.session_status !== 'active') {
+        throw new ConflictError('Session is read-only.');
+      }
+      if (actor.participant.permission_tier === 'observer') {
+        throw new TrainerForbiddenError('Observers cannot upload attachments.');
+      }
+      const imported = await importAttachmentToStorage(app.config, session.id, request.body);
+      return reply.send({ file: imported });
+    } catch (error) {
+      return sendRouteError(reply, request, error, 'Failed to import collaborative attachment.');
+    }
+  });
+
   app.post<{ Params: { sessionId: string }; Body: MutationBody }>('/v1/ics-collab/sessions/:sessionId/mutations', async (request, reply) => {
     const mutations = Array.isArray(request.body?.mutations) ? request.body!.mutations! : [];
     if (mutations.length === 0) {
@@ -1423,7 +1453,7 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
 
       const applied: Array<Record<string, unknown>> = [];
       for (const mutation of mutations) {
-        const result = await applyMutation(client, session, actor, mutation);
+        const result = await applyMutation(client, app.config, session, actor, mutation);
         applied.push(result);
       }
 
@@ -1670,6 +1700,7 @@ async function resolveSessionActorWithClient(
 
 async function applyMutation(
   client: PoolClient,
+  appConfig: AppConfig,
   session: CollabSessionRow,
   actor: SessionActor,
   mutation: MapMutationInput
@@ -1808,6 +1839,10 @@ async function applyMutation(
         clientMutationId: mutation?.clientMutationId ?? null
       }
     });
+    const deletedPaths = listAttachmentPaths(object.fields_json);
+    if (deletedPaths.length) {
+      await deleteAttachmentFiles(resolveAttachmentStorageConfig(appConfig), deletedPaths);
+    }
     return {
       mutationType: 'delete',
       object: mapObject(deleted.rows[0]),
@@ -1821,6 +1856,8 @@ async function applyMutation(
   }
   const updatedGeometry = mutation?.geometry == null ? object.geometry_json : normalizeGeometryPayload(mutation.geometry, geometryType);
   const updatedFields = mutation?.fields == null ? object.fields_json : normalizeFieldsPayload(mutation.fields);
+  const previousAttachmentPaths = listAttachmentPaths(object.fields_json);
+  const nextAttachmentPaths = listAttachmentPaths(updatedFields);
   const updated = await client.query<CollabObjectRow>(
     `
       update collab_map_objects
@@ -1866,6 +1903,10 @@ async function applyMutation(
       fields: updatedFields
     }
   });
+  const removedPaths = previousAttachmentPaths.filter((path) => !nextAttachmentPaths.includes(path));
+  if (removedPaths.length) {
+    await deleteAttachmentFiles(resolveAttachmentStorageConfig(appConfig), removedPaths);
+  }
   return {
     mutationType: 'update',
     object: mapObject(updated.rows[0]),
@@ -3320,6 +3361,147 @@ function normalizeFieldsPayload(payload: unknown) {
     throw new ValidationError('fields must be an object.');
   }
   return payload;
+}
+
+function resolveAttachmentStorageConfig(config: AppConfig): AttachmentStorageConfig {
+  if (!config.supabaseUrl || !config.supabaseServiceRoleKey) {
+    throw new ConflictError('Attachment storage is not configured on the server.');
+  }
+  return {
+    supabaseUrl: config.supabaseUrl.replace(/\/$/, ''),
+    supabaseServiceRoleKey: config.supabaseServiceRoleKey,
+    bucket: config.icsCollabAttachmentsBucket
+  };
+}
+
+async function importAttachmentToStorage(config: AppConfig, sessionID: string, body: ImportAttachmentBody | undefined) {
+  const storageConfig = resolveAttachmentStorageConfig(config);
+  const objectID = normalizeUUID(body?.objectId);
+  if (!objectID) {
+    throw new ValidationError('objectId is required for attachment upload.');
+  }
+  const fileName = normalizeOptionalText(body?.fileName) ?? 'attachment.jpg';
+  const parsed = parseImageDataUrl(body?.dataUrl);
+  const extension = inferImageExtension(parsed.contentType, fileName);
+  const safeName = sanitizeAttachmentFileStem(fileName);
+  const storagePath = `${sessionID}/${objectID}/${randomUUID()}-${safeName}.${extension}`;
+  await uploadAttachmentFile(storageConfig, storagePath, parsed.data, parsed.contentType);
+  return {
+    id: randomUUID(),
+    name: fileName,
+    path: storagePath,
+    publicUrl: buildSupabasePublicObjectUrl(storageConfig, storagePath),
+    contentType: parsed.contentType,
+    sizeBytes: parsed.data.byteLength,
+    createdAt: new Date().toISOString()
+  };
+}
+
+function parseImageDataUrl(value: string | undefined) {
+  const raw = normalizeOptionalText(value);
+  const match = raw?.match(/^data:(image\/[a-z0-9.+-]+);base64,([a-z0-9+/=\s]+)$/i);
+  if (!match) {
+    throw new ValidationError('Attachment upload requires a valid image dataUrl.');
+  }
+  const contentType = match[1].toLowerCase();
+  const data = Buffer.from(match[2].replace(/\s+/g, ''), 'base64');
+  if (!data.byteLength) {
+    throw new ValidationError('Attachment upload is empty.');
+  }
+  return { contentType, data };
+}
+
+function inferImageExtension(contentType: string, fileName: string) {
+  const explicit = (fileName.split('.').pop() || '').trim().toLowerCase();
+  if (explicit && /^[a-z0-9]+$/.test(explicit) && explicit.length <= 10) {
+    return explicit === 'jpeg' ? 'jpg' : explicit;
+  }
+  if (contentType === 'image/png') return 'png';
+  if (contentType === 'image/webp') return 'webp';
+  if (contentType === 'image/gif') return 'gif';
+  return 'jpg';
+}
+
+function sanitizeAttachmentFileStem(fileName: string) {
+  const stem = fileName.replace(/\.[^.]+$/, '').trim().toLowerCase();
+  const normalized = stem.replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+  return normalized || 'attachment';
+}
+
+async function uploadAttachmentFile(
+  config: AttachmentStorageConfig,
+  storagePath: string,
+  data: Buffer,
+  contentType: string
+) {
+  const response = await fetch(`${config.supabaseUrl}/storage/v1/object/${encodeURIComponent(config.bucket)}/${encodeSupabasePath(storagePath)}`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.supabaseServiceRoleKey}`,
+      apikey: config.supabaseServiceRoleKey,
+      'Content-Type': contentType,
+      'x-upsert': 'false'
+    },
+    body: new Uint8Array(data)
+  });
+  if (!response.ok) {
+    const detail = await safeReadStorageError(response);
+    if (response.status === 413) {
+      throw new ValidationError('Attachment image is too large for storage upload.');
+    }
+    throw new Error(detail || `Storage upload failed (${response.status}).`);
+  }
+}
+
+async function deleteAttachmentFiles(config: AttachmentStorageConfig, paths: string[]) {
+  const uniquePaths = Array.from(new Set(paths.filter((path) => typeof path === 'string' && path.trim().length > 0)));
+  if (!uniquePaths.length) return;
+  const response = await fetch(`${config.supabaseUrl}/storage/v1/object/remove`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${config.supabaseServiceRoleKey}`,
+      apikey: config.supabaseServiceRoleKey,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ bucketId: config.bucket, paths: uniquePaths })
+  });
+  if (!response.ok) {
+    const detail = await safeReadStorageError(response);
+    throw new Error(detail || `Storage delete failed (${response.status}).`);
+  }
+}
+
+function listAttachmentPaths(fields: unknown) {
+  if (!fields || typeof fields !== 'object' || Array.isArray(fields)) return [];
+  const candidates = (fields as { attachmentFiles?: unknown }).attachmentFiles;
+  if (!Array.isArray(candidates)) return [];
+  return candidates
+    .map((entry) => (entry && typeof entry === 'object' && !Array.isArray(entry) ? (entry as { path?: unknown }).path : null))
+    .filter((value): value is string => typeof value === 'string' && value.trim().length > 0);
+}
+
+function buildSupabasePublicObjectUrl(config: AttachmentStorageConfig, storagePath: string) {
+  return `${config.supabaseUrl}/storage/v1/object/public/${encodeURIComponent(config.bucket)}/${encodeSupabasePath(storagePath)}`;
+}
+
+function encodeSupabasePath(storagePath: string) {
+  return storagePath
+    .split('/')
+    .map((segment) => encodeURIComponent(segment))
+    .join('/');
+}
+
+async function safeReadStorageError(response: Response) {
+  try {
+    const payload = await response.json() as { message?: string; error?: string };
+    return payload?.message || payload?.error || '';
+  } catch {
+    try {
+      return (await response.text()).trim();
+    } catch {
+      return '';
+    }
+  }
 }
 
 function parseRequiredDate(value: string | undefined, _field: string) {
