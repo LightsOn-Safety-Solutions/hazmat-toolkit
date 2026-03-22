@@ -25,7 +25,7 @@
 	<key>HazmatDataSource</key>
 	<string>api</string>
 	<key>HazmatAPIBaseURL</key>
-	<string>https://hazmat-toolkit-api-75ct.onrender.com</string>
+	<string>https://hazmat-toolkit-api.onrender.com</string>
 	<key>SupabaseURL</key>
 	<string>https://domebvsyhexhgvsducbm.supabase.co</string>
 	<key>SupabaseAnonKey</key>
