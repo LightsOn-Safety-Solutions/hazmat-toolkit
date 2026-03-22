@@ -513,6 +513,7 @@
     ics202Summary: document.getElementById("ics202Summary"),
     ics202PrintRoot: document.getElementById("ics202PrintRoot"),
     commandStructureWorkspace: document.getElementById("commandStructureWorkspace"),
+    commandStructureSaveBtn: document.getElementById("commandStructureSaveBtn"),
     commandStructureBackBtn: document.getElementById("commandStructureBackBtn"),
     commandStructureIncidentName: document.getElementById("commandStructureIncidentName"),
     commandStructureCurrentUser: document.getElementById("commandStructureCurrentUser"),
@@ -5096,6 +5097,26 @@
     }
   }
 
+  async function onSaveCommandStructure() {
+    if (isScenarioReviewMode()) {
+      saveCommandStructureDraft();
+      setStatus("Command Structure saved to this scenario review on the current device.");
+      renderCommandStructureWorkspace();
+      return;
+    }
+    if (!state.activeSession) {
+      setStatus("Open a live session first.");
+      return;
+    }
+    try {
+      await saveCommandStructureDraftToBackend();
+      renderCommandStructureWorkspace();
+      setStatus("Command Structure saved to the live session.");
+    } catch (error) {
+      setStatus(formatError(error));
+    }
+  }
+
   function mapRoleLabelToCommandStructureRoleId(roleLabel) {
     const normalized = normalizeRoleKey(roleLabel);
     if (!normalized) return "";
@@ -5456,6 +5477,12 @@
       ? `${currentUser.name}${currentUser.roleId ? ` · ${COMMAND_STRUCTURE_ROLE_BY_ID[currentUser.roleId]?.label || ""}` : ""}`
       : "Not assigned";
     elements.commandStructureAssignmentCount.textContent = `${assignedCount} / ${total}`;
+    if (elements.commandStructureSaveBtn) {
+      elements.commandStructureSaveBtn.disabled = Boolean(state.commandStructureSaving);
+      elements.commandStructureSaveBtn.textContent = state.commandStructureSaving
+        ? "Saving…"
+        : "Save Command Structure";
+    }
   }
 
   function renderCommandStructureWorkspace() {
@@ -5510,6 +5537,9 @@
 
   function bindCommandStructureEvents() {
     if (!elements.commandStructureWorkspace) return;
+    elements.commandStructureSaveBtn?.addEventListener("click", () => {
+      void onSaveCommandStructure();
+    });
     elements.commandStructureBackBtn?.addEventListener("click", closeCommandStructureWorkspace);
     elements.commandStructureClosePanelBtn?.addEventListener("click", closeCommandStructurePanel);
     elements.commandStructureAssignBtn?.addEventListener("click", assignSelectedCommandStructureRole);
