@@ -134,16 +134,16 @@
     "Protect exposures and maintain access/egress routes for mutual-aid resources.",
     "Complete responder accountability and confirm rehab/safety coverage for the operational period."
   ];
-  const COMMAND_STRUCTURE_CHART_SIZE = { width: 1560, height: 1140 };
+  const COMMAND_STRUCTURE_CHART_SIZE = { width: 1880, height: 1140 };
   const COMMAND_STRUCTURE_ROLE_DEFS = [
-    { roleId: "incident_commander", label: "Incident Commander", parent: null, x: 690, y: 36, width: 180, height: 64 },
-    { roleId: "public_information_officer", label: "Public Information Officer", parent: "incident_commander", x: 430, y: 170, width: 210, height: 64 },
-    { roleId: "safety_officer", label: "Safety Officer", parent: "incident_commander", x: 675, y: 170, width: 210, height: 64 },
-    { roleId: "liaison_officer", label: "Liaison Officer", parent: "incident_commander", x: 920, y: 170, width: 210, height: 64 },
-    { roleId: "operations_section", label: "Operations Section", parent: "incident_commander", x: 40, y: 320, width: 250, height: 68 },
-    { roleId: "planning_section", label: "Planning Section", parent: "incident_commander", x: 430, y: 320, width: 250, height: 68 },
-    { roleId: "logistics_section", label: "Logistics Section", parent: "incident_commander", x: 820, y: 320, width: 250, height: 68 },
-    { roleId: "finance_admin_section", label: "Finance / Admin Section", parent: "incident_commander", x: 1210, y: 320, width: 250, height: 68 },
+    { roleId: "incident_commander", label: "Incident Commander", parent: null, x: 850, y: 36, width: 180, height: 64 },
+    { roleId: "public_information_officer", label: "Public Information Officer", parent: "incident_commander", x: 550, y: 170, width: 220, height: 64 },
+    { roleId: "safety_officer", label: "Safety Officer", parent: "incident_commander", x: 830, y: 170, width: 220, height: 64 },
+    { roleId: "liaison_officer", label: "Liaison Officer", parent: "incident_commander", x: 1110, y: 170, width: 220, height: 64 },
+    { roleId: "operations_section", label: "Operations Section", parent: "incident_commander", x: 40, y: 320, width: 260, height: 68 },
+    { roleId: "planning_section", label: "Planning Section", parent: "incident_commander", x: 430, y: 320, width: 260, height: 68 },
+    { roleId: "logistics_section", label: "Logistics Section", parent: "incident_commander", x: 930, y: 320, width: 290, height: 68 },
+    { roleId: "finance_admin_section", label: "Finance / Admin Section", parent: "incident_commander", x: 1480, y: 320, width: 300, height: 68 },
     { roleId: "staging_area", label: "Staging Area", parent: "operations_section", x: 40, y: 470, width: 165, height: 64 },
     { roleId: "branches", label: "Branches", parent: "operations_section", x: 215, y: 470, width: 165, height: 64 },
     { roleId: "divisions", label: "Divisions", parent: "operations_section", x: 40, y: 620, width: 165, height: 64 },
@@ -156,18 +156,18 @@
     { roleId: "situation_unit", label: "Situation Unit", parent: "planning_section", x: 605, y: 470, width: 165, height: 64 },
     { roleId: "documentation_unit", label: "Documentation Unit", parent: "planning_section", x: 430, y: 620, width: 165, height: 64 },
     { roleId: "demobilization_unit", label: "Demobilization Unit", parent: "planning_section", x: 605, y: 620, width: 165, height: 64 },
-    { roleId: "service_branch", label: "Service Branch", parent: "logistics_section", x: 820, y: 470, width: 180, height: 64 },
-    { roleId: "support_branch", label: "Support Branch", parent: "logistics_section", x: 1015, y: 470, width: 180, height: 64 },
-    { roleId: "communications_unit", label: "Communications Unit", parent: "service_branch", x: 780, y: 620, width: 160, height: 64 },
-    { roleId: "medical_unit", label: "Medical Unit", parent: "service_branch", x: 950, y: 620, width: 160, height: 64 },
-    { roleId: "food_unit", label: "Food Unit", parent: "service_branch", x: 865, y: 770, width: 160, height: 64 },
-    { roleId: "supply_unit", label: "Supply Unit", parent: "support_branch", x: 1015, y: 620, width: 160, height: 64 },
-    { roleId: "facilities_unit", label: "Facilities Unit", parent: "support_branch", x: 1185, y: 620, width: 160, height: 64 },
-    { roleId: "ground_support_unit", label: "Ground Support Unit", parent: "support_branch", x: 1100, y: 770, width: 160, height: 64 },
-    { roleId: "time_unit", label: "Time Unit", parent: "finance_admin_section", x: 1210, y: 470, width: 165, height: 64 },
-    { roleId: "procurement_unit", label: "Procurement Unit", parent: "finance_admin_section", x: 1385, y: 470, width: 165, height: 64 },
-    { roleId: "compensation_claims_unit", label: "Compensation / Claims Unit", parent: "finance_admin_section", x: 1210, y: 620, width: 165, height: 64 },
-    { roleId: "cost_unit", label: "Cost Unit", parent: "finance_admin_section", x: 1385, y: 620, width: 165, height: 64 }
+    { roleId: "service_branch", label: "Service Branch", parent: "logistics_section", x: 930, y: 470, width: 210, height: 64 },
+    { roleId: "support_branch", label: "Support Branch", parent: "logistics_section", x: 1180, y: 470, width: 210, height: 64 },
+    { roleId: "communications_unit", label: "Communications Unit", parent: "service_branch", x: 880, y: 620, width: 190, height: 64 },
+    { roleId: "medical_unit", label: "Medical Unit", parent: "service_branch", x: 1095, y: 620, width: 190, height: 64 },
+    { roleId: "food_unit", label: "Food Unit", parent: "service_branch", x: 988, y: 770, width: 190, height: 64 },
+    { roleId: "supply_unit", label: "Supply Unit", parent: "support_branch", x: 1235, y: 620, width: 190, height: 64 },
+    { roleId: "facilities_unit", label: "Facilities Unit", parent: "support_branch", x: 1450, y: 620, width: 190, height: 64 },
+    { roleId: "ground_support_unit", label: "Ground Support Unit", parent: "support_branch", x: 1343, y: 770, width: 190, height: 64 },
+    { roleId: "time_unit", label: "Time Unit", parent: "finance_admin_section", x: 1485, y: 470, width: 180, height: 64 },
+    { roleId: "procurement_unit", label: "Procurement Unit", parent: "finance_admin_section", x: 1685, y: 470, width: 180, height: 64 },
+    { roleId: "compensation_claims_unit", label: "Compensation / Claims Unit", parent: "finance_admin_section", x: 1455, y: 620, width: 220, height: 64 },
+    { roleId: "cost_unit", label: "Cost Unit", parent: "finance_admin_section", x: 1715, y: 620, width: 150, height: 64 }
   ];
   const COMMAND_STRUCTURE_ROLE_BY_ID = Object.fromEntries(COMMAND_STRUCTURE_ROLE_DEFS.map((role) => [role.roleId, role]));
   const COMMAND_STRUCTURE_ROLE_ID_BY_LABEL = Object.fromEntries(COMMAND_STRUCTURE_ROLE_DEFS.map((role) => [normalizeRoleKey(role.label), role.roleId]));
