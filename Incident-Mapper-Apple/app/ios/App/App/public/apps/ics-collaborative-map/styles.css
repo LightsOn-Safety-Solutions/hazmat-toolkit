@@ -1758,6 +1758,135 @@ button.danger { background: rgba(182,59,59,0.14); color: #f4c9ce; border-color: 
   border-top: 1px solid var(--stroke);
   padding-top: var(--space-3);
 }
+.ics207-preview-modal-card {
+  width: min(1180px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+}
+.ics207-preview-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
+  gap: var(--space-4);
+}
+.ics207-preview-controls,
+.ics207-preview-grid {
+  display: grid;
+  gap: var(--space-3);
+}
+.ics207-preview-actions {
+  justify-content: flex-start;
+}
+.ics207-preview-validation {
+  padding: 12px;
+  border: 1px solid var(--stroke);
+  background: rgba(255,255,255,0.03);
+}
+.ics207-validation-list {
+  margin: 0;
+  padding-left: 18px;
+}
+.ics207-validation-list li.error {
+  color: #ef4444;
+}
+.ics207-validation-list li.warning {
+  color: #f59e0b;
+}
+.ics207-validation-success {
+  color: #22c55e;
+  font-weight: 700;
+}
+.ics207-preview-canvas {
+  overflow: auto;
+  border: 1px solid var(--stroke);
+  background: rgba(15,23,42,0.18);
+  padding: 12px;
+}
+.ics207-preview-frame {
+  min-width: 820px;
+}
+.ics207-print-root {
+  position: absolute;
+  left: -99999px;
+  top: -99999px;
+  width: 792px;
+  background: #fff;
+}
+.ics207-sheet {
+  width: 792px;
+  min-height: 612px;
+  background: #fff;
+  color: #111827;
+  font-family: "Helvetica Neue", Arial, sans-serif;
+}
+.ics207-sheet-header {
+  padding: 12px 18px 2px;
+}
+.ics207-sheet-title {
+  margin-bottom: 8px;
+  font-size: 18px;
+  font-weight: 700;
+  text-align: center;
+}
+.ics207-meta-row {
+  display: flex;
+  gap: 16px;
+  align-items: baseline;
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.ics207-template {
+  position: relative;
+  width: 792px;
+  height: 612px;
+}
+.ics207-template-connectors {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.ics207-template-connectors path {
+  fill: none;
+  stroke: #111827;
+  stroke-width: 2;
+  stroke-linecap: square;
+  stroke-linejoin: miter;
+}
+.ics207-slot {
+  position: absolute;
+  border: 1px solid #111827;
+  background: #fff;
+  padding: 6px 8px 4px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  text-align: center;
+}
+.ics207-slot-label {
+  font-size: 10px;
+  line-height: 1.1;
+  font-weight: 700;
+}
+.ics207-slot-name {
+  min-height: 14px;
+  font-size: 11px;
+  line-height: 1.15;
+}
+.ics207-footer {
+  margin-top: -34px;
+  padding: 0 18px 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 10px;
+}
+.ics207-prepared-by {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: flex-end;
+}
 .modal-header {
   display: flex;
   align-items: center;
@@ -2384,6 +2513,38 @@ body[data-theme="light"] .attachment-preview-img {
   body.print-ics202 textarea {
     border: none;
     outline: none;
+  }
+  body.print-ics207 .shell > *:not(#appView),
+  body.print-ics207 .modal,
+  body.print-ics207 #landingView,
+  body.print-ics207 #ics202Workspace,
+  body.print-ics207 #commandStructureWorkspace,
+  body.print-ics207 #ics202PrintRoot,
+  body.print-ics207 #mapPrintRoot {
+    display: none !important;
+  }
+  body.print-ics207 .shell,
+  body.print-ics207 .shell #appView {
+    display: block !important;
+    height: auto;
+    overflow: visible;
+    background: #fff;
+    padding: 0;
+  }
+  body.print-ics207 .shell #appView > *:not(#ics207PrintRoot) {
+    display: none !important;
+  }
+  body.print-ics207 .shell #ics207PrintRoot {
+    position: static;
+    left: auto;
+    top: auto;
+    width: 10in;
+    padding: 0;
+    display: block !important;
+  }
+  body.print-ics207 {
+    margin: 0;
+    background: #fff;
   }
 }
 

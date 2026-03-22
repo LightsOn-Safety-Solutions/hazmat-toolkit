@@ -183,6 +183,81 @@
     financeadminsectionchief: "finance_admin_section",
     financeandadminsectionchief: "finance_admin_section"
   };
+  const ICS207_ROLE_SLOT_BY_ROLE_ID = {
+    incident_commander: "IC",
+    public_information_officer: "PIO",
+    safety_officer: "SAFETY",
+    liaison_officer: "LIAISON",
+    operations_section: "OPS",
+    staging_area: "STAGING",
+    branches: "BRANCHES",
+    air_operations_branch: "AIR_OPS_BRANCH",
+    divisions: "DIVISIONS",
+    groups: "GROUPS",
+    strike_team: "STRIKE_TEAM",
+    task_force: "TASK_FORCE",
+    single_resource: "SINGLE_RESOURCE",
+    planning_section: "PLANNING",
+    resources_unit: "RESOURCES",
+    situation_unit: "SITUATION",
+    documentation_unit: "DOCUMENTATION",
+    demobilization_unit: "DEMOB",
+    logistics_section: "LOGISTICS",
+    support_branch: "SUPPORT_BRANCH",
+    supply_unit: "SUPPLY",
+    facilities_unit: "FACILITIES",
+    ground_support_unit: "GROUND_SUPPORT",
+    service_branch: "SERVICE_BRANCH",
+    communications_unit: "COMMS",
+    medical_unit: "MEDICAL",
+    food_unit: "FOOD",
+    finance_admin_section: "FINANCE",
+    time_unit: "TIME",
+    procurement_unit: "PROCUREMENT",
+    compensation_claims_unit: "COMP_CLAIMS",
+    cost_unit: "COST"
+  };
+  const ICS207_SLOT_META = {
+    IC: { label: "Incident Commander(s)", roleLabel: "Incident Commander(s)", x: 311, y: 40, w: 170, h: 48 },
+    PIO: { label: "Public Information Officer", roleLabel: "Public Information Officer", x: 235, y: 113, w: 154, h: 52 },
+    SAFETY: { label: "Safety Officer", roleLabel: "Safety Officer", x: 235, y: 173, w: 154, h: 52 },
+    LIAISON: { label: "Liaison Officer", roleLabel: "Liaison Officer", x: 467, y: 113, w: 154, h: 52 },
+    OPS: { label: "Operations Section Chief", roleLabel: "Operations Section Chief", x: 22, y: 248, w: 166, h: 56 },
+    STAGING: { label: "Staging Area Manager", roleLabel: "Staging Area Manager", x: 4, y: 348, w: 148, h: 52 },
+    BRANCHES: { label: "Branches", roleLabel: "Branches", x: 95, y: 410, w: 114, h: 52 },
+    AIR_OPS_BRANCH: { label: "Air Ops Branch", roleLabel: "Air Ops Branch", x: 228, y: 410, w: 114, h: 52 },
+    DIVISIONS: { label: "Divisions", roleLabel: "Divisions", x: 96, y: 494, w: 114, h: 46 },
+    GROUPS: { label: "Groups", roleLabel: "Groups", x: 229, y: 494, w: 114, h: 46 },
+    STRIKE_TEAM: { label: "Strike Team", roleLabel: "Strike Team", x: 97, y: 556, w: 236, h: 34 },
+    TASK_FORCE: { label: "Task Force", roleLabel: "Task Force", x: 97, y: 596, w: 236, h: 34 },
+    SINGLE_RESOURCE: { label: "Single Resource", roleLabel: "Single Resource", x: 97, y: 636, w: 236, h: 34 },
+    PLANNING: { label: "Planning Section Chief", roleLabel: "Planning Section Chief", x: 229, y: 248, w: 166, h: 56 },
+    RESOURCES: { label: "Resources Unit Ldr.", roleLabel: "Resources Unit Ldr.", x: 214, y: 348, w: 118, h: 52 },
+    DEMOB: { label: "Demobilization Unit Ldr.", roleLabel: "Demobilization Unit Ldr.", x: 348, y: 348, w: 118, h: 52 },
+    SITUATION: { label: "Situation Unit Ldr.", roleLabel: "Situation Unit Ldr.", x: 214, y: 414, w: 118, h: 52 },
+    DOCUMENTATION: { label: "Documentation Unit Ldr.", roleLabel: "Documentation Unit Ldr.", x: 348, y: 414, w: 118, h: 52 },
+    LOGISTICS: { label: "Logistics Section Chief", roleLabel: "Logistics Section Chief", x: 481, y: 248, w: 166, h: 56 },
+    SUPPORT_BRANCH: { label: "Support Branch Dir.", roleLabel: "Support Branch Dir.", x: 478, y: 348, w: 118, h: 52 },
+    SUPPLY: { label: "Supply Unit Ldr.", roleLabel: "Supply Unit Ldr.", x: 478, y: 414, w: 118, h: 52 },
+    FACILITIES: { label: "Facilities Unit Ldr.", roleLabel: "Facilities Unit Ldr.", x: 478, y: 480, w: 118, h: 52 },
+    GROUND_SUPPORT: { label: "Ground Spt. Unit Ldr.", roleLabel: "Ground Spt. Unit Ldr.", x: 478, y: 546, w: 118, h: 52 },
+    SERVICE_BRANCH: { label: "Service Branch Dir.", roleLabel: "Service Branch Dir.", x: 610, y: 348, w: 118, h: 52 },
+    COMMS: { label: "Comms Unit Ldr.", roleLabel: "Comms Unit Ldr.", x: 610, y: 414, w: 118, h: 52 },
+    MEDICAL: { label: "Medical Unit Ldr.", roleLabel: "Medical Unit Ldr.", x: 610, y: 480, w: 118, h: 52 },
+    FOOD: { label: "Food Unit Ldr.", roleLabel: "Food Unit Ldr.", x: 610, y: 546, w: 118, h: 52 },
+    FINANCE: { label: "Finance / Admin Section Chief", roleLabel: "Finance / Admin Section Chief", x: 649, y: 248, w: 136, h: 56 },
+    TIME: { label: "Time Unit Ldr.", roleLabel: "Time Unit Ldr.", x: 648, y: 348, w: 136, h: 52 },
+    PROCUREMENT: { label: "Procurement Unit Ldr.", roleLabel: "Procurement Unit Ldr.", x: 648, y: 414, w: 136, h: 52 },
+    COMP_CLAIMS: { label: "Comp. / Claims Unit Ldr.", roleLabel: "Comp. / Claims Unit Ldr.", x: 648, y: 480, w: 136, h: 52 },
+    COST: { label: "Cost Unit Ldr.", roleLabel: "Cost Unit Ldr.", x: 648, y: 546, w: 136, h: 52 }
+  };
+  const ICS207_SAMPLE_COMMAND_STRUCTURE = {
+    incidentId: "sample-incident",
+    roles: [
+      { roleId: "incident_commander", label: "Incident Commander", parent: null, assignedUser: { userId: "u1", name: "Jordan Holtan" }, status: "assigned" },
+      { roleId: "safety_officer", label: "Safety Officer", parent: "incident_commander", assignedUser: { userId: "u2", name: "Taylor Rollins" }, status: "assigned" }
+    ]
+  };
 
   const ICON_MARKER_TEMPLATE = {
     objectType: ICON_MARKER_OBJECT_TYPE,
@@ -489,7 +564,21 @@
     closePrintExportBtn: document.getElementById("closePrintExportBtn"),
     printMapBtn: document.getElementById("printMapBtn"),
     exportMapPdfBtn: document.getElementById("exportMapPdfBtn"),
+    exportIcs207Btn: document.getElementById("exportIcs207Btn"),
     printExportModalNote: document.getElementById("printExportModalNote"),
+    ics207PreviewModal: document.getElementById("ics207PreviewModal"),
+    closeIcs207PreviewBtn: document.getElementById("closeIcs207PreviewBtn"),
+    ics207PreviewValidation: document.getElementById("ics207PreviewValidation"),
+    ics207IncidentNameInput: document.getElementById("ics207IncidentNameInput"),
+    ics207PreparedByNameInput: document.getElementById("ics207PreparedByNameInput"),
+    ics207PreparedByPositionInput: document.getElementById("ics207PreparedByPositionInput"),
+    ics207PreparedByDateTimeInput: document.getElementById("ics207PreparedByDateTimeInput"),
+    ics207OpStartInput: document.getElementById("ics207OpStartInput"),
+    ics207OpEndInput: document.getElementById("ics207OpEndInput"),
+    ics207PrintBtn: document.getElementById("ics207PrintBtn"),
+    ics207ExportPdfBtn: document.getElementById("ics207ExportPdfBtn"),
+    ics207PreviewFrame: document.getElementById("ics207PreviewFrame"),
+    ics207PrintRoot: document.getElementById("ics207PrintRoot"),
     isolationToolModal: document.getElementById("isolationToolModal"),
     closeIsolationToolBtn: document.getElementById("closeIsolationToolBtn"),
     cancelIsolationToolBtn: document.getElementById("cancelIsolationToolBtn"),
@@ -602,8 +691,13 @@
     ics202Draft: null,
     commandStructureOpen: false,
     commandStructureDraft: null,
+    commandStructureLoadedSessionId: "",
+    commandStructureHasSaved: false,
+    commandStructureSaving: false,
     commandStructureSelectedRoleId: "",
     commandStructurePanelOpen: false,
+    ics207PreviewOpen: false,
+    ics207PreviewDraft: null,
     superAdminOpen: false,
     superAdminTab: "overview",
     superAdminUsersOrgFilter: "",
@@ -1060,9 +1154,35 @@
     elements.isolationToolBtn.addEventListener("click", openIsolationToolModal);
     elements.exportCostCsvBtn.addEventListener("click", exportCostCsv);
     elements.exportCostPdfBtn.addEventListener("click", exportCostPdf);
+    elements.exportIcs207Btn?.addEventListener("click", openIcs207Preview);
     elements.closePrintExportBtn.addEventListener("click", hidePrintExportModal);
     elements.printMapBtn.addEventListener("click", printMapExport);
     elements.exportMapPdfBtn.addEventListener("click", exportMapPdf);
+    elements.closeIcs207PreviewBtn?.addEventListener("click", closeIcs207Preview);
+    elements.ics207PrintBtn?.addEventListener("click", printIcs207Workspace);
+    elements.ics207ExportPdfBtn?.addEventListener("click", exportIcs207Pdf);
+    [
+      elements.ics207IncidentNameInput,
+      elements.ics207PreparedByNameInput,
+      elements.ics207PreparedByPositionInput,
+      elements.ics207PreparedByDateTimeInput,
+      elements.ics207OpStartInput,
+      elements.ics207OpEndInput
+    ].forEach((input) => {
+      input?.addEventListener("input", () => {
+        syncIcs207PreviewDraftFromInputs();
+        renderIcs207Preview();
+      });
+      input?.addEventListener("change", () => {
+        syncIcs207PreviewDraftFromInputs();
+        renderIcs207Preview();
+      });
+    });
+    elements.ics207PreviewModal?.addEventListener("click", (event) => {
+      if (event.target === elements.ics207PreviewModal) {
+        closeIcs207Preview();
+      }
+    });
     elements.closeIsolationToolBtn.addEventListener("click", closeIsolationToolModal);
     elements.cancelIsolationToolBtn.addEventListener("click", closeIsolationToolModal);
     elements.startIsolationPlacementBtn.addEventListener("click", beginIsolationPlacementFlow);
@@ -4932,6 +5052,50 @@
     persistJSON(getCommandStructureStorageKey(session.id), draft);
   }
 
+  async function loadCommandStructureFromBackend(force = false) {
+    const session = state.activeSession;
+    if (!session) return ensureCommandStructureDraft();
+    if (!force && state.commandStructureLoadedSessionId === String(session.id) && state.commandStructureDraft) {
+      return state.commandStructureDraft;
+    }
+    try {
+      const response = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(session.id)}/command-structure`);
+      state.commandStructureDraft = sanitizeCommandStructureDraft(response?.commandStructure, session);
+      state.commandStructureHasSaved = Boolean(response?.hasSavedCommandStructure);
+      state.commandStructureLoadedSessionId = String(session.id);
+      saveCommandStructureDraft();
+    } catch (error) {
+      console.warn("Unable to load command structure from backend.", error);
+      state.commandStructureDraft = sanitizeCommandStructureDraft(loadStoredJSON(getCommandStructureStorageKey(session.id)), session);
+      state.commandStructureLoadedSessionId = "";
+      state.commandStructureHasSaved = false;
+    }
+    prefillCommandStructureDraftFromWorkspace();
+    saveCommandStructureDraft();
+    return state.commandStructureDraft;
+  }
+
+  async function saveCommandStructureDraftToBackend() {
+    const session = state.activeSession;
+    const draft = ensureCommandStructureDraft();
+    saveCommandStructureDraft();
+    if (!session || !draft || isScenarioReviewMode()) return draft;
+    state.commandStructureSaving = true;
+    try {
+      const response = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(session.id)}/command-structure`, {
+        method: "PUT",
+        body: draft
+      });
+      state.commandStructureDraft = sanitizeCommandStructureDraft(response?.commandStructure, session);
+      state.commandStructureLoadedSessionId = String(session.id);
+      state.commandStructureHasSaved = true;
+      saveCommandStructureDraft();
+      return state.commandStructureDraft;
+    } finally {
+      state.commandStructureSaving = false;
+    }
+  }
+
   function mapRoleLabelToCommandStructureRoleId(roleLabel) {
     const normalized = normalizeRoleKey(roleLabel);
     if (!normalized) return "";
@@ -4960,8 +5124,9 @@
   function prefillCommandStructureDraftFromWorkspace() {
     const draft = state.commandStructureDraft;
     const session = getWorkspaceSession();
-    if (!draft || !session) return;
+    if (!draft || !session) return false;
     draft.incidentId = String(session.id || "");
+    let changed = false;
     const currentUser = getCommandStructureCurrentUser();
     if (currentUser?.roleId) {
       const role = draft.roles.find((entry) => entry.roleId === currentUser.roleId);
@@ -4971,8 +5136,10 @@
           name: currentUser.name
         };
         role.status = "assigned";
+        changed = true;
       }
     }
+    return changed;
   }
 
   function getCommandStructureRoleState(roleId) {
@@ -5053,7 +5220,7 @@
     renderCommandStructureWorkspace();
   }
 
-  function assignSelectedCommandStructureRole() {
+  async function assignSelectedCommandStructureRole() {
     const role = getCommandStructureSelectedRole();
     if (!role) {
       setStatus("Select a role first.");
@@ -5064,17 +5231,21 @@
       setStatus("Enter a person to assign.");
       return;
     }
-    role.assignedUser = {
-      userId: String(assignee.userId || ""),
-      name: assignee.name
-    };
-    role.status = "assigned";
-    saveCommandStructureDraft();
-    renderCommandStructureWorkspace();
-    setStatus(`${role.label} assigned to ${assignee.name}.`);
+    try {
+      role.assignedUser = {
+        userId: String(assignee.userId || ""),
+        name: assignee.name
+      };
+      role.status = "assigned";
+      await saveCommandStructureDraftToBackend();
+      renderCommandStructureWorkspace();
+      setStatus(`${role.label} assigned to ${assignee.name}.`);
+    } catch (error) {
+      setStatus(formatError(error));
+    }
   }
 
-  function removeSelectedCommandStructureRole() {
+  async function removeSelectedCommandStructureRole() {
     const role = getCommandStructureSelectedRole();
     if (!role) {
       setStatus("Select a role first.");
@@ -5084,11 +5255,15 @@
       setStatus(`${role.label} is already unassigned.`);
       return;
     }
-    role.assignedUser = null;
-    role.status = "empty";
-    saveCommandStructureDraft();
-    renderCommandStructureWorkspace();
-    setStatus(`${role.label} assignment removed.`);
+    try {
+      role.assignedUser = null;
+      role.status = "empty";
+      await saveCommandStructureDraftToBackend();
+      renderCommandStructureWorkspace();
+      setStatus(`${role.label} assignment removed.`);
+    } catch (error) {
+      setStatus(formatError(error));
+    }
   }
 
   function buildCommandStructureConnectorMarkup() {
@@ -5299,10 +5474,17 @@
     renderCommandStructureRolePanel();
   }
 
-  function openCommandStructureWorkspace() {
+  async function openCommandStructureWorkspace() {
     if (!(state.activeSession || isScenarioReviewMode()) || state.viewerMode) return;
-    ensureCommandStructureDraft();
-    prefillCommandStructureDraftFromWorkspace();
+    if (state.activeSession) {
+      await loadCommandStructureFromBackend();
+      if (prefillCommandStructureDraftFromWorkspace()) {
+        await saveCommandStructureDraftToBackend();
+      }
+    } else {
+      ensureCommandStructureDraft();
+      prefillCommandStructureDraftFromWorkspace();
+    }
     if (!state.commandStructureSelectedRoleId) {
       state.commandStructureSelectedRoleId = "incident_commander";
     }
@@ -5335,9 +5517,350 @@
     elements.commandStructureAssigneeInput?.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
         event.preventDefault();
-        assignSelectedCommandStructureRole();
+        void assignSelectedCommandStructureRole();
       }
     });
+  }
+
+  function getIcs207SourceSession() {
+    return state.activeSession || null;
+  }
+
+  function formatIcs207NameSegment(name) {
+    const trimmed = String(name || "").trim();
+    if (!trimmed) return "";
+    const agencyMatch = trimmed.match(/\(([^()]+)\)\s*$/);
+    const core = agencyMatch ? trimmed.slice(0, agencyMatch.index).trim() : trimmed;
+    const parts = core.split(/\s+/).filter(Boolean);
+    if (!parts.length) return trimmed;
+    if (parts.length === 1) return `${parts[0].charAt(0).toUpperCase()}.`;
+    const formatted = `${parts[0].charAt(0).toUpperCase()}. ${parts[parts.length - 1]}`;
+    return agencyMatch ? `${formatted} (${agencyMatch[1]})` : formatted;
+  }
+
+  function formatIcs207PersonName(name) {
+    return String(name || "")
+      .split("/")
+      .map((part) => formatIcs207NameSegment(part))
+      .filter(Boolean)
+      .join(" / ");
+  }
+
+  function getIcs207PreparedByDefaults() {
+    const currentUser = getCommandStructureCurrentUser();
+    const session = getIcs207SourceSession();
+    return {
+      name: currentUser?.name || state.commanderAuth?.displayName || session?.commanderName || "",
+      position: currentUser?.roleId
+        ? (COMMAND_STRUCTURE_ROLE_BY_ID[currentUser.roleId]?.label || "Resources Unit Leader")
+        : "Resources Unit Leader",
+      datetime: new Date().toISOString()
+    };
+  }
+
+  function getIcs207RoleMapper(commandStructureDraft) {
+    const slotAssignments = {};
+    (commandStructureDraft?.roles || []).forEach((role) => {
+      const slotKey = ICS207_ROLE_SLOT_BY_ROLE_ID[role.roleId];
+      if (!slotKey) return;
+      const formattedName = formatIcs207PersonName(role.assignedUser?.name || "");
+      slotAssignments[slotKey] = {
+        slotKey,
+        roleId: role.roleId,
+        roleLabel: role.label,
+        name: formattedName,
+        rawName: String(role.assignedUser?.name || "").trim(),
+        status: role.status === "assigned" ? "assigned" : "empty"
+      };
+    });
+    return slotAssignments;
+  }
+
+  function buildIcs207Snapshot(previewDraft, commandStructureDraft) {
+    const session = getIcs207SourceSession();
+    const slotAssignments = getIcs207RoleMapper(commandStructureDraft);
+    const warnings = [];
+    Object.entries(slotAssignments).forEach(([slotKey, slotValue]) => {
+      if ((slotValue?.name || "").length > 28) {
+        warnings.push(`${ICS207_SLOT_META[slotKey]?.label || slotKey} may overflow.`);
+      }
+    });
+    return {
+      incidentId: String(session?.id || ""),
+      incidentName: String(previewDraft?.incidentName || session?.incidentName || "").trim(),
+      operationalPeriod: {
+        start: String(previewDraft?.operationalPeriod?.start || session?.operationalPeriodStart || ""),
+        end: String(previewDraft?.operationalPeriod?.end || session?.operationalPeriodEnd || "")
+      },
+      preparedBy: {
+        name: String(previewDraft?.preparedBy?.name || "").trim(),
+        position: String(previewDraft?.preparedBy?.position || "").trim(),
+        datetime: String(previewDraft?.preparedBy?.datetime || "")
+      },
+      commandStructure: deepClone(commandStructureDraft || ICS207_SAMPLE_COMMAND_STRUCTURE),
+      slotAssignments,
+      warnings,
+      exportedAt: new Date().toISOString()
+    };
+  }
+
+  function validateIcs207Snapshot(snapshot, options = {}) {
+    const errors = [];
+    const warnings = Array.isArray(snapshot?.warnings) ? [...snapshot.warnings] : [];
+    if (!String(snapshot?.incidentName || "").trim()) errors.push("Incident name is required.");
+    if (!String(snapshot?.operationalPeriod?.start || "").trim() || !String(snapshot?.operationalPeriod?.end || "").trim()) {
+      errors.push("Operational period start and end are required.");
+    }
+    if (!String(snapshot?.preparedBy?.name || "").trim()) errors.push("Prepared by name is required.");
+    if (!String(snapshot?.preparedBy?.position || "").trim()) errors.push("Prepared by position/title is required.");
+    if (!String(snapshot?.preparedBy?.datetime || "").trim()) errors.push("Prepared by date/time is required.");
+    if (options.requireSavedCommandStructure && !state.commandStructureHasSaved) {
+      errors.push("Save the Command Structure to the live session before exporting ICS 207.");
+    }
+    return { errors, warnings };
+  }
+
+  function buildIcs207PreviewValidationMarkup(validation) {
+    const items = [...validation.errors.map((message) => ({ kind: "error", message })), ...validation.warnings.map((message) => ({ kind: "warning", message }))];
+    if (!items.length) {
+      return '<div class="ics207-validation-success">ICS 207 is ready to print or export.</div>';
+    }
+    return `<ul class="ics207-validation-list">${items.map((item) => `<li class="${item.kind}">${escapeHtml(item.message)}</li>`).join("")}</ul>`;
+  }
+
+  function formatIcs207OperationalPeriod(snapshot) {
+    const start = snapshot?.operationalPeriod?.start ? new Date(snapshot.operationalPeriod.start) : null;
+    const end = snapshot?.operationalPeriod?.end ? new Date(snapshot.operationalPeriod.end) : null;
+    const startDate = start && !Number.isNaN(start.getTime()) ? `${String(start.getMonth() + 1).padStart(2, "0")}/${String(start.getDate()).padStart(2, "0")}/${start.getFullYear()}` : "";
+    const endDate = end && !Number.isNaN(end.getTime()) ? `${String(end.getMonth() + 1).padStart(2, "0")}/${String(end.getDate()).padStart(2, "0")}/${end.getFullYear()}` : "";
+    const startTime = start && !Number.isNaN(start.getTime()) ? `${String(start.getHours()).padStart(2, "0")}${String(start.getMinutes()).padStart(2, "0")}` : "";
+    const endTime = end && !Number.isNaN(end.getTime()) ? `${String(end.getHours()).padStart(2, "0")}${String(end.getMinutes()).padStart(2, "0")}` : "";
+    return { startDate, endDate, startTime, endTime };
+  }
+
+  function buildIcs207ConnectorMarkup() {
+    const paths = [
+      "M 396 88 V 238",
+      "M 312 139 H 396",
+      "M 312 199 H 396",
+      "M 396 139 H 467",
+      "M 105 238 H 717",
+      "M 105 238 V 248",
+      "M 312 238 V 248",
+      "M 564 238 V 248",
+      "M 717 238 V 248",
+      "M 105 304 V 374",
+      "M 105 374 H 152",
+      "M 105 374 H 152 V 410",
+      "M 152 436 H 285",
+      "M 152 462 V 494",
+      "M 153 494 H 286",
+      "M 153 540 V 653",
+      "M 153 573 H 97",
+      "M 153 613 H 97",
+      "M 153 653 H 97",
+      "M 312 304 V 330",
+      "M 312 330 H 273",
+      "M 312 330 H 407",
+      "M 273 330 V 348",
+      "M 407 330 V 348",
+      "M 312 330 V 396",
+      "M 312 396 H 273",
+      "M 312 396 H 407",
+      "M 273 396 V 414",
+      "M 407 396 V 414",
+      "M 564 304 V 330",
+      "M 564 330 H 537",
+      "M 564 330 H 669",
+      "M 537 330 V 348",
+      "M 669 330 V 348",
+      "M 537 400 V 572",
+      "M 537 440 H 478",
+      "M 537 506 H 478",
+      "M 537 572 H 478",
+      "M 669 400 V 572",
+      "M 669 440 H 610",
+      "M 669 506 H 610",
+      "M 669 572 H 610",
+      "M 717 304 V 330",
+      "M 717 330 V 572",
+      "M 717 330 H 716",
+      "M 717 374 H 648",
+      "M 717 440 H 648",
+      "M 717 506 H 648",
+      "M 717 572 H 648"
+    ];
+    return `<svg class="ics207-template-connectors" viewBox="0 0 792 612" aria-hidden="true" focusable="false">${paths.map((path) => `<path d="${path}" />`).join("")}</svg>`;
+  }
+
+  function buildIcs207PrintMarkup(snapshot) {
+    const period = formatIcs207OperationalPeriod(snapshot);
+    const slots = ICS207_SLOT_META;
+    const slotHtml = Object.entries(slots).map(([slotKey, meta]) => {
+      const assignment = snapshot?.slotAssignments?.[slotKey];
+      return `
+        <div class="ics207-slot" style="left:${meta.x}px;top:${meta.y}px;width:${meta.w}px;height:${meta.h}px;">
+          <div class="ics207-slot-label">${escapeHtml(meta.label)}</div>
+          <div class="ics207-slot-name">${escapeHtml(assignment?.name || "")}</div>
+        </div>
+      `;
+    }).join("");
+    return `
+      <div class="ics207-sheet">
+        <div class="ics207-sheet-header">
+          <div class="ics207-sheet-title">INCIDENT ORGANIZATION CHART (ICS 207)</div>
+          <div class="ics207-meta-row"><span>1. Incident Name:</span><strong>${escapeHtml(snapshot?.incidentName || "")}</strong></div>
+          <div class="ics207-meta-row">
+            <span>2. Operational Period:</span>
+            <span>Date From: ${escapeHtml(period.startDate)}</span>
+            <span>Date To: ${escapeHtml(period.endDate)}</span>
+            <span>Time From: ${escapeHtml(period.startTime)}</span>
+            <span>Time To: ${escapeHtml(period.endTime)}</span>
+          </div>
+        </div>
+        <div class="ics207-template">
+          ${buildIcs207ConnectorMarkup()}
+          ${slotHtml}
+        </div>
+        <div class="ics207-footer">
+          <div>ICS 207 IAP Page ___</div>
+          <div class="ics207-prepared-by">
+            <span>4. Prepared by:</span>
+            <span>Name: ${escapeHtml(snapshot?.preparedBy?.name || "")}</span>
+            <span>Position/Title: ${escapeHtml(snapshot?.preparedBy?.position || "")}</span>
+            <span>Date/Time: ${escapeHtml(formatDateTime(snapshot?.preparedBy?.datetime) || "")}</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function syncIcs207PreviewDraftFromInputs() {
+    if (!state.ics207PreviewDraft) return null;
+    state.ics207PreviewDraft.incidentName = String(elements.ics207IncidentNameInput?.value || "").trim();
+    state.ics207PreviewDraft.preparedBy.name = String(elements.ics207PreparedByNameInput?.value || "").trim();
+    state.ics207PreviewDraft.preparedBy.position = String(elements.ics207PreparedByPositionInput?.value || "").trim();
+    state.ics207PreviewDraft.preparedBy.datetime = inputValueToISOString(elements.ics207PreparedByDateTimeInput?.value) || "";
+    state.ics207PreviewDraft.operationalPeriod.start = inputValueToISOString(elements.ics207OpStartInput?.value) || "";
+    state.ics207PreviewDraft.operationalPeriod.end = inputValueToISOString(elements.ics207OpEndInput?.value) || "";
+    return state.ics207PreviewDraft;
+  }
+
+  function renderIcs207Preview() {
+    if (!state.ics207PreviewDraft || !elements.ics207PreviewFrame || !elements.ics207PrintRoot) return null;
+    const snapshot = buildIcs207Snapshot(state.ics207PreviewDraft, ensureCommandStructureDraft());
+    const validation = validateIcs207Snapshot(snapshot, { requireSavedCommandStructure: Boolean(state.activeSession) });
+    const markup = buildIcs207PrintMarkup(snapshot);
+    elements.ics207PreviewFrame.innerHTML = markup;
+    elements.ics207PrintRoot.innerHTML = markup;
+    if (elements.ics207PreviewValidation) {
+      elements.ics207PreviewValidation.innerHTML = buildIcs207PreviewValidationMarkup(validation);
+    }
+    elements.ics207ExportPdfBtn.disabled = Boolean(validation.errors.length);
+    elements.ics207PrintBtn.disabled = Boolean(validation.errors.length);
+    return { snapshot, validation };
+  }
+
+  function closeIcs207Preview() {
+    state.ics207PreviewOpen = false;
+    state.ics207PreviewDraft = null;
+    elements.ics207PreviewModal?.classList.add("hidden");
+  }
+
+  async function openIcs207Preview() {
+    hidePrintExportModal();
+    const session = getIcs207SourceSession();
+    if (!session) {
+      setStatus("Open a live collaborative session to export ICS 207.");
+      return;
+    }
+    await loadCommandStructureFromBackend(true);
+    const defaults = getIcs207PreparedByDefaults();
+    state.ics207PreviewDraft = {
+      incidentName: session.incidentName || "",
+      operationalPeriod: {
+        start: session.operationalPeriodStart || "",
+        end: session.operationalPeriodEnd || ""
+      },
+      preparedBy: defaults
+    };
+    elements.ics207IncidentNameInput.value = state.ics207PreviewDraft.incidentName;
+    elements.ics207PreparedByNameInput.value = defaults.name;
+    elements.ics207PreparedByPositionInput.value = defaults.position;
+    elements.ics207PreparedByDateTimeInput.value = isoToInputValue(defaults.datetime);
+    elements.ics207OpStartInput.value = isoToInputValue(state.ics207PreviewDraft.operationalPeriod.start);
+    elements.ics207OpEndInput.value = isoToInputValue(state.ics207PreviewDraft.operationalPeriod.end);
+    state.ics207PreviewOpen = true;
+    elements.ics207PreviewModal.classList.remove("hidden");
+    renderIcs207Preview();
+  }
+
+  async function saveIcs207Snapshot(snapshot) {
+    const session = state.activeSession;
+    if (!session) return;
+    await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(session.id)}/ics207-export`, {
+      method: "POST",
+      body: { snapshot }
+    });
+  }
+
+  function printIcs207Workspace() {
+    const previewDraft = syncIcs207PreviewDraftFromInputs();
+    if (!previewDraft) return;
+    const rendered = renderIcs207Preview();
+    if (!rendered || rendered.validation.errors.length) {
+      setStatus(rendered?.validation?.errors?.[0] || "ICS 207 is missing required information.");
+      return;
+    }
+    void saveIcs207Snapshot(rendered.snapshot).catch((error) => {
+      console.warn("Unable to save ICS 207 snapshot before print.", error);
+    });
+    document.body.classList.add("print-ics207");
+    window.print();
+    window.setTimeout(() => document.body.classList.remove("print-ics207"), 250);
+    setStatus("Printing ICS 207.");
+  }
+
+  async function exportIcs207Pdf() {
+    const previewDraft = syncIcs207PreviewDraftFromInputs();
+    if (!previewDraft) return;
+    const rendered = renderIcs207Preview();
+    if (!rendered || rendered.validation.errors.length) {
+      setStatus(rendered?.validation?.errors?.[0] || "ICS 207 is missing required information.");
+      return;
+    }
+    const exportLibraries = await ensureExportLibraries({ pdf: true });
+    if (!exportLibraries.ok) {
+      setStatus(exportLibraries.message);
+      return;
+    }
+    try {
+      await saveIcs207Snapshot(rendered.snapshot);
+      const canvas = await window.html2canvas(elements.ics207PrintRoot, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true
+      });
+      const { jsPDF } = window.jspdf;
+      const pdf = new jsPDF({ unit: "pt", format: "letter", orientation: "landscape" });
+      pdf.addImage(canvas.toDataURL("image/png"), "PNG", 0, 0, pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight());
+      const filename = buildExportFilename("ics-207", "pdf");
+      const blob = pdf.output("blob");
+      if (window.exportPdfHelper?.saveAndSharePdfBlob) {
+        try {
+          const result = await window.exportPdfHelper.saveAndSharePdfBlob(blob, filename);
+          setStatus(result?.shared ? `ICS 207 PDF shared: ${filename}` : `ICS 207 PDF saved: ${filename}`);
+          return;
+        } catch (_error) {
+          // Fall back to browser download.
+        }
+      }
+      await downloadBlob(blob, filename);
+      setStatus(`ICS 207 PDF exported: ${filename}`);
+    } catch (error) {
+      console.error("ICS 207 PDF export failed", error);
+      setStatus("ICS 207 PDF export failed.");
+    }
   }
 
   function createEmptyIcs202Draft() {
@@ -8423,19 +8946,25 @@
     const visible = (Boolean(state.activeSession) || isScenarioReviewMode()) && !state.viewerMode;
     const hasCostRows = Boolean(getCostedResourceObjects().length);
     const hasMapObjects = Boolean(state.layers.size);
+    const hasLiveSession = Boolean(state.activeSession);
     elements.printExportBtn.classList.toggle("hidden", !visible);
     if (!visible) {
       hidePrintExportModal();
     }
-    elements.printExportBtn.disabled = !visible || (!hasMapObjects && !hasCostRows);
+    elements.printExportBtn.disabled = !visible || (!hasMapObjects && !hasCostRows && !hasLiveSession);
     elements.exportCostCsvBtn.disabled = !hasCostRows;
     elements.exportCostPdfBtn.disabled = !hasCostRows;
     elements.printMapBtn.disabled = !hasMapObjects;
     elements.exportMapPdfBtn.disabled = !hasMapObjects;
+    if (elements.exportIcs207Btn) {
+      elements.exportIcs207Btn.disabled = !hasLiveSession;
+    }
     if (elements.printExportModalNote) {
-      elements.printExportModalNote.textContent = hasMapObjects
-        ? "Map output fits to the full extent of mapped items with a buffer around the edges and opens a save/share sheet on supported devices."
-        : "Place one or more map items to enable map print and PDF export.";
+      elements.printExportModalNote.textContent = hasLiveSession
+        ? "ICS 207 export uses the latest saved Command Structure from the live collaborative session."
+        : (hasMapObjects
+          ? "Map output fits to the full extent of mapped items with a buffer around the edges and opens a save/share sheet on supported devices."
+          : "Place one or more map items to enable map print and PDF export.");
     }
   }
 

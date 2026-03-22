@@ -164,6 +164,15 @@ type LockBody = {
   baseVersion?: number;
 };
 
+type UpdateCommandStructureBody = {
+  incidentId?: string;
+  roles?: unknown;
+};
+
+type SaveIcs207ExportBody = {
+  snapshot?: unknown;
+};
+
 type MutationHistoryQuery = {
   sinceVersion?: string;
   limit?: string;
@@ -185,9 +194,29 @@ type CollabSessionRow = {
   operational_period_start: string;
   operational_period_end: string;
   last_mutation_version: string;
+  command_structure_json?: unknown;
+  ics207_export_json?: unknown;
   ended_at: string | null;
   created_at: string;
   updated_at: string;
+};
+
+type CommandStructureAssignedUser = {
+  userId: string;
+  name: string;
+};
+
+type CommandStructureRole = {
+  roleId: string;
+  label: string;
+  parent: string | null;
+  assignedUser: CommandStructureAssignedUser | null;
+  status: 'empty' | 'assigned';
+};
+
+type CommandStructureDocument = {
+  incidentId: string;
+  roles: CommandStructureRole[];
 };
 
 type CollabOrganizationRow = {
@@ -1324,6 +1353,67 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
+  app.get<{ Params: { sessionId: string } }>('/v1/ics-collab/sessions/:sessionId/command-structure', async (request, reply) => {
+    try {
+      const actor = await resolveSessionActor(app, request.params.sessionId, request.headers.authorization);
+      const session = await fetchSessionByID(app.pg, actor.session.id);
+      const source = session ?? actor.session;
+      return reply.send({
+        hasSavedCommandStructure: Boolean(source.command_structure_json),
+        commandStructure: sanitizeCommandStructureDocument(source.command_structure_json, source.id),
+        ics207Export: sanitizeIcs207ExportSnapshot(source.ics207_export_json)
+      });
+    } catch (error) {
+      return sendRouteError(reply, request, error, 'Failed to fetch command structure.');
+    }
+  });
+
+  app.put<{ Params: { sessionId: string }; Body: UpdateCommandStructureBody }>('/v1/ics-collab/sessions/:sessionId/command-structure', async (request, reply) => {
+    try {
+      const actor = await resolveSessionActor(app, request.params.sessionId, request.headers.authorization);
+      const commandStructure = sanitizeCommandStructureDocument(request.body, actor.session.id);
+      const result = await app.pg.query<{ command_structure_json: unknown }>(
+        `
+          update collab_map_sessions
+          set command_structure_json = $2::jsonb
+          where id = $1::uuid
+          returning command_structure_json
+        `,
+        [actor.session.id, JSON.stringify(commandStructure)]
+      );
+      return reply.send({
+        hasSavedCommandStructure: true,
+        commandStructure: sanitizeCommandStructureDocument(result.rows[0]?.command_structure_json, actor.session.id)
+      });
+    } catch (error) {
+      return sendRouteError(reply, request, error, 'Failed to save command structure.');
+    }
+  });
+
+  app.post<{ Params: { sessionId: string }; Body: SaveIcs207ExportBody }>('/v1/ics-collab/sessions/:sessionId/ics207-export', async (request, reply) => {
+    try {
+      const actor = await resolveSessionActor(app, request.params.sessionId, request.headers.authorization);
+      const snapshot = sanitizeIcs207ExportSnapshot(request.body?.snapshot);
+      if (!snapshot) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'snapshot object is required.' });
+      }
+      const result = await app.pg.query<{ ics207_export_json: unknown }>(
+        `
+          update collab_map_sessions
+          set ics207_export_json = $2::jsonb
+          where id = $1::uuid
+          returning ics207_export_json
+        `,
+        [actor.session.id, JSON.stringify(snapshot)]
+      );
+      return reply.send({
+        snapshot: sanitizeIcs207ExportSnapshot(result.rows[0]?.ics207_export_json)
+      });
+    } catch (error) {
+      return sendRouteError(reply, request, error, 'Failed to save ICS 207 export snapshot.');
+    }
+  });
+
   app.patch<{ Params: { sessionId: string }; Body: UpdateViewerAccessBody }>('/v1/ics-collab/sessions/:sessionId/viewer-access', async (request, reply) => {
     try {
       const actor = await resolveSessionActor(app, request.params.sessionId, request.headers.authorization, { requireCommander: true });
@@ -2020,6 +2110,8 @@ async function fetchSessionByID(pool: { query: PoolClient['query'] }, sessionID:
         s.operational_period_start,
         s.operational_period_end,
         s.last_mutation_version::text as last_mutation_version,
+        s.command_structure_json,
+        s.ics207_export_json,
         s.ended_at,
         s.created_at,
         s.updated_at
@@ -2055,6 +2147,8 @@ async function fetchSessionByJoinCode(pool: { query: PoolClient['query'] }, join
         s.operational_period_start,
         s.operational_period_end,
         s.last_mutation_version::text as last_mutation_version,
+        s.command_structure_json,
+        s.ics207_export_json,
         s.ended_at,
         s.created_at,
         s.updated_at
@@ -3063,6 +3157,8 @@ function mapSession(row: CollabSessionRow, publicBaseUrl?: string) {
     operationalPeriodStart: row.operational_period_start,
     operationalPeriodEnd: row.operational_period_end,
     currentVersion: Number(row.last_mutation_version),
+    commandStructure: sanitizeCommandStructureDocument(row.command_structure_json, row.id),
+    ics207Export: sanitizeIcs207ExportSnapshot(row.ics207_export_json),
     endedAt: row.ended_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -3309,6 +3405,45 @@ function normalizeGeometryType(value: string | undefined): GeometryType | null {
 function normalizeMutationType(value: string | undefined): 'create' | 'update' | 'delete' | null {
   const normalized = normalizeOptionalText(value)?.toLowerCase();
   return normalized === 'create' || normalized === 'update' || normalized === 'delete' ? normalized : null;
+}
+
+function sanitizeCommandStructureAssignedUser(value: unknown): CommandStructureAssignedUser | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const name = normalizeOptionalText((value as { name?: string }).name);
+  if (!name) return null;
+  return {
+    userId: normalizeOptionalText((value as { userId?: string }).userId) ?? '',
+    name
+  };
+}
+
+function sanitizeCommandStructureDocument(value: unknown, sessionID = ''): CommandStructureDocument {
+  const raw = value && typeof value === 'object' && !Array.isArray(value)
+    ? value as { incidentId?: unknown; roles?: unknown[] }
+    : null;
+  const roles = Array.isArray(raw?.roles) ? raw.roles : [];
+  return {
+    incidentId: String(raw?.incidentId || sessionID || ''),
+    roles: roles
+      .filter((role) => role && typeof role === 'object' && !Array.isArray(role))
+      .map((role) => {
+        const normalized = role as { roleId?: unknown; label?: unknown; parent?: unknown; assignedUser?: unknown };
+        const assignedUser = sanitizeCommandStructureAssignedUser(normalized.assignedUser);
+        return {
+          roleId: String(normalized.roleId || ''),
+          label: String(normalized.label || ''),
+          parent: normalizeOptionalText(String(normalized.parent || '')),
+          assignedUser,
+          status: assignedUser ? 'assigned' : 'empty'
+        } satisfies CommandStructureRole;
+      })
+      .filter((role) => role.roleId && role.label)
+  };
+}
+
+function sanitizeIcs207ExportSnapshot(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value;
 }
 
 function normalizeGeometryPayload(payload: unknown, geometryType: GeometryType) {

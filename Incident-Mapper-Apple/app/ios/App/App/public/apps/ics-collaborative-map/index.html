@@ -716,6 +716,7 @@
         </div>
       </div>
       <div id="ics202PrintRoot" class="ics202-print-root" aria-hidden="true"></div>
+      <div id="ics207PrintRoot" class="ics207-print-root" aria-hidden="true"></div>
       <div id="mapPrintRoot" class="map-print-root" aria-hidden="true"></div>
     </section>
 
@@ -819,7 +820,58 @@
         <button id="exportCostCsvBtn" class="secondary export-option-btn" type="button">Export CSV</button>
         <button id="exportCostPdfBtn" class="secondary export-option-btn" type="button">Export Cost PDF</button>
       </div>
+      <div class="export-option-group">
+        <div class="export-option-group-title">ICS Forms</div>
+        <button id="exportIcs207Btn" class="secondary export-option-btn" type="button">Export ICS 207</button>
+      </div>
       <div id="printExportModalNote" class="muted export-modal-note">Map output fits to the full extent of mapped items with a buffer around the edges and opens a save/share sheet on supported devices.</div>
+    </div>
+  </div>
+
+  <div id="ics207PreviewModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="ics207PreviewTitle">
+    <div class="modal-card ics207-preview-modal-card">
+      <div class="modal-header">
+        <h2 id="ics207PreviewTitle">ICS 207 Preview</h2>
+        <button id="closeIcs207PreviewBtn" class="secondary" type="button">Close</button>
+      </div>
+      <div class="ics207-preview-layout">
+        <section class="ics207-preview-controls">
+          <div id="ics207PreviewValidation" class="ics207-preview-validation muted">Review the prepared-by information and operational period before exporting.</div>
+          <div class="ics207-preview-grid">
+            <label class="field-block">
+              Incident Name
+              <input id="ics207IncidentNameInput" type="text" />
+            </label>
+            <label class="field-block">
+              Prepared By Name
+              <input id="ics207PreparedByNameInput" type="text" />
+            </label>
+            <label class="field-block">
+              Prepared By Position / Title
+              <input id="ics207PreparedByPositionInput" type="text" />
+            </label>
+            <label class="field-block">
+              Prepared Date / Time
+              <input id="ics207PreparedByDateTimeInput" type="datetime-local" />
+            </label>
+            <label class="field-block">
+              Period Start
+              <input id="ics207OpStartInput" type="datetime-local" />
+            </label>
+            <label class="field-block">
+              Period End
+              <input id="ics207OpEndInput" type="datetime-local" />
+            </label>
+          </div>
+          <div class="row ics207-preview-actions">
+            <button id="ics207PrintBtn" class="secondary" type="button">Print</button>
+            <button id="ics207ExportPdfBtn" class="primary" type="button">Export PDF</button>
+          </div>
+        </section>
+        <section class="ics207-preview-canvas">
+          <div id="ics207PreviewFrame" class="ics207-preview-frame"></div>
+        </section>
+      </div>
     </div>
   </div>
 
