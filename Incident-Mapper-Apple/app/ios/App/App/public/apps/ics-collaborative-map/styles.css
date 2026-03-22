@@ -511,8 +511,8 @@ body[data-theme="light"] .command-structure-topbar {
 }
 .command-structure-chart {
   position: relative;
-  width: 1880px;
-  min-height: 1140px;
+  width: 2140px;
+  min-height: 1320px;
   margin: 0 auto;
   background:
     linear-gradient(to bottom, rgba(255,255,255,0.03), rgba(255,255,255,0.01)),
@@ -575,14 +575,14 @@ body[data-theme="light"] .command-structure-connectors path {
 }
 .command-structure-node-label {
   display: block;
-  font-size: 0.92rem;
-  line-height: 1.1;
+  font-size: 0.84rem;
+  line-height: 1.04;
   font-weight: 800;
 }
 .command-structure-node-assignee {
   display: block;
-  font-size: 0.76rem;
-  line-height: 1.2;
+  font-size: 0.72rem;
+  line-height: 1.15;
   color: #334155;
 }
 .command-structure-role-panel {
