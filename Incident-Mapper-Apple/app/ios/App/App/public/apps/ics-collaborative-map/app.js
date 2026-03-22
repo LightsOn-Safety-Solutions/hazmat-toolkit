@@ -134,16 +134,16 @@
     "Protect exposures and maintain access/egress routes for mutual-aid resources.",
     "Complete responder accountability and confirm rehab/safety coverage for the operational period."
   ];
-  const COMMAND_STRUCTURE_CHART_SIZE = { width: 2140, height: 1320 };
+  const COMMAND_STRUCTURE_CHART_SIZE = { width: 2320, height: 1320 };
   const COMMAND_STRUCTURE_ROLE_DEFS = [
     { roleId: "incident_commander", label: "Incident Commander", parent: null, x: 975, y: 36, width: 240, height: 72 },
     { roleId: "public_information_officer", label: "Public Information Officer", parent: "incident_commander", x: 720, y: 180, width: 300, height: 72 },
     { roleId: "safety_officer", label: "Safety Officer", parent: "incident_commander", x: 720, y: 272, width: 300, height: 72 },
     { roleId: "liaison_officer", label: "Liaison Officer", parent: "incident_commander", x: 1145, y: 226, width: 300, height: 72 },
     { roleId: "operations_section", label: "Operations Section", parent: "incident_commander", x: 60, y: 460, width: 330, height: 72 },
-    { roleId: "planning_section", label: "Planning Section", parent: "incident_commander", x: 560, y: 460, width: 330, height: 72 },
-    { roleId: "logistics_section", label: "Logistics Section", parent: "incident_commander", x: 1130, y: 460, width: 340, height: 72 },
-    { roleId: "finance_admin_section", label: "Finance / Admin Section", parent: "incident_commander", x: 1710, y: 460, width: 350, height: 72 },
+    { roleId: "planning_section", label: "Planning Section", parent: "incident_commander", x: 640, y: 460, width: 330, height: 72 },
+    { roleId: "logistics_section", label: "Logistics Section", parent: "incident_commander", x: 1240, y: 460, width: 340, height: 72 },
+    { roleId: "finance_admin_section", label: "Finance / Admin Section", parent: "incident_commander", x: 1850, y: 460, width: 350, height: 72 },
     { roleId: "staging_area", label: "Staging Area", parent: "operations_section", x: 40, y: 620, width: 220, height: 72 },
     { roleId: "branches", label: "Branches", parent: "operations_section", x: 180, y: 790, width: 210, height: 72 },
     { roleId: "air_operations_branch", label: "Air Operations Branch", parent: "operations_section", x: 430, y: 790, width: 220, height: 72 },
@@ -152,22 +152,22 @@
     { roleId: "strike_team", label: "Strike Team", parent: "divisions", x: 165, y: 1060, width: 280, height: 72 },
     { roleId: "task_force", label: "Task Force", parent: "divisions", x: 165, y: 1150, width: 280, height: 72 },
     { roleId: "single_resource", label: "Single Resource", parent: "divisions", x: 165, y: 1240, width: 280, height: 72 },
-    { roleId: "resources_unit", label: "Resources Unit", parent: "planning_section", x: 520, y: 620, width: 200, height: 72 },
-    { roleId: "demobilization_unit", label: "Demobilization Unit", parent: "planning_section", x: 760, y: 620, width: 200, height: 72 },
-    { roleId: "situation_unit", label: "Situation Unit", parent: "planning_section", x: 520, y: 790, width: 200, height: 72 },
-    { roleId: "documentation_unit", label: "Documentation Unit", parent: "planning_section", x: 760, y: 790, width: 200, height: 72 },
-    { roleId: "service_branch", label: "Service Branch", parent: "logistics_section", x: 1110, y: 620, width: 240, height: 72 },
-    { roleId: "support_branch", label: "Support Branch", parent: "logistics_section", x: 1450, y: 620, width: 240, height: 72 },
-    { roleId: "communications_unit", label: "Communications Unit", parent: "service_branch", x: 1090, y: 790, width: 240, height: 72 },
-    { roleId: "medical_unit", label: "Medical Unit", parent: "service_branch", x: 1090, y: 970, width: 240, height: 72 },
-    { roleId: "food_unit", label: "Food Unit", parent: "service_branch", x: 1090, y: 1150, width: 240, height: 72 },
-    { roleId: "supply_unit", label: "Supply Unit", parent: "support_branch", x: 1460, y: 790, width: 240, height: 72 },
-    { roleId: "facilities_unit", label: "Facilities Unit", parent: "support_branch", x: 1460, y: 970, width: 240, height: 72 },
-    { roleId: "ground_support_unit", label: "Ground Support Unit", parent: "support_branch", x: 1460, y: 1150, width: 240, height: 72 },
-    { roleId: "time_unit", label: "Time Unit", parent: "finance_admin_section", x: 1710, y: 620, width: 230, height: 72 },
-    { roleId: "compensation_claims_unit", label: "Compensation / Claims Unit", parent: "finance_admin_section", x: 1970, y: 620, width: 250, height: 72 },
-    { roleId: "procurement_unit", label: "Procurement Unit", parent: "finance_admin_section", x: 1710, y: 790, width: 230, height: 72 },
-    { roleId: "cost_unit", label: "Cost Unit", parent: "finance_admin_section", x: 1970, y: 790, width: 250, height: 72 }
+    { roleId: "resources_unit", label: "Resources Unit", parent: "planning_section", x: 710, y: 620, width: 220, height: 72 },
+    { roleId: "demobilization_unit", label: "Demobilization Unit", parent: "planning_section", x: 980, y: 620, width: 220, height: 72 },
+    { roleId: "situation_unit", label: "Situation Unit", parent: "planning_section", x: 710, y: 790, width: 220, height: 72 },
+    { roleId: "documentation_unit", label: "Documentation Unit", parent: "planning_section", x: 980, y: 790, width: 220, height: 72 },
+    { roleId: "service_branch", label: "Service Branch", parent: "logistics_section", x: 1220, y: 620, width: 240, height: 72 },
+    { roleId: "support_branch", label: "Support Branch", parent: "logistics_section", x: 1570, y: 620, width: 240, height: 72 },
+    { roleId: "communications_unit", label: "Communications Unit", parent: "service_branch", x: 1200, y: 790, width: 240, height: 72 },
+    { roleId: "medical_unit", label: "Medical Unit", parent: "service_branch", x: 1200, y: 970, width: 240, height: 72 },
+    { roleId: "food_unit", label: "Food Unit", parent: "service_branch", x: 1200, y: 1150, width: 240, height: 72 },
+    { roleId: "supply_unit", label: "Supply Unit", parent: "support_branch", x: 1580, y: 790, width: 240, height: 72 },
+    { roleId: "facilities_unit", label: "Facilities Unit", parent: "support_branch", x: 1580, y: 970, width: 240, height: 72 },
+    { roleId: "ground_support_unit", label: "Ground Support Unit", parent: "support_branch", x: 1580, y: 1150, width: 240, height: 72 },
+    { roleId: "time_unit", label: "Time Unit", parent: "finance_admin_section", x: 1850, y: 620, width: 230, height: 72 },
+    { roleId: "compensation_claims_unit", label: "Compensation / Claims Unit", parent: "finance_admin_section", x: 2110, y: 620, width: 250, height: 72 },
+    { roleId: "procurement_unit", label: "Procurement Unit", parent: "finance_admin_section", x: 1850, y: 790, width: 230, height: 72 },
+    { roleId: "cost_unit", label: "Cost Unit", parent: "finance_admin_section", x: 2110, y: 790, width: 250, height: 72 }
   ];
   const COMMAND_STRUCTURE_ROLE_BY_ID = Object.fromEntries(COMMAND_STRUCTURE_ROLE_DEFS.map((role) => [role.roleId, role]));
   const COMMAND_STRUCTURE_ROLE_ID_BY_LABEL = Object.fromEntries(COMMAND_STRUCTURE_ROLE_DEFS.map((role) => [normalizeRoleKey(role.label), role.roleId]));
@@ -5133,6 +5133,8 @@
     const demobTop = topCenter("demobilization_unit");
     const situationTop = topCenter("situation_unit");
     const documentationTop = topCenter("documentation_unit");
+    const planningUpperBranchY = resourcesTop.y - 18;
+    const planningLowerBranchY = situationTop.y - 18;
     const logisticsBottom = bottomCenter("logistics_section");
     const serviceTop = topCenter("service_branch");
     const serviceBottom = bottomCenter("service_branch");
@@ -5171,11 +5173,15 @@
       `M 145 ${taskLeft.y} H ${taskLeft.x}`,
       `M 145 ${singleLeft.y} H ${singleLeft.x}`,
 
-      `M ${planningBottom.x} ${planningBottom.y} V ${situationTop.y}`,
-      `M ${planningBottom.x} ${resourcesTop.y} H ${resourcesTop.x}`,
-      `M ${planningBottom.x} ${resourcesTop.y} H ${demobTop.x}`,
-      `M ${planningBottom.x} ${situationTop.y} H ${situationTop.x}`,
-      `M ${planningBottom.x} ${situationTop.y} H ${documentationTop.x}`,
+      `M ${planningBottom.x} ${planningBottom.y} V ${planningLowerBranchY}`,
+      `M ${planningBottom.x} ${planningUpperBranchY} H ${resourcesTop.x}`,
+      `M ${planningBottom.x} ${planningUpperBranchY} H ${demobTop.x}`,
+      `M ${resourcesTop.x} ${planningUpperBranchY} V ${resourcesTop.y}`,
+      `M ${demobTop.x} ${planningUpperBranchY} V ${demobTop.y}`,
+      `M ${planningBottom.x} ${planningLowerBranchY} H ${situationTop.x}`,
+      `M ${planningBottom.x} ${planningLowerBranchY} H ${documentationTop.x}`,
+      `M ${situationTop.x} ${planningLowerBranchY} V ${situationTop.y}`,
+      `M ${documentationTop.x} ${planningLowerBranchY} V ${documentationTop.y}`,
 
       `M ${logisticsBottom.x} ${logisticsBottom.y} V ${serviceTop.y}`,
       `M ${logisticsBottom.x} ${serviceTop.y} H ${serviceTop.x}`,
