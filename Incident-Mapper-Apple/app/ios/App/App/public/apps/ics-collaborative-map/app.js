@@ -5110,6 +5110,7 @@
     }
     try {
       await saveCommandStructureDraftToBackend();
+      await loadCommandStructureFromBackend(true);
       renderCommandStructureWorkspace();
       setStatus("Command Structure saved to the live session.");
     } catch (error) {
@@ -5803,6 +5804,14 @@
     if (!session) {
       setStatus("Open a live collaborative session to export ICS 207.");
       return;
+    }
+    if (state.activeSession && !isScenarioReviewMode()) {
+      try {
+        await saveCommandStructureDraftToBackend();
+      } catch (error) {
+        setStatus(formatError(error));
+        return;
+      }
     }
     await loadCommandStructureFromBackend(true);
     const defaults = getIcs207PreparedByDefaults();
