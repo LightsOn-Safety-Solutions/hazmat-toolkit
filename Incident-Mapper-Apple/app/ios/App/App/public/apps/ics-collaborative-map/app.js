@@ -798,7 +798,8 @@
 
   const guideState = {
     active: false,
-    index: 0
+    index: 0,
+    snapshot: null
   };
 
   async function init() {
@@ -2657,17 +2658,35 @@
     }
   }
 
+  function ensureGuidePanelVisible(panelKey) {
+    if (!state.collapsedPanels.has(panelKey)) return;
+    state.collapsedPanels.delete(panelKey);
+    renderPanelCollapses();
+  }
+
+  function ensureGuideModePanelVisible(panelKey) {
+    if (!state.collapsedModePanels.has(panelKey)) return;
+    state.collapsedModePanels.delete(panelKey);
+    renderModePanelCollapses();
+  }
+
   function getGuideSteps() {
     return [
       {
         selector: "#sessionMeta",
         title: "Start With Session Context",
-        body: "Use the Session panel to confirm the incident name, owner, join code, and whether the map is in a live session or scenario review."
+        body: "Use the Session panel to confirm the incident name, owner, join code, and whether the map is in a live session or scenario review.",
+        prepare: () => {
+          ensureGuidePanelVisible("session");
+        }
       },
       {
         selector: "#paletteContainer",
         title: "Build The Incident Picture",
-        body: "Palettes are where you place hazards, responders, infrastructure, and other map objects. Search first if you know what you need."
+        body: "Palettes are where you place hazards, responders, infrastructure, and other map objects. Search first if you know what you need.",
+        prepare: () => {
+          ensureGuidePanelVisible("palettes");
+        }
       },
       {
         selector: "#map",
@@ -2688,8 +2707,7 @@
             state.rightSidebarCollapsed = false;
             renderRightSidebarState();
           }
-          state.collapsedModePanels.delete("quickFlow");
-          renderModePanelCollapses();
+          ensureGuideModePanelVisible("quickFlow");
         }
       },
       {
@@ -2718,9 +2736,8 @@
             renderRightSidebarState();
           }
           state.afterActionPanelVisible = true;
-          state.collapsedModePanels.delete("afterAction");
+          ensureGuideModePanelVisible("afterAction");
           renderAfterActionControls();
-          renderModePanelCollapses();
         }
       },
       {
@@ -2788,6 +2805,19 @@
       elements.guidePopup.classList.remove("visible");
     }
     clearGuideHighlight();
+    if (guideState.snapshot) {
+      state.rightSidebarCollapsed = guideState.snapshot.rightSidebarCollapsed;
+      state.collapsedPanels = new Set(guideState.snapshot.collapsedPanels);
+      state.collapsedModePanels = new Set(guideState.snapshot.collapsedModePanels);
+      state.afterActionPanelVisible = guideState.snapshot.afterActionPanelVisible;
+      state.weatherPanelOpen = guideState.snapshot.weatherPanelOpen;
+      renderPanelCollapses();
+      renderModePanelCollapses();
+      renderRightSidebarState();
+      renderAfterActionControls();
+      renderWeatherUI();
+      guideState.snapshot = null;
+    }
     if (!silent) {
       setStatus("Walkthrough closed.");
     }
@@ -2834,6 +2864,13 @@
       setStatus("Open a collaborative session or scenario review first.");
       return;
     }
+    guideState.snapshot = {
+      rightSidebarCollapsed: state.rightSidebarCollapsed,
+      collapsedPanels: Array.from(state.collapsedPanels),
+      collapsedModePanels: Array.from(state.collapsedModePanels),
+      afterActionPanelVisible: state.afterActionPanelVisible,
+      weatherPanelOpen: state.weatherPanelOpen
+    };
     guideState.active = true;
     guideState.index = 0;
     renderGuideStep();
