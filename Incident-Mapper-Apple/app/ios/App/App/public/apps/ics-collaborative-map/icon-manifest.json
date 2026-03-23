@@ -812,7 +812,7 @@
       "label": "HazMat-DOT-Placarding Class-1-Blasting-Agent-15",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Blasting-Agent-15_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Blasting-Agent-15_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -834,7 +834,7 @@
       "label": "HazMat-DOT-Placarding Class-1-Explosives-11",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Explosives-11_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Explosives-11_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -855,7 +855,7 @@
       "label": "HazMat-DOT-Placarding Class-1-Explosives-12",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Explosives-12_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Explosives-12_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -876,7 +876,7 @@
       "label": "HazMat-DOT-Placarding Class-1-Explosives-13",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Explosives-13_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Explosives-13_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -897,7 +897,7 @@
       "label": "HazMat-DOT-Placarding Class-1-Explosives-14",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Explosives-14_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Explosives-14_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -918,7 +918,7 @@
       "label": "HazMat-DOT-Placarding Class-1-Explosives-15",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Explosives-15_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Explosives-15_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -939,7 +939,7 @@
       "label": "HazMat-DOT-Placarding Class-1-Explosives-16",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Explosives-16_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Explosives-16_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -960,7 +960,7 @@
       "label": "HazMat-DOT-Placarding Class-1-Explosives",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Explosives_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-1-Explosives_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -980,7 +980,7 @@
       "label": "HazMat-DOT-Placarding Class-2-Chlorine",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Chlorine_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Chlorine_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1000,7 +1000,7 @@
       "label": "HazMat-DOT-Placarding Class-2-Flammable-Gas-21",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Flammable-Gas-21_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Flammable-Gas-21_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1022,7 +1022,7 @@
       "label": "HazMat-DOT-Placarding Class-2-Flammable-Gas",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Flammable-Gas_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Flammable-Gas_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1043,7 +1043,7 @@
       "label": "HazMat-DOT-Placarding Class-2-Flammable-Liquid",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Flammable-Liquid_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Flammable-Liquid_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1064,7 +1064,7 @@
       "label": "HazMat-DOT-Placarding Class-2-Flammable-Solid",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Flammable-Solid_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Flammable-Solid_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1085,7 +1085,7 @@
       "label": "HazMat-DOT-Placarding Class-2-Inhalation-Hazards-23",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Inhalation-Hazards-23_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Inhalation-Hazards-23_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1107,7 +1107,7 @@
       "label": "HazMat-DOT-Placarding Class-2-Non-Flammable-Gas-22",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Non-Flammable-Gas-22_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Non-Flammable-Gas-22_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1130,7 +1130,7 @@
       "label": "HazMat-DOT-Placarding Class-2-Oxygen-22",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Oxygen-22_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-2-Oxygen-22_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1151,7 +1151,7 @@
       "label": "HazMat-DOT-Placarding Class-3-Combustible",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-3-Combustible_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-3-Combustible_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1171,7 +1171,7 @@
       "label": "HazMat-DOT-Placarding Class-3-Flammable",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-3-Flammable_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-3-Flammable_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1191,7 +1191,7 @@
       "label": "HazMat-DOT-Placarding Class-3-Fuel-Oil",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-3-Fuel-Oil_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-3-Fuel-Oil_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1212,7 +1212,7 @@
       "label": "HazMat-DOT-Placarding Class-3-Gasoline",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-3-Gasoline_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-3-Gasoline_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1232,7 +1232,7 @@
       "label": "HazMat-DOT-Placarding Class-4-Dangerous-When-Wet",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-4-Dangerous-When-Wet_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-4-Dangerous-When-Wet_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1254,7 +1254,7 @@
       "label": "HazMat-DOT-Placarding Class-4-Flammable-Solids",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-4-Flammable-Solids_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-4-Flammable-Solids_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1275,7 +1275,7 @@
       "label": "HazMat-DOT-Placarding Class-4-Spontaneously-Combustible",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-4-Spontaneously-Combustible_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-4-Spontaneously-Combustible_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1296,7 +1296,7 @@
       "label": "HazMat-DOT-Placarding Class-5-Organic-Peroxides-51",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-5-Organic-Peroxides-51_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-5-Organic-Peroxides-51_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1318,7 +1318,7 @@
       "label": "HazMat-DOT-Placarding Class-5-Organic-Peroxides-52",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-5-Organic-Peroxides-52_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-5-Organic-Peroxides-52_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1340,7 +1340,7 @@
       "label": "HazMat-DOT-Placarding Class-5-Oxidizers-51",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-5-Oxidizers-51_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-5-Oxidizers-51_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1361,7 +1361,7 @@
       "label": "HazMat-DOT-Placarding Class-6-Infectious",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-6-Infectious_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-6-Infectious_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1381,7 +1381,7 @@
       "label": "HazMat-DOT-Placarding Class-6-Inhalation-Hazards",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-6-Inhalation-Hazards_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-6-Inhalation-Hazards_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1402,7 +1402,7 @@
       "label": "HazMat-DOT-Placarding Class-6-Poison-Gas",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-6-Poison-Gas_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-6-Poison-Gas_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1423,7 +1423,7 @@
       "label": "HazMat-DOT-Placarding Class-6-Poisons",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-6-Poisons_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-6-Poisons_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1443,7 +1443,7 @@
       "label": "HazMat-DOT-Placarding Class-6-Toxic-Gas",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-6-Toxic-Gas_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-6-Toxic-Gas_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1464,7 +1464,7 @@
       "label": "HazMat-DOT-Placarding Class-6-Toxic",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-6-Toxic_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-6-Toxic_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1484,7 +1484,7 @@
       "label": "HazMat-DOT-Placarding Class-7-Radioactive",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-7-Radioactive_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-7-Radioactive_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1504,7 +1504,7 @@
       "label": "HazMat-DOT-Placarding Class-8-Acids",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-8-Acids_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-8-Acids_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1524,7 +1524,7 @@
       "label": "HazMat-DOT-Placarding Class-8-Alkaline",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-8-Alkaline_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-8-Alkaline_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1544,7 +1544,7 @@
       "label": "HazMat-DOT-Placarding Class-8-Corrosive",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-8-Corrosive_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-8-Corrosive_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1564,7 +1564,7 @@
       "label": "HazMat-DOT-Placarding Class-9",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-9_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-9_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1583,7 +1583,7 @@
       "label": "HazMat-DOT-Placarding Class-Other-DANGEROUS",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-Other-DANGEROUS_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-Other-DANGEROUS_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1603,7 +1603,7 @@
       "label": "HazMat-DOT-Placarding Class-Other-HOT",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-Other-HOT_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-Other-HOT_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1623,7 +1623,7 @@
       "label": "HazMat-DOT-Placarding Class-Other-Store-Away-From-Food",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-Other-Store-Away-From-Food_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__DETAIL_HazMat-DOT-Placarding--Class-Other-Store-Away-From-Food_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1646,7 +1646,7 @@
       "label": "HazMat-DOT-Placarding Class-Other-V2",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__GENRIC_HazMat-DOT-Placarding--Class-Other-V2_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__GENRIC_HazMat-DOT-Placarding--Class-Other-V2_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1666,7 +1666,7 @@
       "label": "HazMat-DOT-Placarding Class-Other-V3",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__GENRIC_HazMat-DOT-Placarding--Class-Other-V3_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__GENRIC_HazMat-DOT-Placarding--Class-Other-V3_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1686,7 +1686,7 @@
       "label": "HazMat-DOT-Placarding Class-Other",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_HAZMAT_MLTCLR__SOLID__GENRIC_HazMat-DOT-Placarding--Class-Other_256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_HAZMAT_MLTCLR__SOLID__GENRIC_HazMat-DOT-Placarding--Class-Other_256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [
@@ -1705,7 +1705,7 @@
       "label": "HAZARD NFPA 704",
       "categoryId": "hazardous_materials",
       "category": "Hazardous Materials",
-      "assetPath": "../../NAPSG Icons/Hazardous_Materials/Hazardous_Materials/HAZARD_NFPA74_MLTCLR_SOLID_DETAIL__256x256.png",
+      "assetPath": "./icons/hazardous_materials/HAZARD_NFPA74_MLTCLR_SOLID_DETAIL__256x256.png",
       "markerSize": 44,
       "paletteSize": 30,
       "keywords": [

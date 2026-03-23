@@ -8742,6 +8742,7 @@
     });
 
     (state.iconCatalog.categories || []).forEach((category) => {
+      if (!categorizedIcons.has(category.id)) return;
       const targetCategory = ICON_CATEGORY_GROUP_OVERRIDES[category.id] || category.label;
       ensureGroup(targetCategory, "No icons imported for this category yet.");
     });
