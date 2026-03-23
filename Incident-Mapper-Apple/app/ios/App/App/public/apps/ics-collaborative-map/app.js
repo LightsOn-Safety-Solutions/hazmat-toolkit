@@ -321,6 +321,16 @@
     },
     kind: "icon"
   };
+  const DEFAULT_ICON_FALLBACK_ASSET = "./icons/resources/response_truck_generic.svg";
+  const ICON_CATEGORY_FALLBACK_ASSETS = {
+    access_hazards: "./icons/access_hazards/road_sign_b7a.svg",
+    hazard: "./icons/hazard/hazard_warning_symbol.svg",
+    hazardous_materials: "./icons/hazard/hazard_warning_symbol.svg",
+    incident: "./icons/incident/fire_truck_ladder.svg",
+    resources: "./icons/resources/response_truck_generic.svg",
+    response_vehicles: "./icons/resources/response_truck_generic.svg",
+    support_equipment: "./icons/resources/support_equipment_generic.svg"
+  };
   const COSTED_RESOURCE_FIELD_DEFS = [
     { key: "displayLabel", label: "Item Name", type: "text" },
     { key: "company", label: "Company / Agency", type: "text" },
@@ -4584,12 +4594,13 @@
         button.innerHTML = item.kind === "icon"
           ? `
             <span class="object-template-icon-wrap">
-              <img
-                class="object-template-icon"
-                src="${escapeAttribute(resolveAssetPath(item.assetPath))}"
-                alt="${escapeAttribute(item.label)}"
-                style="width:${escapeAttribute(String(item.paletteSize || 30))}px;height:${escapeAttribute(String(item.paletteSize || 30))}px"
-              />
+              ${buildIconImageMarkup({
+                className: "object-template-icon",
+                assetPath: item.assetPath,
+                alt: item.label,
+                size: item.paletteSize || 30,
+                fallbackAssetPath: getIconFallbackAssetPath(item)
+              })}
             </span>
             <span>
               <strong>${escapeHtml(item.label)}</strong>
@@ -8992,7 +9003,13 @@
       : (object.fields?.iconLabel || template?.label || "Map icon");
     return L.divIcon({
       className: "",
-      html: `<img class="point-marker-icon${isAttachmentObject(object) ? " attachment-pin-icon" : ""}" style="width:${escapeAttribute(String(safeSize))}px;height:${escapeAttribute(String(safeSize))}px" src="${escapeAttribute(resolveAssetPath(object.fields.iconAssetPath))}" alt="${escapeAttribute(altLabel)}" />`,
+      html: buildIconImageMarkup({
+        className: `point-marker-icon${isAttachmentObject(object) ? " attachment-pin-icon" : ""}`,
+        assetPath: object.fields.iconAssetPath,
+        alt: altLabel,
+        size: safeSize,
+        fallbackAssetPath: getIconFallbackAssetPath(object)
+      }),
       iconSize: [safeSize, safeSize],
       iconAnchor: [safeSize / 2, safeSize / 2]
     });
@@ -9094,6 +9111,37 @@
     } catch (_error) {
       return assetPath;
     }
+  }
+
+  function normalizeIconCategoryKey(value) {
+    return String(value || "")
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "_")
+      .replace(/^_+|_+$/g, "");
+  }
+
+  function getIconFallbackAssetPath(source) {
+    const categoryKey = normalizeIconCategoryKey(source?.categoryId || source?.fields?.iconCategoryId);
+    if (categoryKey && ICON_CATEGORY_FALLBACK_ASSETS[categoryKey]) {
+      return ICON_CATEGORY_FALLBACK_ASSETS[categoryKey];
+    }
+    const categoryLabelKey = normalizeIconCategoryKey(source?.category || source?.fields?.iconCategory);
+    if (categoryLabelKey && ICON_CATEGORY_FALLBACK_ASSETS[categoryLabelKey]) {
+      return ICON_CATEGORY_FALLBACK_ASSETS[categoryLabelKey];
+    }
+    return DEFAULT_ICON_FALLBACK_ASSET;
+  }
+
+  function buildIconImageMarkup({ className = "", assetPath = "", alt = "", size = 30, fallbackAssetPath = "" } = {}) {
+    const resolvedSrc = resolveAssetPath(assetPath);
+    const resolvedFallback = resolveAssetPath(fallbackAssetPath || DEFAULT_ICON_FALLBACK_ASSET);
+    const safeSize = escapeAttribute(String(size));
+    const imageClass = escapeAttribute(className);
+    const imageAlt = escapeAttribute(alt);
+    const imageSrc = escapeAttribute(resolvedSrc);
+    const fallbackSrc = escapeAttribute(resolvedFallback);
+    return `<img class="${imageClass}" src="${imageSrc}" alt="${imageAlt}" data-fallback-src="${fallbackSrc}" onerror="if (!this.dataset.fallbackApplied && this.dataset.fallbackSrc) { this.dataset.fallbackApplied='1'; this.src=this.dataset.fallbackSrc; }" style="width:${safeSize}px;height:${safeSize}px" />`;
   }
 
   function toLeafletLatLngs(points) {
