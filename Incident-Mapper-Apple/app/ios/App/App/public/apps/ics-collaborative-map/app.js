@@ -8795,10 +8795,11 @@
           const labelMarker = L.marker(midpoint, {
             interactive: false,
             keyboard: false,
+            zIndexOffset: 1100,
             icon: L.divIcon({
               className: "measurement-distance-icon",
               html: `<div class="measurement-distance-label">${escapeHtml(formatMeasurementDistance(getMeasurementDistanceMeters(object), unit))}</div>`,
-              iconSize: [0, 0],
+              iconSize: [1, 1],
               iconAnchor: [0, 0]
             })
           });

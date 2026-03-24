@@ -2759,6 +2759,7 @@ body[data-theme="light"] .geometry-handle {
   background: transparent;
   border: none;
   pointer-events: none;
+  overflow: visible;
 }
 .measurement-distance-label {
   transform: translate(-50%, -130%);
