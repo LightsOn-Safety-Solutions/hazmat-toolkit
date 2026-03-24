@@ -1792,12 +1792,15 @@
     const email = elements.commanderEmailInput.value.trim();
     const password = elements.commanderPasswordInput.value;
     const displayName = elements.commanderNameInput.value.trim();
-    if (!displayName || !email || !password) {
-      setStatus("Enter a session owner display name, email, and password.");
+    const isSignIn = state.authTab === "signin";
+    if (!email || !password || (!isSignIn && !displayName)) {
+      setStatus(isSignIn
+        ? "Enter the user email and password to sign in."
+        : "Enter a display name, email, and password to create an account.");
       return;
     }
 
-    setStatus(state.authTab === "signin" ? "Signing in session owner…" : "Creating session owner account…");
+    setStatus(isSignIn ? "Signing in session owner…" : "Creating session owner account…");
     try {
       const authResponse = state.authTab === "signin"
         ? await supabasePasswordSignIn(email, password)
@@ -2218,6 +2221,27 @@
       });
       await refreshSuperAdminWorkspace();
       setStatus(successMessage);
+    } catch (error) {
+      setStatus(formatError(error));
+    }
+  }
+
+  async function deleteSuperAdminUserEverywhere(user) {
+    if (!state.superAdminContext?.email) {
+      setStatus("Super admin access is required.");
+      return;
+    }
+    const label = user?.displayName || user?.email || "this user";
+    const confirmed = window.confirm(`Delete ${label} everywhere? This will remove the department record and permanently delete the Supabase login account.`);
+    if (!confirmed) return;
+    setStatus(`Deleting ${label} everywhere…`);
+    try {
+      await apiFetch(`/v1/ics-collab/super-admin/users/${encodeURIComponent(user.id)}`, {
+        method: "DELETE",
+        actorType: "commander"
+      });
+      await refreshSuperAdminWorkspace();
+      setStatus(`${label} was deleted everywhere.`);
     } catch (error) {
       setStatus(formatError(error));
     }
@@ -4773,7 +4797,14 @@
           `${user.displayName || user.email} ${user.isAdmin ? "removed from" : "added as"} admin.`
         );
       });
-      actions.append(activeBtn, adminBtn);
+      const deleteBtn = document.createElement("button");
+      deleteBtn.className = "danger";
+      deleteBtn.type = "button";
+      deleteBtn.textContent = "Delete User Everywhere";
+      deleteBtn.addEventListener("click", () => {
+        void deleteSuperAdminUserEverywhere(user);
+      });
+      actions.append(activeBtn, adminBtn, deleteBtn);
       card.append(title, meta, actions);
       elements.superAdminUsersList.appendChild(card);
     });
@@ -9971,6 +10002,15 @@
       ) {
         return "This signup is stuck in a stale state. Reset password or contact support.";
       }
+    }
+
+    if (
+      normalized.includes("invalid login credentials")
+      || normalized.includes("invalid_credentials")
+      || normalized.includes("invalid grant")
+      || (flow === "signin" && response.status === 400)
+    ) {
+      return "That email/password was not accepted. If this person was only added as a department user, they may still need to use Create Account first or reset their password.";
     }
 
     if (

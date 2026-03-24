@@ -630,6 +630,29 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
     }
   });
 
+  app.delete<{ Params: { memberId: string } }>('/v1/ics-collab/super-admin/users/:memberId', async (request, reply) => {
+    try {
+      const trainer = await requireTrainerIdentity(app, request.headers);
+      await requireSuperAdmin(app.pg, trainer);
+      const memberId = normalizeUUID(request.params.memberId);
+      if (!memberId) {
+        return reply.code(400).send({ error: 'BAD_REQUEST', message: 'Valid memberId is required.' });
+      }
+      const existing = await fetchOrganizationMemberByID(app.pg, memberId);
+      if (!existing) {
+        return reply.code(404).send({ error: 'NOT_FOUND', message: 'User not found.' });
+      }
+      const deletedAuthUser = await deleteSupabaseAuthUserByEmail(resolveSupabaseAdminConfig(app.config), existing.email);
+      await deleteOrganizationMember(app.pg, memberId);
+      return reply.send({
+        deleted: true,
+        deletedAuthUser
+      });
+    } catch (error) {
+      return sendTrainerError(reply, request, error, 'Failed to delete super admin user.');
+    }
+  });
+
   app.get('/v1/ics-collab/super-admin/access', async (request, reply) => {
     try {
       const trainer = await requireTrainerIdentity(app, request.headers);
@@ -2831,6 +2854,16 @@ async function updateOrganizationMemberAsSuperAdmin(
   return member ? ((await fetchOrganizationMemberByID(pool, member.id)) ?? member) : null;
 }
 
+async function deleteOrganizationMember(pool: { query: PoolClient['query'] }, memberId: string) {
+  await pool.query(
+    `
+      delete from collab_org_members
+      where id = $1::uuid
+    `,
+    [memberId]
+  );
+}
+
 async function fetchOrganizationByID(pool: { query: PoolClient['query'] }, organizationId: string) {
   const result = await pool.query<CollabOrganizationRow>(
     `
@@ -3518,6 +3551,69 @@ function normalizeFieldsPayload(payload: unknown) {
     throw new ValidationError('fields must be an object.');
   }
   return payload;
+}
+
+function resolveSupabaseAdminConfig(config: AppConfig) {
+  if (!config.supabaseUrl || !config.supabaseServiceRoleKey) {
+    throw new ConflictError('Supabase admin is not configured on the server.');
+  }
+  return {
+    supabaseUrl: config.supabaseUrl.replace(/\/$/, ''),
+    supabaseServiceRoleKey: config.supabaseServiceRoleKey
+  };
+}
+
+async function findSupabaseAuthUserByEmail(
+  config: { supabaseUrl: string; supabaseServiceRoleKey: string },
+  email: string
+): Promise<{ id: string; email: string } | null> {
+  const normalizedEmail = normalizeEmail(email);
+  if (!normalizedEmail) return null;
+  let page = 1;
+  const perPage = 200;
+  while (page <= 10) {
+    const response = await fetch(`${config.supabaseUrl}/auth/v1/admin/users?page=${page}&per_page=${perPage}`, {
+      headers: {
+        Authorization: `Bearer ${config.supabaseServiceRoleKey}`,
+        apikey: config.supabaseServiceRoleKey
+      }
+    });
+    const payload = await response.json().catch(() => null) as { users?: Array<{ id?: string; email?: string }>; msg?: string; message?: string } | null;
+    if (!response.ok) {
+      throw new Error(payload?.msg || payload?.message || 'Failed to query Supabase users.');
+    }
+    const users = Array.isArray(payload?.users) ? payload.users : [];
+    const match = users.find((user) => normalizeEmail(user?.email) === normalizedEmail);
+    if (match?.id) {
+      return {
+        id: match.id,
+        email: match.email || normalizedEmail
+      };
+    }
+    if (users.length < perPage) break;
+    page += 1;
+  }
+  return null;
+}
+
+async function deleteSupabaseAuthUserByEmail(
+  config: { supabaseUrl: string; supabaseServiceRoleKey: string },
+  email: string
+) {
+  const authUser = await findSupabaseAuthUserByEmail(config, email);
+  if (!authUser?.id) return false;
+  const response = await fetch(`${config.supabaseUrl}/auth/v1/admin/users/${encodeURIComponent(authUser.id)}`, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${config.supabaseServiceRoleKey}`,
+      apikey: config.supabaseServiceRoleKey
+    }
+  });
+  const payload = await response.json().catch(() => null) as { msg?: string; message?: string } | null;
+  if (!response.ok) {
+    throw new Error(payload?.msg || payload?.message || 'Failed to delete Supabase auth user.');
+  }
+  return true;
 }
 
 function resolveAttachmentStorageConfig(config: AppConfig): AttachmentStorageConfig {
