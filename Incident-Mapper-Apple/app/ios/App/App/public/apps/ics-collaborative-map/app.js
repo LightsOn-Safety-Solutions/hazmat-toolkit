@@ -3307,6 +3307,9 @@
     const recoveryMode = Boolean(state.passwordRecovery?.accessToken);
     const authReady = hasSupabaseAuthConfig();
     const licensed = hasActiveOrganizationAccess();
+    if (signedIn && state.authTab !== "signin") {
+      state.authTab = "signin";
+    }
     const orgAdmin = Boolean(state.organizationContext?.isAdmin && licensed);
     const superAdmin = Boolean(state.superAdminContext?.email);
     elements.commanderSignedInSummary.classList.toggle("hidden", !signedIn);
@@ -3332,6 +3335,9 @@
         ? `Set a new password for ${state.passwordRecovery.email}.`
         : "Set a new password for your session owner account.";
     }
+    elements.signInTabBtn.classList.toggle("active", state.authTab === "signin");
+    elements.signUpTabBtn.classList.toggle("active", state.authTab === "signup");
+    elements.signUpTabBtn.classList.toggle("hidden", signedIn);
     elements.commanderAuthBtn.textContent = signedIn ? "Signed In" : (state.authTab === "signin" ? "Sign In" : "Create Account");
     elements.commanderAuthBtn.disabled = signedIn || !authReady || recoveryMode;
     elements.commanderSignOutBtn.disabled = !signedIn;
