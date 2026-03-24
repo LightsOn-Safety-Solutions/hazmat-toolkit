@@ -1088,6 +1088,19 @@ body[data-theme="light"] .map-sidebar-toggle {
   display: flex;
   justify-content: flex-start;
 }
+.auth-inline-actions-spread {
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+}
+.auth-recovery-copy {
+  display: grid;
+  gap: 4px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--stroke);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--panel-strong) 88%, transparent);
+}
 .auth-link-btn {
   min-height: auto;
   padding: 0;

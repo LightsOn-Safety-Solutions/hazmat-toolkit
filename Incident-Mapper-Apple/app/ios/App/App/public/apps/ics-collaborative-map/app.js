@@ -370,6 +370,12 @@
     commanderPasswordInput: document.getElementById("commanderPasswordInput"),
     forgotPasswordRow: document.getElementById("forgotPasswordRow"),
     forgotPasswordBtn: document.getElementById("forgotPasswordBtn"),
+    recoveryAuthPanel: document.getElementById("recoveryAuthPanel"),
+    recoveryAuthMeta: document.getElementById("recoveryAuthMeta"),
+    recoveryPasswordInput: document.getElementById("recoveryPasswordInput"),
+    recoveryPasswordConfirmInput: document.getElementById("recoveryPasswordConfirmInput"),
+    cancelRecoveryBtn: document.getElementById("cancelRecoveryBtn"),
+    completeRecoveryBtn: document.getElementById("completeRecoveryBtn"),
     superAdminWorkspaceBtn: document.getElementById("superAdminWorkspaceBtn"),
     departmentAdminPanel: document.getElementById("departmentAdminPanel"),
     departmentAdminPanelToggle: document.getElementById("departmentAdminPanelToggle"),
@@ -694,6 +700,7 @@
 
   const state = {
     authTab: "signin",
+    passwordRecovery: null,
     commanderAuth: loadStoredJSON(STORAGE_KEYS.commanderAuth),
     participantAuth: loadStoredJSON(STORAGE_KEYS.participantAuth),
     superAdminContext: null,
@@ -1226,6 +1233,8 @@
     elements.commanderAuthBtn.addEventListener("click", onCommanderAuth);
     elements.commanderSignOutBtn.addEventListener("click", signOutCommander);
     elements.forgotPasswordBtn?.addEventListener("click", onForgotPassword);
+    elements.cancelRecoveryBtn?.addEventListener("click", cancelPasswordRecovery);
+    elements.completeRecoveryBtn?.addEventListener("click", onCompletePasswordRecovery);
     elements.superAdminWorkspaceBtn?.addEventListener("click", openSuperAdminWorkspace);
     elements.departmentAdminPanelToggle?.addEventListener("click", () => toggleLandingSection("departmentAdmin"));
     elements.departmentAdminAddBtn?.addEventListener("click", onAddOrganizationMember);
@@ -1614,6 +1623,7 @@
 
   async function hydrateAuthUI() {
     await loadRuntimeMetaConfig();
+    await hydratePasswordRecoveryFromUrl();
     const authReady = hasSupabaseAuthConfig();
     elements.commanderAuthBtn.disabled = !authReady || Boolean(state.commanderAuth?.accessToken);
     if (!authReady) {
@@ -1650,7 +1660,88 @@
     applyThemeMode(saved, { persist: false });
   }
 
+  function parseAuthCallbackParams() {
+    const url = new URL(window.location.href);
+    const combined = new URLSearchParams(url.search);
+    const hash = String(url.hash || "").replace(/^#/, "");
+    if (hash) {
+      const hashParams = new URLSearchParams(hash);
+      hashParams.forEach((value, key) => combined.set(key, value));
+    }
+    return {
+      accessToken: combined.get("access_token") || "",
+      refreshToken: combined.get("refresh_token") || "",
+      expiresIn: Number(combined.get("expires_in") || 0) || 0,
+      expiresAt: Number(combined.get("expires_at") || 0) || 0,
+      type: combined.get("type") || "",
+      error: combined.get("error") || "",
+      errorDescription: combined.get("error_description") || combined.get("errorDescription") || ""
+    };
+  }
+
+  function clearAuthCallbackParams() {
+    const url = new URL(window.location.href);
+    const keys = [
+      "access_token",
+      "refresh_token",
+      "expires_in",
+      "expires_at",
+      "token_type",
+      "type",
+      "error",
+      "error_code",
+      "error_description",
+      "errorDescription"
+    ];
+    keys.forEach((key) => url.searchParams.delete(key));
+    url.hash = "";
+    window.history.replaceState({}, document.title, `${url.pathname}${url.search}`);
+  }
+
+  async function fetchSupabaseUser(accessToken) {
+    const response = await fetch(`${runtimeConfig.supabaseUrl}/auth/v1/user`, {
+      method: "GET",
+      headers: {
+        ...supabaseHeaders(),
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+    return await parseSupabaseAuthResponse(response, { flow: "recovery-user" });
+  }
+
+  async function hydratePasswordRecoveryFromUrl() {
+    const callback = parseAuthCallbackParams();
+    if (callback.error || callback.errorDescription) {
+      clearAuthCallbackParams();
+      setStatus(getFriendlySupabaseRecoveryError(callback.errorDescription || callback.error, { status: 400 }));
+      return;
+    }
+    if (callback.type !== "recovery" || !callback.accessToken) return;
+    state.authTab = "signin";
+    state.passwordRecovery = {
+      accessToken: callback.accessToken,
+      refreshToken: callback.refreshToken,
+      expiresAt: callback.expiresAt
+        ? callback.expiresAt * 1000
+        : Date.now() + Math.max(60, callback.expiresIn || 3600) * 1000,
+      email: ""
+    };
+    clearAuthCallbackParams();
+    try {
+      const user = await fetchSupabaseUser(callback.accessToken);
+      state.passwordRecovery.email = String(user?.email || user?.user?.email || "");
+      if (state.passwordRecovery.email) {
+        elements.commanderEmailInput.value = state.passwordRecovery.email;
+      }
+      setStatus("Recovery link confirmed. Enter a new password.");
+    } catch (error) {
+      state.passwordRecovery = null;
+      setStatus(formatError(error));
+    }
+  }
+
   function setAuthTab(tab) {
+    if (state.passwordRecovery) return;
     state.authTab = tab;
     elements.signInTabBtn.classList.toggle("active", tab === "signin");
     elements.signUpTabBtn.classList.toggle("active", tab === "signup");
@@ -1749,20 +1840,28 @@
       headers: supabaseHeaders(),
       body: JSON.stringify({
         email,
-        redirectTo: emailRedirectTo
+        redirectTo: emailRedirectTo,
+        redirect_to: emailRedirectTo,
+        emailRedirectTo: emailRedirectTo
       })
     });
     const payload = await parseJsonSafely(response);
     if (!response.ok) {
-      const details =
-        payload?.msg_description ||
-        payload?.error_description ||
-        payload?.error ||
-        payload?.message ||
-        `HTTP ${response.status}`;
-      throw new Error(`Password reset request failed: ${details}`);
+      throw new Error(getFriendlySupabaseRecoveryError(payload, response));
     }
     return payload;
+  }
+
+  async function supabaseUpdatePassword(accessToken, password) {
+    const response = await fetch(`${runtimeConfig.supabaseUrl}/auth/v1/user`, {
+      method: "PUT",
+      headers: {
+        ...supabaseHeaders(),
+        Authorization: `Bearer ${accessToken}`
+      },
+      body: JSON.stringify({ password })
+    });
+    return await parseSupabaseAuthResponse(response, { flow: "recovery-update" });
   }
 
   async function refreshCommanderTokenIfNeeded() {
@@ -1796,7 +1895,48 @@
     setStatus("Sending password reset email…");
     try {
       await supabaseRequestPasswordReset(email);
-      setStatus("Check your email for a reset link.");
+      setStatus("If that email is registered, a password reset link is on the way.");
+    } catch (error) {
+      setStatus(formatError(error));
+    }
+  }
+
+  function cancelPasswordRecovery() {
+    state.passwordRecovery = null;
+    elements.recoveryPasswordInput.value = "";
+    elements.recoveryPasswordConfirmInput.value = "";
+    renderCommanderAuthPanels();
+    setStatus("Password recovery canceled.");
+  }
+
+  async function onCompletePasswordRecovery() {
+    if (!state.passwordRecovery?.accessToken) {
+      setStatus("Open the password reset link from your email first.");
+      return;
+    }
+    const password = elements.recoveryPasswordInput.value;
+    const confirmPassword = elements.recoveryPasswordConfirmInput.value;
+    if (!password || !confirmPassword) {
+      setStatus("Enter and confirm the new password.");
+      return;
+    }
+    if (password !== confirmPassword) {
+      setStatus("The new passwords do not match.");
+      return;
+    }
+    setStatus("Updating password…");
+    try {
+      const payload = await supabaseUpdatePassword(state.passwordRecovery.accessToken, password);
+      const resolvedEmail = String(payload?.email || payload?.user?.email || state.passwordRecovery.email || "");
+      state.passwordRecovery = null;
+      elements.recoveryPasswordInput.value = "";
+      elements.recoveryPasswordConfirmInput.value = "";
+      elements.commanderPasswordInput.value = "";
+      if (resolvedEmail) {
+        elements.commanderEmailInput.value = resolvedEmail;
+      }
+      renderCommanderAuthPanels();
+      setStatus("Password updated. Sign in with your new password.");
     } catch (error) {
       setStatus(formatError(error));
     }
@@ -3064,12 +3204,15 @@
 
   function renderCommanderAuthPanels() {
     const signedIn = Boolean(state.commanderAuth?.accessToken);
+    const recoveryMode = Boolean(state.passwordRecovery?.accessToken);
     const authReady = hasSupabaseAuthConfig();
     const licensed = hasActiveOrganizationAccess();
     const orgAdmin = Boolean(state.organizationContext?.isAdmin && licensed);
     const superAdmin = Boolean(state.superAdminContext?.email);
     elements.commanderSignedInSummary.classList.toggle("hidden", !signedIn);
-    elements.authFields.classList.toggle("hidden", signedIn);
+    elements.authFields.classList.toggle("hidden", signedIn || recoveryMode);
+    elements.recoveryAuthPanel?.classList.toggle("hidden", !recoveryMode || signedIn);
+    elements.commanderAuthBtn.classList.toggle("hidden", recoveryMode && !signedIn);
     if (signedIn) {
       elements.commanderSummaryName.textContent = `Session Owner: ${state.commanderAuth?.displayName || "Signed in"}`;
       const summaryParts = [state.commanderAuth?.email || ""];
@@ -3084,10 +3227,17 @@
       }
       elements.commanderSummaryEmail.textContent = summaryParts.filter(Boolean).join(" · ");
     }
+    if (recoveryMode && elements.recoveryAuthMeta) {
+      elements.recoveryAuthMeta.textContent = state.passwordRecovery?.email
+        ? `Set a new password for ${state.passwordRecovery.email}.`
+        : "Set a new password for your session owner account.";
+    }
     elements.commanderAuthBtn.textContent = signedIn ? "Signed In" : (state.authTab === "signin" ? "Sign In" : "Create Account");
-    elements.commanderAuthBtn.disabled = signedIn || !authReady;
+    elements.commanderAuthBtn.disabled = signedIn || !authReady || recoveryMode;
     elements.commanderSignOutBtn.disabled = !signedIn;
-    elements.forgotPasswordRow?.classList.toggle("hidden", signedIn || state.authTab !== "signin");
+    elements.signInTabBtn.disabled = recoveryMode;
+    elements.signUpTabBtn.disabled = recoveryMode;
+    elements.forgotPasswordRow?.classList.toggle("hidden", signedIn || state.authTab !== "signin" || recoveryMode);
     if (elements.forgotPasswordBtn) {
       elements.forgotPasswordBtn.disabled = !authReady;
     }
@@ -9554,8 +9704,8 @@
   }
 
   function getAuthRedirectUrl() {
-    if (runtimeConfig.publicBaseUrl) return runtimeConfig.publicBaseUrl;
-    return `${window.location.origin}${window.location.pathname}`;
+    if (runtimeConfig.publicBaseUrl) return runtimeConfig.publicBaseUrl.replace(/\/$/, "");
+    return `${window.location.origin}${window.location.pathname}`.replace(/\/$/, "");
   }
 
   function getSupabaseAuthErrorDetails(payload, response) {
@@ -9600,6 +9750,28 @@
     }
 
     return `Supabase auth request failed: ${details}`;
+  }
+
+  function getFriendlySupabaseRecoveryError(payloadOrDetails, response) {
+    const details = typeof payloadOrDetails === "string"
+      ? payloadOrDetails
+      : getSupabaseAuthErrorDetails(payloadOrDetails, response);
+    const normalized = String(details || "").trim().toLowerCase();
+
+    if (
+      normalized.includes("redirect")
+      || normalized.includes("site url")
+      || normalized.includes("flow state")
+      || normalized.includes("otp")
+    ) {
+      return "Password reset is misconfigured. Verify the Supabase Site URL and allowed recovery redirect URLs for the collaborative map.";
+    }
+
+    if (response?.status >= 500) {
+      return `Password reset request failed: ${details || `HTTP ${response.status}`}`;
+    }
+
+    return `Password reset request failed: ${details || `HTTP ${response?.status || 400}`}`;
   }
 
   async function parseSupabaseAuthResponse(response, options = {}) {

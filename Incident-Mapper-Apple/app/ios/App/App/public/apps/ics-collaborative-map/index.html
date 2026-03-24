@@ -84,6 +84,19 @@
                 </div>
               </div>
 
+              <div id="recoveryAuthPanel" class="stack auth-grid hidden">
+                <div class="auth-recovery-copy">
+                  <strong>Finish Password Reset</strong>
+                  <div id="recoveryAuthMeta" class="muted">Set a new password for your session owner account.</div>
+                </div>
+                <input id="recoveryPasswordInput" type="password" placeholder="New password" />
+                <input id="recoveryPasswordConfirmInput" type="password" placeholder="Confirm new password" />
+                <div class="auth-inline-actions auth-inline-actions-spread">
+                  <button id="cancelRecoveryBtn" class="secondary" type="button">Cancel</button>
+                  <button id="completeRecoveryBtn" class="primary" type="button">Update Password</button>
+                </div>
+              </div>
+
             </div>
 
             <div id="departmentAdminPanel" class="landing-card stack hidden">
