@@ -10656,9 +10656,9 @@
           if (result?.shared) {
             setStatus(`Map PDF shared: ${filename}`);
           } else if (result?.uri) {
-            setStatus(`Map PDF saved locally: ${filename}`);
+            setStatus(`Map PDF downloaded: ${filename}`);
           } else {
-            setStatus(`Map PDF prepared: ${filename}`);
+            setStatus(`Map PDF downloaded: ${filename}`);
           }
           return;
         } catch (error) {
