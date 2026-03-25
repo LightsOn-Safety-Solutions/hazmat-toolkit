@@ -10538,6 +10538,7 @@
       });
       return {
         imageDataUrl: canvas.toDataURL("image/png"),
+        pdfImageDataUrl: canvas.toDataURL("image/jpeg", 0.92),
         width: canvas.width,
         height: canvas.height
       };
@@ -10641,7 +10642,7 @@
       doc.setFontSize(10);
       doc.text(incidentName, margin, margin + 30);
       doc.text(exportedAt, pageW - margin, margin + 14, { align: "right" });
-      doc.addImage(capture.imageDataUrl, "PNG", margin, margin + headerHeight, imageW, imageH);
+      doc.addImage(capture.pdfImageDataUrl || capture.imageDataUrl, "JPEG", margin, margin + headerHeight, imageW, imageH);
       doc.setDrawColor(0, 0, 0);
       doc.rect(margin, margin + headerHeight, imageW, imageH);
       doc.setFontSize(9);
