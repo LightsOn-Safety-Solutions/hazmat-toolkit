@@ -10372,22 +10372,22 @@
 
   const EXPORT_LIBRARY_CANDIDATES = {
     html2canvas: [
+      "./vendor/html2canvas-1.4.1.min.js",
       "../../vendor/html2canvas-1.4.1.min.js",
       "/vendor/html2canvas-1.4.1.min.js",
-      "../vendor/html2canvas-1.4.1.min.js",
-      "./vendor/html2canvas-1.4.1.min.js"
+      "../vendor/html2canvas-1.4.1.min.js"
     ],
     jspdf: [
+      "./vendor/jspdf-2.5.1.umd.min.js",
       "../../vendor/jspdf-2.5.1.umd.min.js",
       "/vendor/jspdf-2.5.1.umd.min.js",
-      "../vendor/jspdf-2.5.1.umd.min.js",
-      "./vendor/jspdf-2.5.1.umd.min.js"
+      "../vendor/jspdf-2.5.1.umd.min.js"
     ],
     autotable: [
+      "./vendor/jspdf-autotable-3.8.2.min.js",
       "../../vendor/jspdf-autotable-3.8.2.min.js",
       "/vendor/jspdf-autotable-3.8.2.min.js",
-      "../vendor/jspdf-autotable-3.8.2.min.js",
-      "./vendor/jspdf-autotable-3.8.2.min.js"
+      "../vendor/jspdf-autotable-3.8.2.min.js"
     ]
   };
   const exportLibraryPromises = new Map();
