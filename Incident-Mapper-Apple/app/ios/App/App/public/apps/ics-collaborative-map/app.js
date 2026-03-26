@@ -763,6 +763,8 @@
     collapsedPanels: new Set(["session", "sessionPeriod", "incidentCommand", "participants", "palettes"]),
     collapsedModePanels: new Set(["quickFlow", "afterAction"]),
     collapsedLandingSections: new Set(["departmentAdmin", "createSession", "joinSession", "whatHappens", "activeSessions", "reviewScenario"]),
+    landingSectionsInitialized: false,
+    landingSectionHighlightTimers: new Map(),
     viewerMode: false,
     viewerJoinCode: null,
     scenarioReview: null,
@@ -3232,28 +3234,60 @@
     } else {
       state.collapsedLandingSections.add(sectionKey);
     }
-    renderLandingSectionCollapses();
+    renderLandingSectionCollapses({ highlightedSectionKey: sectionKey });
   }
 
-  function renderLandingSectionCollapses() {
-    syncLandingSectionCollapse(elements.departmentAdminPanelBody, elements.departmentAdminPanelToggle, "departmentAdmin");
-    syncLandingSectionCollapse(elements.createSessionPanelBody, elements.createSessionPanelToggle, "createSession");
-    syncLandingSectionCollapse(elements.sessionListPanelBody, elements.sessionListPanelToggle, "reviewSessions");
-    syncLandingSectionCollapse(elements.scenarioReviewPanelBody, elements.scenarioReviewPanelToggle, "reviewScenario");
-    syncLandingSectionCollapse(elements.joinSessionPanelBody, elements.joinSessionPanelToggle, "joinSession");
-    syncLandingSectionCollapse(elements.whatHappensPanelBody, elements.whatHappensPanelToggle, "whatHappens");
-    syncLandingSectionCollapse(elements.activeSessionGalleryPanelBody, elements.activeSessionGalleryPanelToggle, "activeSessions");
+  function renderLandingSectionCollapses(options = {}) {
+    const immediate = options.immediate ?? !state.landingSectionsInitialized;
+    const highlightedSectionKey = options.highlightedSectionKey || "";
+    syncLandingSectionCollapse(elements.departmentAdminPanelBody, elements.departmentAdminPanelToggle, "departmentAdmin", { immediate, highlightedSectionKey });
+    syncLandingSectionCollapse(elements.createSessionPanelBody, elements.createSessionPanelToggle, "createSession", { immediate, highlightedSectionKey });
+    syncLandingSectionCollapse(elements.sessionListPanelBody, elements.sessionListPanelToggle, "reviewSessions", { immediate, highlightedSectionKey });
+    syncLandingSectionCollapse(elements.scenarioReviewPanelBody, elements.scenarioReviewPanelToggle, "reviewScenario", { immediate, highlightedSectionKey });
+    syncLandingSectionCollapse(elements.joinSessionPanelBody, elements.joinSessionPanelToggle, "joinSession", { immediate, highlightedSectionKey });
+    syncLandingSectionCollapse(elements.whatHappensPanelBody, elements.whatHappensPanelToggle, "whatHappens", { immediate, highlightedSectionKey });
+    syncLandingSectionCollapse(elements.activeSessionGalleryPanelBody, elements.activeSessionGalleryPanelToggle, "activeSessions", { immediate, highlightedSectionKey });
+    state.landingSectionsInitialized = true;
   }
 
-  function syncLandingSectionCollapse(bodyElement, toggleElement, sectionKey) {
+  function syncLandingSectionCollapse(bodyElement, toggleElement, sectionKey, options = {}) {
     if (!bodyElement || !toggleElement) return;
+    const { immediate = false, highlightedSectionKey = "" } = options;
     const collapsed = state.collapsedLandingSections.has(sectionKey);
-    bodyElement.classList.toggle("hidden", collapsed);
     toggleElement.setAttribute("aria-expanded", String(!collapsed));
+    toggleElement.classList.toggle("landing-card-toggle-expanded", !collapsed);
+    bodyElement.classList.remove("hidden");
+    bodyElement.classList.toggle("landing-card-body-collapsed", collapsed);
+    bodyElement.setAttribute("aria-hidden", String(collapsed));
+    bodyElement.inert = collapsed;
+    bodyElement.style.setProperty("--landing-section-max-height", `${bodyElement.scrollHeight}px`);
+    if (immediate) {
+      bodyElement.classList.add("landing-card-body-no-motion");
+    } else {
+      bodyElement.classList.remove("landing-card-body-no-motion");
+    }
+    if (highlightedSectionKey === sectionKey) {
+      pulseLandingSectionToggle(toggleElement, sectionKey);
+    }
     const symbol = toggleElement.querySelector(".toggle-symbol");
     if (symbol) {
       symbol.textContent = collapsed ? "+" : "\u2212";
     }
+  }
+
+  function pulseLandingSectionToggle(toggleElement, sectionKey) {
+    const existingTimer = state.landingSectionHighlightTimers.get(sectionKey);
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+    }
+    toggleElement.classList.remove("landing-card-toggle-recent");
+    void toggleElement.offsetWidth;
+    toggleElement.classList.add("landing-card-toggle-recent");
+    const timer = window.setTimeout(() => {
+      toggleElement.classList.remove("landing-card-toggle-recent");
+      state.landingSectionHighlightTimers.delete(sectionKey);
+    }, 950);
+    state.landingSectionHighlightTimers.set(sectionKey, timer);
   }
 
   function renderPanelCollapses() {
