@@ -1810,6 +1810,14 @@ button:disabled { cursor: not-allowed; opacity: .55; transform: none; }
 button.primary { background: var(--accent); color: #1d1d1d; font-weight: 700; }
 button.secondary { background: var(--panel-strong); color: var(--text); border-color: var(--stroke); }
 button.danger { background: rgba(182,59,59,0.14); color: #f4c9ce; border-color: rgba(182,59,59,0.35); }
+body[data-theme="light"] button.danger {
+  background: rgba(182, 59, 59, 0.12);
+  color: #8f1f28;
+  border-color: rgba(182, 59, 59, 0.38);
+}
+body[data-theme="light"] button.danger:hover {
+  background: rgba(182, 59, 59, 0.18);
+}
 button.topbar-alert-btn {
   background: linear-gradient(180deg, #d54b4b 0%, #a72d2d 100%);
   color: #fff7f7;
