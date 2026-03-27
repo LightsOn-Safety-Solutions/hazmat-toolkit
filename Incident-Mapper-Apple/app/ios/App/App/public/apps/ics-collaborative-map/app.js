@@ -2194,32 +2194,44 @@
       state.superAdminData = { overview: null, organizations: [], users: [], sessions: [], access: [], standingAccess: [] };
       return null;
     }
-    try {
-      const [overview, organizations, users, sessions, access, standingAccess] = await Promise.all([
-        apiFetch("/v1/ics-collab/super-admin/overview", { actorType: "commander" }),
-        apiFetch("/v1/ics-collab/super-admin/organizations", { actorType: "commander" }),
-        apiFetch("/v1/ics-collab/super-admin/users", { actorType: "commander" }),
-        apiFetch("/v1/ics-collab/super-admin/sessions", { actorType: "commander" }),
-        apiFetch("/v1/ics-collab/super-admin/access", { actorType: "commander" }),
-        apiFetch("/v1/ics-collab/super-admin/standing-access", { actorType: "commander" })
-      ]);
-      state.superAdminData = {
-        overview: overview || null,
-        organizations: Array.isArray(organizations) ? organizations : [],
-        users: Array.isArray(users) ? users : [],
-        sessions: Array.isArray(sessions) ? sessions : [],
-        access: Array.isArray(access) ? access : [],
-        standingAccess: Array.isArray(standingAccess) ? standingAccess : []
-      };
-      renderSuperAdminWorkspace();
-      if (options.notify) {
-        setStatus("Super admin workspace refreshed.");
+    const labels = ["overview", "organizations", "users", "sessions", "access", "standing access"];
+    const settled = await Promise.allSettled([
+      apiFetch("/v1/ics-collab/super-admin/overview", { actorType: "commander" }),
+      apiFetch("/v1/ics-collab/super-admin/organizations", { actorType: "commander" }),
+      apiFetch("/v1/ics-collab/super-admin/users", { actorType: "commander" }),
+      apiFetch("/v1/ics-collab/super-admin/sessions", { actorType: "commander" }),
+      apiFetch("/v1/ics-collab/super-admin/access", { actorType: "commander" }),
+      apiFetch("/v1/ics-collab/super-admin/standing-access", { actorType: "commander" })
+    ]);
+    const failedLabels = settled.reduce((list, result, index) => {
+      if (result.status === "rejected") {
+        list.push(labels[index]);
       }
-      return state.superAdminData;
-    } catch (error) {
-      setStatus(formatError(error));
-      return null;
+      return list;
+    }, []);
+    const readSettledValue = (index, fallback) => {
+      const result = settled[index];
+      return result.status === "fulfilled" ? result.value : fallback;
+    };
+    state.superAdminData = {
+      overview: readSettledValue(0, null) || null,
+      organizations: Array.isArray(readSettledValue(1, [])) ? readSettledValue(1, []) : [],
+      users: Array.isArray(readSettledValue(2, [])) ? readSettledValue(2, []) : [],
+      sessions: Array.isArray(readSettledValue(3, [])) ? readSettledValue(3, []) : [],
+      access: Array.isArray(readSettledValue(4, [])) ? readSettledValue(4, []) : [],
+      standingAccess: Array.isArray(readSettledValue(5, [])) ? readSettledValue(5, []) : []
+    };
+    renderSuperAdminWorkspace();
+    if (failedLabels.length) {
+      const contextLabel = options.notify ? "refreshed" : "opened";
+      setStatus(`Super admin workspace ${contextLabel} with limited data. Failed to load ${failedLabels.join(", ")}.`);
+    } else if (options.notify) {
+      setStatus("Super admin workspace refreshed.");
     }
+    return {
+      data: state.superAdminData,
+      failedLabels
+    };
   }
 
   async function onAddOrganizationMember() {
@@ -4936,15 +4948,16 @@
       setStatus("Super admin access is required.");
       return;
     }
-    const loaded = await refreshSuperAdminWorkspace();
-    if (!loaded) return;
     state.superAdminOpen = true;
     state.ics202Open = false;
     state.commandStructureOpen = false;
     elements.landingView.classList.add("hidden");
     elements.appView.classList.add("hidden");
     renderAll();
-    setStatus("Super admin workspace opened.");
+    const result = await refreshSuperAdminWorkspace();
+    if (result && (!Array.isArray(result.failedLabels) || !result.failedLabels.length)) {
+      setStatus("Super admin workspace opened.");
+    }
   }
 
   function closeSuperAdminWorkspace() {
