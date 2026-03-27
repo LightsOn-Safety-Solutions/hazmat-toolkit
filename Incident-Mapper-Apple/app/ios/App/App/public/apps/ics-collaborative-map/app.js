@@ -365,6 +365,11 @@
   const EQUIPMENT_RATE_TEMPLATES = (RATE_CATALOGS.equipment || []).map((entry) => normalizeCostTemplate(entry, EQUIPMENT_CATEGORY));
   const CONSUMABLE_RATE_TEMPLATES = (RATE_CATALOGS.consumables || []).map((entry) => normalizeCostTemplate(entry, CONSUMABLES_CATEGORY));
   const templateByType = Object.fromEntries([...OBJECT_TEMPLATES, ICON_MARKER_TEMPLATE].map((template) => [template.objectType, template]));
+  const IMPORT_SHAPE_DEFAULT_TARGETS = {
+    point: MAP_NOTE_OBJECT_TYPE,
+    line: "AccessRoute",
+    polygon: "Division"
+  };
   const elements = {
     shell: document.querySelector(".shell"),
     landingView: document.getElementById("landingView"),
@@ -461,6 +466,7 @@
     exportCostPdfBtn: document.getElementById("exportCostPdfBtn"),
     ics202WorkspaceBtn: document.getElementById("ics202WorkspaceBtn"),
     commandStructureWorkspaceBtn: document.getElementById("commandStructureWorkspaceBtn"),
+    importShapeBtn: document.getElementById("importShapeBtn"),
     routeFromStationBtn: document.getElementById("routeFromStationBtn"),
     setIncidentFocusBtn: document.getElementById("setIncidentFocusBtn"),
     centerIncidentBtn: document.getElementById("centerIncidentBtn"),
@@ -523,6 +529,18 @@
     closeAddToCostBtn: document.getElementById("closeAddToCostBtn"),
     cancelAddToCostBtn: document.getElementById("cancelAddToCostBtn"),
     saveAddToCostBtn: document.getElementById("saveAddToCostBtn"),
+    importShapeModal: document.getElementById("importShapeModal"),
+    importShapeFileInput: document.getElementById("importShapeFileInput"),
+    importShapeFileMeta: document.getElementById("importShapeFileMeta"),
+    importShapePointField: document.getElementById("importShapePointField"),
+    importShapePointSelect: document.getElementById("importShapePointSelect"),
+    importShapeLineField: document.getElementById("importShapeLineField"),
+    importShapeLineSelect: document.getElementById("importShapeLineSelect"),
+    importShapePolygonField: document.getElementById("importShapePolygonField"),
+    importShapePolygonSelect: document.getElementById("importShapePolygonSelect"),
+    importShapeSummary: document.getElementById("importShapeSummary"),
+    cancelImportShapeBtn: document.getElementById("cancelImportShapeBtn"),
+    confirmImportShapeBtn: document.getElementById("confirmImportShapeBtn"),
     addToCostCategorySelect: document.getElementById("addToCostCategorySelect"),
     addToCostDisplayLabelInput: document.getElementById("addToCostDisplayLabelInput"),
     addToCostCompanyInput: document.getElementById("addToCostCompanyInput"),
@@ -815,6 +833,7 @@
     weatherTargetSignature: "",
     weatherFetchNonce: 0,
     weatherTimer: null,
+    importShapeParsed: null,
     pendingAttachmentPayload: null,
     attachmentPreview: {
       objectId: null,
@@ -857,6 +876,7 @@
     superAdminSelectedSessionId: "",
     superAdminStandingSourceFilter: "",
     superAdminStandingTargetFilters: [],
+    importShapeOpen: false,
     ics202ObjectiveDragIndex: -1
   };
 
@@ -1331,6 +1351,7 @@
       }
     });
     elements.helpTutorialBtn?.addEventListener("click", openGuideTour);
+    elements.importShapeBtn?.addEventListener("click", openImportShapeModal);
     elements.attachImageBtn?.addEventListener("click", beginAttachmentFlow);
     elements.createSessionBtn.addEventListener("click", onCreateSession);
     elements.guidedSetupDefaultInput.addEventListener("change", renderCreateSessionFocusVisibility);
@@ -1496,6 +1517,16 @@
       if (event.target === elements.addToCostModal) {
         closeAddToCostModal();
       }
+    });
+    elements.importShapeModal?.addEventListener("click", (event) => {
+      if (event.target === elements.importShapeModal) {
+        closeImportShapeModal();
+      }
+    });
+    elements.importShapeFileInput?.addEventListener("change", onImportShapeFileSelected);
+    elements.cancelImportShapeBtn?.addEventListener("click", closeImportShapeModal);
+    elements.confirmImportShapeBtn?.addEventListener("click", () => {
+      void confirmImportShape();
     });
     elements.endSessionBtn.addEventListener("click", endSession);
     elements.updateOperationalPeriodBtn.addEventListener("click", updateOperationalPeriod);
@@ -3777,6 +3808,16 @@
     elements.leaveSessionBtn.classList.toggle("hidden", !state.activeSession || isScenarioReviewMode());
     elements.ics202WorkspaceBtn.classList.toggle("hidden", (!(state.activeSession || isScenarioReviewMode()) || state.viewerMode));
     elements.commandStructureWorkspaceBtn.classList.toggle("hidden", (!(state.activeSession || isScenarioReviewMode()) || state.viewerMode));
+    const importShapeVisible = Boolean(
+      state.activeSession
+      && !isScenarioReviewMode()
+      && !state.viewerMode
+      && canCreateObjects()
+    );
+    elements.importShapeBtn?.classList.toggle("hidden", !importShapeVisible);
+    if (elements.importShapeBtn) {
+      elements.importShapeBtn.disabled = !importShapeVisible;
+    }
     const routeFromStationVisible = Boolean(
       state.activeSession
       && !isScenarioReviewMode()
@@ -8431,6 +8472,16 @@
     appendMetaRow(elements.selectedObjectMeta, "Created", formatDateTime(object.createdAt));
     appendMetaRow(elements.selectedObjectMeta, "Updated", formatDateTime(object.updatedAt));
     appendMetaRow(elements.selectedObjectMeta, "Version", String(object.version));
+    if (object.fields?.importSourceFormat) {
+      appendMetaRow(elements.selectedObjectMeta, "Imported From", `${String(object.fields.importSourceFormat).toUpperCase()} · ${object.fields.importSourceFileName || "Unknown file"}`);
+      if (object.fields?.importFeatureName) {
+        appendMetaRow(elements.selectedObjectMeta, "Feature Name", object.fields.importFeatureName);
+      }
+      if (object.fields?.importFeatureDescription) {
+        appendMetaRow(elements.selectedObjectMeta, "Feature Notes", object.fields.importFeatureDescription);
+      }
+      appendMetaRow(elements.selectedObjectMeta, "Imported At", formatDateTime(object.fields.importedAt));
+    }
     if (object.activeLockParticipantId && object.activeLockParticipantId !== state.actor?.id) {
       appendMetaRow(elements.selectedObjectMeta, "Lock", "Editing by another participant");
     }
@@ -8901,7 +8952,7 @@
   async function createObject(template, geometry, options = {}) {
     if (template?.objectType === MAP_NOTE_OBJECT_TYPE && !canManageMapNotes()) {
       setStatus("Only command staff can place map notes.");
-      return;
+      return false;
     }
     if (isScenarioReviewMode()) {
       const objectId = options.objectId || createLocalID();
@@ -8911,7 +8962,7 @@
         objectType: template.objectType,
         geometryType: template.geometryType,
         geometry: deepClone(geometry),
-        fields: buildInitialFields(template),
+        fields: buildInitialFields(template, options.fieldOverrides),
         createdByParticipantId: state.actor?.id || "scenario-review-local",
         updatedByParticipantId: state.actor?.id || "scenario-review-local",
         version: 1,
@@ -8926,7 +8977,7 @@
       syncIncidentFocusState({ notify: true });
       renderAll();
       setStatus(`${template.label} placed in editable scenario.`);
-      return;
+      return true;
     }
     const objectId = options.objectId || createLocalID();
     const result = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/mutations`, {
@@ -8940,12 +8991,15 @@
           objectType: template.objectType,
           geometryType: template.geometryType,
           geometry,
-          fields: buildInitialFields(template)
+          fields: buildInitialFields(template, options.fieldOverrides)
         }]
       }
     });
     applyMutationResponse(result);
-    setStatus(`${template.label} placed.`);
+    if (!options.silent) {
+      setStatus(`${template.label} placed.`);
+    }
+    return true;
   }
 
   async function buildAttachmentEntryForPlacement(payload, objectId) {
@@ -10235,8 +10289,8 @@
     return fields[key] ?? "";
   }
 
-  function buildInitialFields(template) {
-    const fields = { ...(template.defaults || {}) };
+  function buildInitialFields(template, overrides = null) {
+    const fields = { ...(template.defaults || {}), ...(overrides || {}) };
     if (template.objectType === "IncidentCommand") {
       const workspaceSession = getWorkspaceSession();
       fields.incidentName = fields.incidentName || elements.incidentNameInput.value.trim() || workspaceSession?.incidentName || "";
@@ -10361,6 +10415,433 @@
   function closeAddToCostModal() {
     state.addToCostObjectId = null;
     elements.addToCostModal?.classList.add("hidden");
+  }
+
+  function supportsShapeImport() {
+    return Boolean(state.activeSession) && sessionIsActive() && !state.viewerMode && !isScenarioReviewMode() && canCreateObjects();
+  }
+
+  function resetImportShapeState() {
+    state.importShapeParsed = null;
+    state.importShapeOpen = false;
+    if (elements.importShapeFileInput) elements.importShapeFileInput.value = "";
+    if (elements.importShapeFileMeta) elements.importShapeFileMeta.textContent = "Choose a `.kml`, `.geojson`, or `.json` file.";
+    if (elements.importShapeSummary) elements.importShapeSummary.textContent = "No file parsed yet.";
+    [
+      [elements.importShapePointField, elements.importShapePointSelect],
+      [elements.importShapeLineField, elements.importShapeLineSelect],
+      [elements.importShapePolygonField, elements.importShapePolygonSelect]
+    ].forEach(([field, select]) => {
+      field?.classList.add("hidden");
+      if (select) select.innerHTML = "";
+    });
+    if (elements.confirmImportShapeBtn) elements.confirmImportShapeBtn.disabled = true;
+  }
+
+  function openImportShapeModal() {
+    if (!supportsShapeImport()) {
+      setStatus("Shape import is only available in an active editable session.");
+      return;
+    }
+    resetImportShapeState();
+    state.importShapeOpen = true;
+    elements.importShapeModal?.classList.remove("hidden");
+  }
+
+  function closeImportShapeModal() {
+    state.importShapeOpen = false;
+    elements.importShapeModal?.classList.add("hidden");
+  }
+
+  function getImportTargetOptions(geometryType) {
+    return OBJECT_TEMPLATES.filter((template) => template.geometryType === geometryType)
+      .map((template) => ({
+        value: template.objectType,
+        label: template.label
+      }));
+  }
+
+  function populateImportTargetSelect(select, geometryType) {
+    if (!select) return;
+    const options = getImportTargetOptions(geometryType);
+    const defaultValue = geometryType === "point" && !canManageMapNotes()
+      ? (options.find((option) => option.value !== MAP_NOTE_OBJECT_TYPE)?.value || options[0]?.value || "")
+      : (IMPORT_SHAPE_DEFAULT_TARGETS[geometryType] || options[0]?.value || "");
+    select.innerHTML = "";
+    options.forEach((option) => {
+      const optionEl = document.createElement("option");
+      optionEl.value = option.value;
+      optionEl.textContent = option.label;
+      select.appendChild(optionEl);
+    });
+    select.value = options.some((option) => option.value === defaultValue) ? defaultValue : (options[0]?.value || "");
+  }
+
+  function updateImportShapeControls(parsed) {
+    const counts = parsed?.counts || { point: 0, line: 0, polygon: 0 };
+    if (elements.importShapePointField) {
+      elements.importShapePointField.classList.toggle("hidden", counts.point === 0);
+      populateImportTargetSelect(elements.importShapePointSelect, "point");
+    }
+    if (elements.importShapeLineField) {
+      elements.importShapeLineField.classList.toggle("hidden", counts.line === 0);
+      populateImportTargetSelect(elements.importShapeLineSelect, "line");
+    }
+    if (elements.importShapePolygonField) {
+      elements.importShapePolygonField.classList.toggle("hidden", counts.polygon === 0);
+      populateImportTargetSelect(elements.importShapePolygonSelect, "polygon");
+    }
+    if (elements.importShapeSummary) {
+      const parts = [];
+      if (counts.point) parts.push(`${counts.point} point${counts.point === 1 ? "" : "s"}`);
+      if (counts.line) parts.push(`${counts.line} line${counts.line === 1 ? "" : "s"}`);
+      if (counts.polygon) parts.push(`${counts.polygon} polygon${counts.polygon === 1 ? "" : "s"}`);
+      const supported = parts.length ? parts.join(" · ") : "No supported geometry found";
+      elements.importShapeSummary.innerHTML = `<span class="import-shape-summary-strong">${escapeHtml(parsed.fileName || "Import")}</span> · ${escapeHtml(parsed.format.toUpperCase())} · ${escapeHtml(supported)}`;
+    }
+    if (elements.confirmImportShapeBtn) {
+      elements.confirmImportShapeBtn.disabled = !parsed?.features?.length;
+    }
+  }
+
+  async function onImportShapeFileSelected(event) {
+    const file = event.target?.files && event.target.files[0];
+    state.importShapeParsed = null;
+    if (!file) {
+      resetImportShapeState();
+      return;
+    }
+    if (elements.importShapeFileMeta) {
+      elements.importShapeFileMeta.textContent = `Reading ${file.name}…`;
+    }
+    try {
+      const parsed = await parseImportedShapeFile(file);
+      state.importShapeParsed = parsed;
+      if (elements.importShapeFileMeta) {
+        elements.importShapeFileMeta.textContent = `${file.name} · ${parsed.features.length} supported feature${parsed.features.length === 1 ? "" : "s"}`;
+      }
+      updateImportShapeControls(parsed);
+      if (!parsed.features.length) {
+        setStatus("No supported points, lines, or polygons were found in that file.");
+      }
+    } catch (error) {
+      resetImportShapeState();
+      if (elements.importShapeFileMeta) {
+        elements.importShapeFileMeta.textContent = file.name;
+      }
+      setStatus(formatError(error));
+    }
+  }
+
+  async function parseImportedShapeFile(file) {
+    const name = String(file?.name || "shape");
+    const lowerName = name.toLowerCase();
+    const text = await file.text();
+    if (!text.trim()) {
+      throw new Error("That file is empty.");
+    }
+    if (lowerName.endsWith(".kml")) {
+      return {
+        format: "kml",
+        fileName: name,
+        ...parseKmlText(text)
+      };
+    }
+    if (lowerName.endsWith(".geojson") || lowerName.endsWith(".json")) {
+      return {
+        format: "geojson",
+        fileName: name,
+        ...parseGeoJsonText(text)
+      };
+    }
+    throw new Error("Only KML and GeoJSON files are supported right now.");
+  }
+
+  function buildImportCounts(features) {
+    return features.reduce((counts, feature) => {
+      counts[feature.geometryType] += 1;
+      return counts;
+    }, { point: 0, line: 0, polygon: 0 });
+  }
+
+  function parseKmlText(text) {
+    const parser = new DOMParser();
+    const xml = parser.parseFromString(text, "application/xml");
+    const parserError = xml.querySelector("parsererror");
+    if (parserError) {
+      throw new Error("This KML file could not be parsed.");
+    }
+    const placemarks = Array.from(xml.getElementsByTagName("Placemark"));
+    const features = [];
+    placemarks.forEach((placemark) => {
+      const name = placemark.getElementsByTagName("name")[0]?.textContent?.trim() || "";
+      const description = placemark.getElementsByTagName("description")[0]?.textContent?.trim() || "";
+      extractKmlFeaturesFromNode(placemark, { name, description }).forEach((feature) => {
+        if (feature) features.push(feature);
+      });
+    });
+    return {
+      features,
+      counts: buildImportCounts(features)
+    };
+  }
+
+  function extractKmlFeaturesFromNode(node, meta) {
+    const features = [];
+    Array.from(node.childNodes || []).forEach((child) => {
+      if (!(child instanceof Element)) return;
+      const tagName = child.tagName.split(":").pop();
+      if (tagName === "Point") {
+        const point = parseKmlPoint(child);
+        if (point) {
+          features.push({ geometryType: "point", geometry: point, name: meta.name, description: meta.description });
+        }
+      } else if (tagName === "LineString") {
+        const line = parseKmlLineString(child);
+        if (line) {
+          features.push({ geometryType: "line", geometry: { points: line }, name: meta.name, description: meta.description });
+        }
+      } else if (tagName === "Polygon") {
+        const polygon = parseKmlPolygon(child);
+        if (polygon) {
+          features.push({ geometryType: "polygon", geometry: { points: polygon }, name: meta.name, description: meta.description });
+        }
+      } else if (tagName === "MultiGeometry") {
+        extractKmlFeaturesFromNode(child, meta).forEach((feature) => features.push(feature));
+      }
+    });
+    return features;
+  }
+
+  function parseKmlCoordinates(text) {
+    return String(text || "")
+      .trim()
+      .split(/\s+/)
+      .map((pair) => pair.split(","))
+      .map(([lng, lat]) => ({ lat: roundCoord(Number(lat)), lng: roundCoord(Number(lng)) }))
+      .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+  }
+
+  function parseKmlPoint(node) {
+    const coordinatesText = node.getElementsByTagName("coordinates")[0]?.textContent || "";
+    return parseKmlCoordinates(coordinatesText)[0] || null;
+  }
+
+  function parseKmlLineString(node) {
+    const coordinatesText = node.getElementsByTagName("coordinates")[0]?.textContent || "";
+    const points = parseKmlCoordinates(coordinatesText);
+    return points.length >= 2 ? points : null;
+  }
+
+  function parseKmlPolygon(node) {
+    const outerBoundary = node.getElementsByTagName("outerBoundaryIs")[0];
+    const coordinatesText = outerBoundary?.getElementsByTagName("coordinates")[0]?.textContent || "";
+    const points = parseKmlCoordinates(coordinatesText);
+    return points.length >= 3 ? points : null;
+  }
+
+  function parseGeoJsonText(text) {
+    let payload;
+    try {
+      payload = JSON.parse(text);
+    } catch (_error) {
+      throw new Error("This GeoJSON file could not be parsed.");
+    }
+    const features = [];
+    normalizeGeoJsonRoot(payload).forEach((entry) => {
+      normalizeGeoJsonGeometry(entry.geometry, {
+        name: entry.name,
+        description: entry.description
+      }).forEach((feature) => {
+        if (feature) features.push(feature);
+      });
+    });
+    return {
+      features,
+      counts: buildImportCounts(features)
+    };
+  }
+
+  function normalizeGeoJsonRoot(payload) {
+    if (!payload || typeof payload !== "object") {
+      throw new Error("This GeoJSON payload is not valid.");
+    }
+    if (payload.type === "FeatureCollection") {
+      return (Array.isArray(payload.features) ? payload.features : []).map((feature) => normalizeGeoJsonFeature(feature));
+    }
+    if (payload.type === "Feature") {
+      return [normalizeGeoJsonFeature(payload)];
+    }
+    if (payload.type) {
+      return [normalizeGeoJsonFeature({ type: "Feature", geometry: payload, properties: {} })];
+    }
+    throw new Error("Unsupported GeoJSON structure.");
+  }
+
+  function normalizeGeoJsonFeature(feature) {
+    const properties = feature?.properties && typeof feature.properties === "object" ? feature.properties : {};
+    return {
+      geometry: feature?.geometry || null,
+      name: String(properties.name || properties.title || "").trim(),
+      description: String(properties.description || "").trim()
+    };
+  }
+
+  function normalizeGeoJsonGeometry(geometry, meta) {
+    if (!geometry || typeof geometry !== "object") return [];
+    const type = String(geometry.type || "");
+    const coordinates = geometry.coordinates;
+    if (type === "Point") {
+      const point = normalizeGeoJsonPoint(coordinates);
+      return point ? [{ geometryType: "point", geometry: point, ...meta }] : [];
+    }
+    if (type === "LineString") {
+      const line = normalizeGeoJsonLine(coordinates);
+      return line ? [{ geometryType: "line", geometry: { points: line }, ...meta }] : [];
+    }
+    if (type === "Polygon") {
+      const polygon = normalizeGeoJsonPolygon(coordinates);
+      return polygon ? [{ geometryType: "polygon", geometry: { points: polygon }, ...meta }] : [];
+    }
+    if (type === "MultiPoint") {
+      return (Array.isArray(coordinates) ? coordinates : [])
+        .map((entry) => normalizeGeoJsonPoint(entry))
+        .filter(Boolean)
+        .map((point) => ({ geometryType: "point", geometry: point, ...meta }));
+    }
+    if (type === "MultiLineString") {
+      return (Array.isArray(coordinates) ? coordinates : [])
+        .map((entry) => normalizeGeoJsonLine(entry))
+        .filter(Boolean)
+        .map((line) => ({ geometryType: "line", geometry: { points: line }, ...meta }));
+    }
+    if (type === "MultiPolygon") {
+      return (Array.isArray(coordinates) ? coordinates : [])
+        .map((entry) => normalizeGeoJsonPolygon(entry))
+        .filter(Boolean)
+        .map((polygon) => ({ geometryType: "polygon", geometry: { points: polygon }, ...meta }));
+    }
+    return [];
+  }
+
+  function normalizeGeoJsonPoint(coordinates) {
+    if (!Array.isArray(coordinates) || coordinates.length < 2) return null;
+    const point = {
+      lat: roundCoord(Number(coordinates[1])),
+      lng: roundCoord(Number(coordinates[0]))
+    };
+    return Number.isFinite(point.lat) && Number.isFinite(point.lng) ? point : null;
+  }
+
+  function normalizeGeoJsonLine(coordinates) {
+    if (!Array.isArray(coordinates)) return null;
+    const points = coordinates.map((entry) => normalizeGeoJsonPoint(entry)).filter(Boolean);
+    return points.length >= 2 ? points : null;
+  }
+
+  function normalizeGeoJsonPolygon(coordinates) {
+    if (!Array.isArray(coordinates) || !Array.isArray(coordinates[0])) return null;
+    const points = coordinates[0].map((entry) => normalizeGeoJsonPoint(entry)).filter(Boolean);
+    return points.length >= 3 ? points : null;
+  }
+
+  function getImportTargetTypeForGeometry(geometryType) {
+    if (geometryType === "point") return String(elements.importShapePointSelect?.value || IMPORT_SHAPE_DEFAULT_TARGETS.point);
+    if (geometryType === "line") return String(elements.importShapeLineSelect?.value || IMPORT_SHAPE_DEFAULT_TARGETS.line);
+    return String(elements.importShapePolygonSelect?.value || IMPORT_SHAPE_DEFAULT_TARGETS.polygon);
+  }
+
+  function buildImportedFieldOverrides(template, feature, parsed) {
+    const nowIso = new Date().toISOString();
+    const name = String(feature?.name || "").trim();
+    const description = String(feature?.description || "").trim();
+    const overrides = {
+      importSourceFormat: parsed.format,
+      importSourceFileName: parsed.fileName,
+      importFeatureName: name,
+      importFeatureDescription: description,
+      importedAt: nowIso
+    };
+    if (template.objectType === MAP_NOTE_OBJECT_TYPE) {
+      overrides.title = name || template.label;
+      overrides.noteText = description || name || "";
+    } else if (template.objectType === "Division") {
+      overrides.divisionName = name || "";
+      overrides.supervisor = "";
+    } else if (template.objectType === "HoseLine") {
+      overrides.assignment = name || "";
+    }
+    return overrides;
+  }
+
+  function collectImportBounds(features) {
+    const latLngs = [];
+    features.forEach((feature) => {
+      if (feature.geometryType === "point") {
+        latLngs.push([feature.geometry.lat, feature.geometry.lng]);
+      } else {
+        (feature.geometry?.points || []).forEach((point) => {
+          latLngs.push([point.lat, point.lng]);
+        });
+      }
+    });
+    return latLngs.length ? L.latLngBounds(latLngs) : null;
+  }
+
+  async function confirmImportShape() {
+    if (!supportsShapeImport()) {
+      setStatus("Shape import is only available in an active editable session.");
+      return;
+    }
+    const parsed = state.importShapeParsed;
+    if (!parsed?.features?.length) {
+      setStatus("Choose a valid KML or GeoJSON file first.");
+      return;
+    }
+    const counts = { created: 0, skipped: 0, unsupported: 0 };
+    const importedFeatures = [];
+    if (elements.confirmImportShapeBtn) elements.confirmImportShapeBtn.disabled = true;
+    try {
+      for (const feature of parsed.features) {
+        const targetType = getImportTargetTypeForGeometry(feature.geometryType);
+        const template = templateByType[targetType];
+        if (!template) {
+          counts.skipped += 1;
+          continue;
+        }
+        const geometryMatches = template.geometryType === feature.geometryType;
+        if (!geometryMatches) {
+          counts.unsupported += 1;
+          continue;
+        }
+        const created = await createObject(template, feature.geometry, {
+          fieldOverrides: buildImportedFieldOverrides(template, feature, parsed),
+          silent: true
+        });
+        if (created) {
+          counts.created += 1;
+          importedFeatures.push(feature);
+        } else {
+          counts.skipped += 1;
+        }
+      }
+      if (!counts.created) {
+        setStatus("No shapes were imported from that file.");
+        return;
+      }
+      const bounds = collectImportBounds(importedFeatures);
+      if (bounds && state.map) {
+        state.map.fitBounds(bounds.pad(0.12));
+      }
+      closeImportShapeModal();
+      setStatus(`Imported ${counts.created} shape${counts.created === 1 ? "" : "s"} from ${parsed.fileName}.${counts.skipped ? ` Skipped ${counts.skipped}.` : ""}${counts.unsupported ? ` Unsupported ${counts.unsupported}.` : ""}`);
+    } catch (error) {
+      setStatus(formatError(error));
+    } finally {
+      if (elements.confirmImportShapeBtn) {
+        elements.confirmImportShapeBtn.disabled = !(state.importShapeParsed?.features?.length);
+      }
+    }
   }
 
   async function saveSelectedObjectAsCostedResource() {

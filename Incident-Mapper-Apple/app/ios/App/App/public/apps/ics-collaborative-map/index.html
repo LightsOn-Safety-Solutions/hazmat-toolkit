@@ -41,6 +41,7 @@
           <button id="superAdminWorkspaceBtn" class="secondary hidden" type="button">Super Admin</button>
           <button id="ics202WorkspaceBtn" class="secondary hidden" type="button">ICS 202</button>
           <button id="commandStructureWorkspaceBtn" class="secondary hidden" type="button">Command Structure</button>
+          <button id="importShapeBtn" class="secondary hidden" type="button">Import Shape</button>
           <button id="routeFromStationBtn" class="secondary hidden" type="button">Route From Station</button>
           <button id="attachImageBtn" class="secondary hidden topbar-icon-btn" type="button" aria-label="Add Image" title="Add Image">
             <span aria-hidden="true">📷</span>
@@ -1215,6 +1216,38 @@
       <div class="row" style="justify-content:flex-end;">
         <button id="cancelAddToCostBtn" class="secondary" type="button">Cancel</button>
         <button id="saveAddToCostBtn" class="primary" type="button">Add to Cost</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="importShapeModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="importShapeTitle">
+    <div class="modal-card import-shape-modal-card">
+      <div class="panel-header">
+        <div>
+          <h2 id="importShapeTitle">Import Shape</h2>
+          <div class="muted">Import KML first, with optional GeoJSON support for the current active session.</div>
+        </div>
+      </div>
+      <input id="importShapeFileInput" type="file" accept=".kml,.geojson,.json,application/vnd.google-earth.kml+xml,application/geo+json,application/json" />
+      <div id="importShapeFileMeta" class="muted">Choose a `.kml`, `.geojson`, or `.json` file.</div>
+      <div class="import-shape-grid">
+        <label id="importShapePointField" class="field-block hidden">
+          Point Target
+          <select id="importShapePointSelect"></select>
+        </label>
+        <label id="importShapeLineField" class="field-block hidden">
+          Line Target
+          <select id="importShapeLineSelect"></select>
+        </label>
+        <label id="importShapePolygonField" class="field-block hidden">
+          Polygon Target
+          <select id="importShapePolygonSelect"></select>
+        </label>
+      </div>
+      <div id="importShapeSummary" class="muted">No file parsed yet.</div>
+      <div class="row" style="justify-content:flex-end;">
+        <button id="cancelImportShapeBtn" class="secondary" type="button">Cancel</button>
+        <button id="confirmImportShapeBtn" class="primary" type="button" disabled>Import</button>
       </div>
     </div>
   </div>

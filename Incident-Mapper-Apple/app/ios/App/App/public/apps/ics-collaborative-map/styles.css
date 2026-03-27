@@ -1872,6 +1872,21 @@ body[data-theme="light"] #deleteObjectBtn {
 .add-to-cost-modal-card {
   width: min(760px, 100%);
 }
+.import-shape-modal-card {
+  width: min(640px, 100%);
+}
+.import-shape-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-3);
+}
+.import-shape-grid .field-block {
+  margin: 0;
+}
+.import-shape-summary-strong {
+  color: var(--text);
+  font-weight: 700;
+}
 .add-to-cost-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -2762,6 +2777,9 @@ body[data-theme="light"] .attachment-preview-img {
     grid-template-columns: minmax(0, 1fr);
   }
   .super-admin-session-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .import-shape-grid {
     grid-template-columns: minmax(0, 1fr);
   }
 }
