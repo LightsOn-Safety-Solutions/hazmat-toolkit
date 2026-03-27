@@ -6400,7 +6400,7 @@
   function selectCommandStructureRole(roleId) {
     if (!COMMAND_STRUCTURE_ROLE_BY_ID[roleId]) return;
     state.commandStructureSelectedRoleId = roleId;
-    state.commandStructurePanelOpen = true;
+    state.commandStructurePanelOpen = false;
     renderCommandStructureWorkspace();
   }
 
@@ -6613,20 +6613,11 @@
   }
 
   function renderCommandStructureRolePanel() {
-    const selected = getCommandStructureSelectedRole();
-    const panelOpen = Boolean(state.commandStructurePanelOpen);
-    elements.commandStructureRolePanel?.classList.toggle("is-open", panelOpen);
-    elements.commandStructureRolePanel?.classList.toggle("hidden", !panelOpen);
-    elements.commandStructureRoleEmpty?.classList.toggle("hidden", !panelOpen || Boolean(selected));
-    elements.commandStructureRoleEditor?.classList.toggle("hidden", !panelOpen || !selected);
-    if (!selected) return;
-    elements.commandStructureRoleTitle.textContent = selected.label;
-    elements.commandStructureRolePath.textContent = getCommandStructureRolePath(selected.roleId);
-    elements.commandStructureRoleStatus.textContent = selected.status === "assigned" ? "Assigned" : "Empty";
-    elements.commandStructureRoleStatus.classList.toggle("assigned", selected.status === "assigned");
-    elements.commandStructureAssignedUser.textContent = selected.assignedUser?.name || "Unassigned";
-    elements.commandStructureAssigneeInput.value = selected.assignedUser?.name || "";
-    elements.commandStructureRemoveBtn.disabled = !selected.assignedUser;
+    state.commandStructurePanelOpen = false;
+    elements.commandStructureRolePanel?.classList.remove("is-open");
+    elements.commandStructureRolePanel?.classList.add("hidden");
+    elements.commandStructureRoleEmpty?.classList.remove("hidden");
+    elements.commandStructureRoleEditor?.classList.add("hidden");
   }
 
   function renderCommandStructureSummary() {
@@ -6654,7 +6645,7 @@
     elements.commandStructureWorkspace.classList.toggle("hidden", !visible);
     elements.commandStructureWorkspace.setAttribute("aria-hidden", String(!visible));
     if (!visible) return;
-    elements.commandStructureWorkspace.classList.toggle("panel-open", Boolean(state.commandStructurePanelOpen));
+    elements.commandStructureWorkspace.classList.remove("panel-open");
     ensureCommandStructureDraft();
     prefillCommandStructureDraftFromWorkspace();
     saveCommandStructureDraft();
