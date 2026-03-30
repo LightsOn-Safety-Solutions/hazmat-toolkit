@@ -14,6 +14,7 @@
   const UPDATE_FLUSH_MS = 10000;
   const ICON_MANIFEST_URL = "./icon-manifest.json";
   const ICON_MARKER_OBJECT_TYPE = "IconMarker";
+  const ADDRESS_GEOCODER_URL = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates";
   const ICS_ROLES = [
     "Incident Commander",
     "Operations Section Chief",
@@ -117,6 +118,11 @@
     startGuidedSetupBtn: document.getElementById("startGuidedSetupBtn"),
     guidedModeBtn: document.getElementById("guidedModeBtn"),
     guidedSetupToggle: document.getElementById("guidedSetupToggle"),
+    addressFocusBtn: document.getElementById("addressFocusBtn"),
+    addressFocusModal: document.getElementById("addressFocusModal"),
+    addressFocusInput: document.getElementById("addressFocusInput"),
+    submitAddressFocusBtn: document.getElementById("submitAddressFocusBtn"),
+    closeAddressFocusBtn: document.getElementById("closeAddressFocusBtn"),
     locateUserBtn: document.getElementById("locateUserBtn"),
     mapStyleLauncherBtn: document.getElementById("mapStyleLauncherBtn"),
     mapStyleCloseBtn: document.getElementById("mapStyleCloseBtn"),
@@ -191,6 +197,7 @@
     objectLayerGroup: null,
     currentLocationMarker: null,
     currentLocation: null,
+    addressFocusMarker: null,
     previewLayer: null,
     sessionRefreshNonce: 0,
     dragTemplateType: null,
@@ -257,6 +264,11 @@
     elements.startGuidedSetupBtn.addEventListener("click", () => toggleGuidedMode(true));
     elements.guidedModeBtn.addEventListener("click", () => toggleGuidedMode(!state.guidedMode));
     elements.guidedSetupToggle.addEventListener("change", (event) => toggleGuidedMode(event.target.checked));
+    elements.addressFocusBtn.addEventListener("click", showAddressFocusModal);
+    elements.submitAddressFocusBtn.addEventListener("click", submitAddressFocus);
+    elements.closeAddressFocusBtn.addEventListener("click", hideAddressFocusModal);
+    elements.addressFocusModal.addEventListener("click", onAddressFocusModalBackdropClick);
+    elements.addressFocusInput.addEventListener("keydown", onAddressFocusInputKeyDown);
     elements.locateUserBtn.addEventListener("click", onLocateUserClick);
     elements.mapStyleLauncherBtn.addEventListener("click", toggleMapStyleTray);
     elements.mapStyleCloseBtn.addEventListener("click", closeMapStyleTray);
@@ -315,6 +327,108 @@
 
   function onLocateUserClick() {
     requestCurrentLocation({ recenter: true, force: true });
+  }
+
+  function showAddressFocusModal() {
+    elements.addressFocusModal.classList.remove("hidden");
+    window.setTimeout(() => {
+      elements.addressFocusInput?.focus();
+      elements.addressFocusInput?.select();
+    }, 0);
+  }
+
+  function hideAddressFocusModal() {
+    elements.addressFocusModal.classList.add("hidden");
+  }
+
+  function onAddressFocusModalBackdropClick(event) {
+    if (event.target === elements.addressFocusModal) {
+      hideAddressFocusModal();
+    }
+  }
+
+  function onAddressFocusInputKeyDown(event) {
+    if (event.key === "Enter") {
+      event.preventDefault();
+      submitAddressFocus();
+      return;
+    }
+    if (event.key === "Escape") {
+      hideAddressFocusModal();
+    }
+  }
+
+  async function submitAddressFocus() {
+    const rawAddress = elements.addressFocusInput.value.trim();
+    if (!rawAddress) {
+      setStatus("Enter an address to center the map.");
+      elements.addressFocusInput.focus();
+      return;
+    }
+    const originalLabel = elements.submitAddressFocusBtn.textContent;
+    elements.submitAddressFocusBtn.disabled = true;
+    elements.closeAddressFocusBtn.disabled = true;
+    elements.addressFocusInput.disabled = true;
+    elements.submitAddressFocusBtn.textContent = "Finding Address...";
+    setStatus("Finding incident address...");
+    try {
+      const candidate = await geocodeAddress(rawAddress);
+      if (!candidate) {
+        setStatus("No matching address was found.");
+        return;
+      }
+      const latLng = [candidate.location.y, candidate.location.x];
+      state.map.setView(latLng, 16);
+      renderAddressFocusMarker({
+        lat: candidate.location.y,
+        lng: candidate.location.x,
+        label: candidate.address || rawAddress
+      });
+      scheduleMapResizeRefresh();
+      hideAddressFocusModal();
+      setStatus(`Centered map on ${candidate.address || rawAddress}.`);
+    } catch (error) {
+      console.warn("Unable to geocode incident address.", error);
+      setStatus("Unable to find that address right now.");
+    } finally {
+      elements.submitAddressFocusBtn.disabled = false;
+      elements.closeAddressFocusBtn.disabled = false;
+      elements.addressFocusInput.disabled = false;
+      elements.submitAddressFocusBtn.textContent = originalLabel;
+    }
+  }
+
+  async function geocodeAddress(address) {
+    const url = new URL(ADDRESS_GEOCODER_URL);
+    url.searchParams.set("f", "json");
+    url.searchParams.set("SingleLine", address);
+    url.searchParams.set("maxLocations", "1");
+    url.searchParams.set("outFields", "Match_addr,Addr_type");
+    const response = await fetch(url.toString(), { cache: "no-store" });
+    if (!response.ok) {
+      throw new Error(`Geocoder request failed (${response.status})`);
+    }
+    const payload = await response.json();
+    const candidate = Array.isArray(payload?.candidates) ? payload.candidates[0] : null;
+    if (!candidate?.location || typeof candidate.location.x !== "number" || typeof candidate.location.y !== "number") {
+      return null;
+    }
+    return {
+      address: candidate.address || address,
+      location: candidate.location
+    };
+  }
+
+  function renderAddressFocusMarker({ lat, lng, label }) {
+    if (!state.map || !state.objectLayerGroup) return;
+    if (state.addressFocusMarker) {
+      state.objectLayerGroup.removeLayer(state.addressFocusMarker);
+      state.addressFocusMarker = null;
+    }
+    state.addressFocusMarker = L.marker([lat, lng], { title: label })
+      .bindPopup(`<strong>Incident Focus</strong><br>${escapeHtml(label)}`)
+      .addTo(state.objectLayerGroup);
+    state.addressFocusMarker.openPopup();
   }
 
   function createBaseLayers() {

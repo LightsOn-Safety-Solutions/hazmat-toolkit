@@ -224,6 +224,9 @@
         <section class="map-stage">
           <div id="map"></div>
           <div class="map-style-dock">
+            <button id="addressFocusBtn" class="map-address-btn" type="button" aria-label="Center map on an address">
+              <span class="map-address-btn-label">ADDR</span>
+            </button>
             <button id="locateUserBtn" class="map-locate-btn" type="button" aria-label="Center on your current location">
               <span class="map-locate-btn-icon">◎</span>
             </button>
@@ -291,6 +294,21 @@
         <input id="viewerQrLink" type="text" readonly />
       </label>
       <button id="copyViewerLinkBtn" class="secondary" type="button">Copy Viewer Link</button>
+    </div>
+  </div>
+
+  <div id="addressFocusModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="addressFocusTitle">
+    <div class="modal-card modal-card-wide">
+      <div class="modal-header">
+        <h2 id="addressFocusTitle">Set Map Focus</h2>
+        <button id="closeAddressFocusBtn" class="secondary" type="button">Close</button>
+      </div>
+      <p class="muted">Enter the dispatch or incident address and the map will center there for the current session.</p>
+      <label>
+        Incident Address
+        <input id="addressFocusInput" type="text" placeholder="123 Main St, Tulsa, OK" autocomplete="street-address" />
+      </label>
+      <button id="submitAddressFocusBtn" class="primary" type="button">Center on Address</button>
     </div>
   </div>
 
