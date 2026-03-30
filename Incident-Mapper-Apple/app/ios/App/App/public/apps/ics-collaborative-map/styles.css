@@ -1599,6 +1599,25 @@ body[data-theme="light"] .map-sidebar-toggle {
   font-size: 22px;
   font-weight: 700;
 }
+.map-locate-launcher {
+  min-width: 50px;
+  height: 50px;
+  padding: 0 var(--space-4);
+  border-radius: 16px;
+  background: rgba(10,10,10,0.94);
+  color: #f8f9fa;
+  border: 1px solid rgba(110,193,255,0.34);
+  box-shadow: var(--shadow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  font-size: 22px;
+  font-weight: 700;
+}
+.map-locate-launcher-icon {
+  line-height: 1;
+}
 .map-focus-launcher-icon {
   line-height: 1;
 }

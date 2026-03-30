@@ -483,6 +483,7 @@
     weatherMeta: document.getElementById("weatherMeta"),
     weatherMetrics: document.getElementById("weatherMetrics"),
     refreshWeatherBtn: document.getElementById("refreshWeatherBtn"),
+    locateUserBtn: document.getElementById("locateUserBtn"),
     viewerCenterIncidentBtn: document.getElementById("viewerCenterIncidentBtn"),
     guidedSetupToggle: document.getElementById("guidedSetupToggle"),
     mapStyleLauncherBtn: document.getElementById("mapStyleLauncherBtn"),
@@ -1435,6 +1436,7 @@
     });
     elements.addressIncidentFocusModal?.addEventListener("click", onAddressIncidentFocusModalBackdropClick);
     elements.addressIncidentFocusInput?.addEventListener("keydown", onAddressIncidentFocusInputKeyDown);
+    elements.locateUserBtn?.addEventListener("click", onLocateUserClick);
     elements.weatherLauncherBtn.addEventListener("click", toggleWeatherPanel);
     elements.refreshWeatherBtn.addEventListener("click", () => {
       void refreshWeatherForCurrentTarget({ force: true, silent: false });
@@ -1742,7 +1744,13 @@
   }
 
   function requestCurrentLocation({ recenter = false, force = false } = {}) {
-    if (!navigator.geolocation || !state.map) return;
+    if (!state.map) return;
+    if (!navigator.geolocation) {
+      if (force) {
+        setStatus("Location is not available in this browser.");
+      }
+      return;
+    }
     navigator.geolocation.getCurrentPosition(
       (position) => {
         if (!state.map) return;
@@ -1768,7 +1776,17 @@
           setStatus("Centered map on your current location.");
         }
       },
-      () => {
+      (error) => {
+        if (force) {
+          const message = error?.code === 1
+            ? "Location access was denied."
+            : error?.code === 2
+              ? "Unable to determine your current location."
+              : error?.code === 3
+                ? "Location request timed out."
+                : "Unable to fetch your current location.";
+          setStatus(message);
+        }
         // Leave the default map extent in place when geolocation is unavailable or denied.
       },
       {
@@ -1795,6 +1813,10 @@
     })
       .bindTooltip(`Current location${accuracy ? ` (+/- ${Math.round(accuracy)} m)` : ""}`, { direction: "top" })
       .addTo(state.objectLayerGroup);
+  }
+
+  function onLocateUserClick() {
+    requestCurrentLocation({ recenter: true, force: true });
   }
 
   async function hydrateAuthUI() {
