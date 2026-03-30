@@ -802,7 +802,8 @@ body[data-theme="light"] .toast {
 }
 body[data-theme="light"] .map-style-launcher,
 body[data-theme="light"] .map-focus-launcher,
-body[data-theme="light"] .map-weather-launcher {
+body[data-theme="light"] .map-weather-launcher,
+body[data-theme="light"] .map-locate-launcher {
   background: rgba(255,255,255,0.96);
 }
 body[data-theme="light"] .isolation-suggestions {
