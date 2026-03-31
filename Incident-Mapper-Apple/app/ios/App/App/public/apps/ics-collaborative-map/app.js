@@ -3706,6 +3706,11 @@
     }
     if (sectionKey === "reviewSessions" && !state.collapsedLandingSections.has(sectionKey)) {
       renderCommanderSessions(state.commanderSessions);
+      renderLandingSectionCollapses({ highlightedSectionKey: sectionKey });
+      window.requestAnimationFrame(() => {
+        renderLandingSectionCollapses({ highlightedSectionKey: sectionKey });
+      });
+      return;
     }
     renderLandingSectionCollapses({ highlightedSectionKey: sectionKey });
   }
