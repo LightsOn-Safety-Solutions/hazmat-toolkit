@@ -3725,13 +3725,15 @@
     if (!bodyElement || !toggleElement) return;
     const { immediate = false, highlightedSectionKey = "" } = options;
     const collapsed = state.collapsedLandingSections.has(sectionKey);
+    bodyElement.classList.remove("hidden");
+    bodyElement.classList.remove("landing-card-body-collapsed");
+    const expandedHeight = Math.max(bodyElement.scrollHeight, 1);
+    bodyElement.style.setProperty("--landing-section-max-height", `${expandedHeight}px`);
     toggleElement.setAttribute("aria-expanded", String(!collapsed));
     toggleElement.classList.toggle("landing-card-toggle-expanded", !collapsed);
-    bodyElement.classList.remove("hidden");
     bodyElement.classList.toggle("landing-card-body-collapsed", collapsed);
     bodyElement.setAttribute("aria-hidden", String(collapsed));
     bodyElement.inert = collapsed;
-    bodyElement.style.setProperty("--landing-section-max-height", `${bodyElement.scrollHeight}px`);
     if (immediate) {
       bodyElement.classList.add("landing-card-body-no-motion");
     } else {
