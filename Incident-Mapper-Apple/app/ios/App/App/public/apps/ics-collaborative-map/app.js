@@ -2444,6 +2444,8 @@
         points,
         distanceMeters: round2(distanceMeters),
         distanceMiles: round2(distanceMeters / 1609.344),
+        durationSeconds: Number.isFinite(Number(route?.duration)) && Number(route?.duration) > 0 ? round2(Number(route.duration)) : 0,
+        durationMinutes: Number.isFinite(Number(route?.duration)) && Number(route?.duration) > 0 ? round2(Number(route.duration) / 60) : 0,
         isEstimated: false
       };
     } catch (error) {
@@ -2464,6 +2466,8 @@
       ],
       distanceMeters: round2(distanceMeters),
       distanceMiles: round2(distanceMeters / 1609.344),
+      durationSeconds: 0,
+      durationMinutes: 0,
       isEstimated: true
     };
   }
@@ -2520,6 +2524,10 @@
         { lat: station.stationLat, lng: station.stationLng },
         { lat: incidentFocus.lat, lng: incidentFocus.lng }
       );
+      const roundTripDistanceMeters = round2(route.distanceMeters * 2);
+      const roundTripDistanceMiles = round2(route.distanceMiles * 2);
+      const roundTripDurationSeconds = round2(route.durationSeconds * 2);
+      const roundTripDurationMinutes = round2(route.durationMinutes * 2);
       const displayLabel = `${station.stationName} to ${incidentFocus.label || "Incident"} Mileage Route`;
       const routeDescriptor = route.isEstimated ? "Direct line estimate" : "Road route";
       const nextFields = {
@@ -2529,8 +2537,18 @@
         stationRouteOriginName: station.stationName,
         stationRouteOriginAddress: station.stationAddress,
         stationRouteDestinationLabel: incidentFocus.label || "Incident Focus",
-        stationRouteDistanceMeters: route.distanceMeters,
-        stationRouteDistanceMiles: route.distanceMiles,
+        stationRouteDistanceMeters: roundTripDistanceMeters,
+        stationRouteDistanceMiles: roundTripDistanceMiles,
+        stationRouteDurationSeconds: roundTripDurationSeconds,
+        stationRouteDurationMinutes: roundTripDurationMinutes,
+        stationRouteOutboundDistanceMeters: route.distanceMeters,
+        stationRouteOutboundDistanceMiles: route.distanceMiles,
+        stationRouteOutboundDurationSeconds: route.durationSeconds,
+        stationRouteOutboundDurationMinutes: route.durationMinutes,
+        stationRouteRoundTripDistanceMeters: roundTripDistanceMeters,
+        stationRouteRoundTripDistanceMiles: roundTripDistanceMiles,
+        stationRouteRoundTripDurationSeconds: roundTripDurationSeconds,
+        stationRouteRoundTripDurationMinutes: roundTripDurationMinutes,
         displayLabel,
         resourceType: "custom",
         resourceTemplateId: "department_station_mileage_route",
@@ -2538,20 +2556,20 @@
         company: state.organizationContext?.organizationName || "",
         billingModel: "quantity",
         unit: "mile",
-        quantity: route.distanceMiles,
+        quantity: roundTripDistanceMiles,
         costRate: station.defaultMileageRate,
         costCode: STATION_ROUTE_COST_CODE,
         description: route.isEstimated
-          ? "Department station to incident direct-line mileage estimate"
-          : "Department station to incident mileage route",
+          ? "Department station to incident direct-line mileage estimate with return trip"
+          : "Department station to incident mileage route with return trip",
         manufacturer: "",
-        specification: routeDescriptor,
+        specification: route.isEstimated ? "Direct line estimate (round trip)" : "Road route (round trip)",
         customResource: true,
         placedAt: new Date().toISOString(),
         demobilizedAt: "",
         notes: route.isEstimated
-          ? `${station.stationAddress} to ${incidentFocus.label || "Incident Focus"} · routing service unavailable, showing direct line estimate`
-          : `${station.stationAddress} to ${incidentFocus.label || "Incident Focus"}`
+          ? `${station.stationAddress} to ${incidentFocus.label || "Incident Focus"} and back to station · routing service unavailable, showing direct line estimate`
+          : `${station.stationAddress} to ${incidentFocus.label || "Incident Focus"} and back to station`
       };
       const existingRoute = findDepartmentStationRouteObject();
       if (existingRoute) {
@@ -2581,9 +2599,11 @@
           }
         }, { points: route.points });
       }
-      setStatus(route.isEstimated
-        ? `${displayLabel} added as a direct line estimate at ${route.distanceMiles.toFixed(2)} miles.`
-        : `${displayLabel} updated at ${route.distanceMiles.toFixed(2)} miles.`);
+      if (route.isEstimated) {
+        setStatus(`${displayLabel} added as a round-trip direct line estimate at ${roundTripDistanceMiles.toFixed(2)} miles.`);
+      } else {
+        setStatus(`${displayLabel} updated at ${roundTripDistanceMiles.toFixed(2)} round-trip miles and ${formatDurationMinutes(roundTripDurationMinutes)}.`);
+      }
     } catch (error) {
       setStatus(formatError(error));
     }
@@ -8586,6 +8606,24 @@
       if (Number(object.fields?.quantity || 0) > 0) {
         appendMetaRow(elements.selectedObjectMeta, "Quantity", String(object.fields.quantity));
       }
+      if (isDepartmentStationRouteObject(object)) {
+        const outboundMiles = Number(object.fields?.stationRouteOutboundDistanceMiles || 0);
+        const roundTripMiles = Number(object.fields?.stationRouteRoundTripDistanceMiles || object.fields?.stationRouteDistanceMiles || 0);
+        const outboundMinutes = Number(object.fields?.stationRouteOutboundDurationMinutes || 0);
+        const roundTripMinutes = Number(object.fields?.stationRouteRoundTripDurationMinutes || object.fields?.stationRouteDurationMinutes || 0);
+        if (outboundMiles > 0) {
+          appendMetaRow(elements.selectedObjectMeta, "Outbound Miles", outboundMiles.toFixed(2));
+        }
+        if (roundTripMiles > 0) {
+          appendMetaRow(elements.selectedObjectMeta, "Round Trip Miles", roundTripMiles.toFixed(2));
+        }
+        if (outboundMinutes > 0) {
+          appendMetaRow(elements.selectedObjectMeta, "Outbound Travel", formatDurationMinutes(outboundMinutes));
+        }
+        if (roundTripMinutes > 0) {
+          appendMetaRow(elements.selectedObjectMeta, "Round Trip Travel", formatDurationMinutes(roundTripMinutes));
+        }
+      }
     } else if (object.objectType === MAP_NOTE_OBJECT_TYPE) {
       appendMetaRow(elements.selectedObjectMeta, "Priority", formatMapNotePriority(object.fields?.priority));
       appendMetaRow(elements.selectedObjectMeta, "Note", object.fields?.title || "Map Note");
@@ -10382,8 +10420,7 @@
   }
 
   function isCostedResourceObject(object) {
-    const isDepartmentStationRoute = object?.objectType === STATION_ROUTE_OBJECT_TYPE
-      && object?.fields?.stationRouteTag === STATION_ROUTE_OBJECT_TAG
+    const isDepartmentStationRoute = isDepartmentStationRouteObject(object)
       && COSTED_RESOURCE_CATEGORIES.has(String(object?.fields?.resourceCategory || ""));
     return Boolean(
       isDepartmentStationRoute
@@ -11048,6 +11085,12 @@
     const parts = [getObjectDisplayLabel(object, template)];
     if (isCostedResourceObject(object)) {
       parts.push(`${object.fields?.resourceCategory || "Costed Resource"} · ${formatCurrency(getCostedResourceTotal(object))}`);
+      if (isDepartmentStationRouteObject(object)) {
+        const roundTripMinutes = Number(object.fields?.stationRouteRoundTripDurationMinutes || object.fields?.stationRouteDurationMinutes || 0);
+        if (roundTripMinutes > 0) {
+          parts.push(`Round trip ${formatDurationMinutes(roundTripMinutes)}`);
+        }
+      }
     } else if (object.objectType === MAP_NOTE_OBJECT_TYPE) {
       parts.push(formatMapNotePriority(object.fields?.priority));
       if (object.fields?.noteText) {
@@ -11518,6 +11561,21 @@
 
   function formatCurrency(value) {
     return `$${round2(value).toFixed(2)}`;
+  }
+
+  function formatDurationMinutes(value) {
+    const totalMinutes = round2(Number(value) || 0);
+    if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return "0 min";
+    const hours = Math.floor(totalMinutes / 60);
+    const minutes = round2(totalMinutes - (hours * 60));
+    if (!hours) return `${minutes.toFixed(minutes % 1 === 0 ? 0 : 1)} min`;
+    if (!minutes) return `${hours} hr${hours === 1 ? "" : "s"}`;
+    return `${hours} hr ${minutes.toFixed(minutes % 1 === 0 ? 0 : 1)} min`;
+  }
+
+  function isDepartmentStationRouteObject(object) {
+    return object?.objectType === STATION_ROUTE_OBJECT_TYPE
+      && object?.fields?.stationRouteTag === STATION_ROUTE_OBJECT_TAG;
   }
 
   function getCostedResourceObjects() {
