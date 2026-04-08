@@ -638,18 +638,6 @@
     ics202SiteSafetyNo: document.getElementById("ics202SiteSafetyNo"),
     ics202SiteSafetyLocationField: document.getElementById("ics202SiteSafetyLocationField"),
     ics202SiteSafetyLocation: document.getElementById("ics202SiteSafetyLocation"),
-    ics202Attachment203: document.getElementById("ics202Attachment203"),
-    ics202Attachment204: document.getElementById("ics202Attachment204"),
-    ics202Attachment205: document.getElementById("ics202Attachment205"),
-    ics202Attachment205A: document.getElementById("ics202Attachment205A"),
-    ics202Attachment206: document.getElementById("ics202Attachment206"),
-    ics202Attachment207: document.getElementById("ics202Attachment207"),
-    ics202Attachment208: document.getElementById("ics202Attachment208"),
-    ics202AttachmentMapChart: document.getElementById("ics202AttachmentMapChart"),
-    ics202AttachmentWeather: document.getElementById("ics202AttachmentWeather"),
-    ics202AttachmentOtherEnabled: document.getElementById("ics202AttachmentOtherEnabled"),
-    ics202AttachmentOtherField: document.getElementById("ics202AttachmentOtherField"),
-    ics202AttachmentOtherText: document.getElementById("ics202AttachmentOtherText"),
     ics202PreparedByName: document.getElementById("ics202PreparedByName"),
     ics202PreparedByPosition: document.getElementById("ics202PreparedByPosition"),
     ics202PreparedByDateTime: document.getElementById("ics202PreparedByDateTime"),
@@ -7940,22 +7928,6 @@
     return text ? escapeHtml(text).replace(/\n/g, "<br />") : escapeHtml(fallback);
   }
 
-  function getIcs202AttachmentLabels() {
-    const draft = ensureIcs202Draft();
-    const labels = [];
-    if (draft.attachments.ics203) labels.push("ICS 203");
-    if (draft.attachments.ics204) labels.push("ICS 204");
-    if (draft.attachments.ics205) labels.push("ICS 205");
-    if (draft.attachments.ics205A) labels.push("ICS 205A");
-    if (draft.attachments.ics206) labels.push("ICS 206");
-    if (draft.attachments.ics207) labels.push("ICS 207");
-    if (draft.attachments.ics208) labels.push("ICS 208");
-    if (draft.attachments.mapChart) labels.push("Map/Chart");
-    if (draft.attachments.weather) labels.push("Weather Forecast");
-    if (draft.attachments.other.trim()) labels.push(draft.attachments.other.trim());
-    return labels;
-  }
-
   function validateIcs202({ forFinalize = false } = {}) {
     const draft = ensureIcs202Draft();
     const errors = [];
@@ -7990,25 +7962,6 @@
     if (options.scrollIntoView) {
       elements.ics202ValidationBanner.scrollIntoView({ block: "start", behavior: "smooth" });
     }
-  }
-
-  function updateIcs202AttachmentsState() {
-    const draft = ensureIcs202Draft();
-    draft.attachments = {
-      ics203: Boolean(elements.ics202Attachment203.checked),
-      ics204: Boolean(elements.ics202Attachment204.checked),
-      ics205: Boolean(elements.ics202Attachment205.checked),
-      ics205A: Boolean(elements.ics202Attachment205A.checked),
-      ics206: Boolean(elements.ics202Attachment206.checked),
-      ics207: Boolean(elements.ics202Attachment207.checked),
-      ics208: Boolean(elements.ics202Attachment208.checked),
-      mapChart: Boolean(elements.ics202AttachmentMapChart.checked),
-      weather: Boolean(elements.ics202AttachmentWeather.checked),
-      other: elements.ics202AttachmentOtherEnabled.checked ? String(elements.ics202AttachmentOtherText.value || "").trim() : ""
-    };
-    elements.ics202AttachmentOtherField.classList.toggle("hidden", !elements.ics202AttachmentOtherEnabled.checked);
-    renderIcs202Summary();
-    updateIcs202ValidationBanner();
   }
 
   function syncIcs202OperationalState() {
@@ -8136,7 +8089,6 @@
       { label: "Objectives", value: String(draft.objectives.filter((entry) => String(entry || "").trim()).length) },
       { label: "Operational Period", value: draft.operationalPeriod.start && draft.operationalPeriod.end ? `${formatDateTime(draft.operationalPeriod.start)} to ${formatDateTime(draft.operationalPeriod.end)}` : "Not set" },
       { label: "Site Safety Plan", value: draft.siteSafetyPlanRequired ? (draft.siteSafetyPlanLocation.trim() || "Required") : "Not required" },
-      { label: "Attachments", value: getIcs202AttachmentLabels().length ? getIcs202AttachmentLabels().join(", ") : "None selected" },
       { label: "Prepared By", value: draft.preparedBy.name.trim() || "Not provided" },
       { label: "Approved By", value: draft.approvedBy.name.trim() || "Pending" }
     ];
@@ -8175,7 +8127,6 @@
     const opEndDate = formatIcs202DateInput(draft.operationalPeriod.end) || "\u00a0";
     const opStartTime = formatIcs202TimeInput(draft.operationalPeriod.start) || "\u00a0";
     const opEndTime = formatIcs202TimeInput(draft.operationalPeriod.end) || "\u00a0";
-    const otherAttachment = draft.attachments.other.trim() || "\u00a0";
     return `
       <div class="ics202-print-container">
         <table class="ics202-print-header-table">
@@ -8256,24 +8207,8 @@
 
         <table class="ics202-print-table">
           <tr>
-            <td>
-              <div class="ics202-print-label">6. IAP Attachments</div>
-              <table class="ics202-print-attachments-table">
-                <tr><td>ICS 203 ${buildIcs202Checkbox(draft.attachments.ics203)}</td><td>ICS 207 ${buildIcs202Checkbox(draft.attachments.ics207)}</td></tr>
-                <tr><td>ICS 204 ${buildIcs202Checkbox(draft.attachments.ics204)}</td><td>ICS 208 ${buildIcs202Checkbox(draft.attachments.ics208)}</td></tr>
-                <tr><td>ICS 205 ${buildIcs202Checkbox(draft.attachments.ics205)}</td><td>Map/Chart ${buildIcs202Checkbox(draft.attachments.mapChart)}</td></tr>
-                <tr><td>ICS 205A ${buildIcs202Checkbox(draft.attachments.ics205A)}</td><td>Weather Forecast ${buildIcs202Checkbox(draft.attachments.weather)}</td></tr>
-                <tr><td>ICS 206 ${buildIcs202Checkbox(draft.attachments.ics206)}</td><td>&nbsp;</td></tr>
-              </table>
-              <div class="ics202-print-other-attachments">Other Attachments: ${escapeHtml(otherAttachment)}</div>
-            </td>
-          </tr>
-        </table>
-
-        <table class="ics202-print-table">
-          <tr>
             <td class="ics202-print-signature-cell">
-              <div class="ics202-print-label">7. Prepared By</div>
+              <div class="ics202-print-label">6. Prepared By</div>
               <table class="ics202-print-signature-table">
                 <tr>
                   <td class="ics202-print-signature-name"><div class="ics202-print-label">Name</div><div class="ics202-print-field-box">${escapeHtml(draft.preparedBy.name || "\u00a0")}</div></td>
@@ -8288,7 +8223,7 @@
         <table class="ics202-print-table">
           <tr>
             <td class="ics202-print-signature-cell">
-              <div class="ics202-print-label">8. Approved by Incident Commander</div>
+              <div class="ics202-print-label">7. Approved by Incident Commander</div>
               <table class="ics202-print-signature-table">
                 <tr>
                   <td class="ics202-print-signature-name"><div class="ics202-print-label">Name</div><div class="ics202-print-field-box">${escapeHtml(draft.approvedBy.name || "\u00a0")}</div></td>
@@ -8333,18 +8268,6 @@
     elements.ics202SiteSafetyNo.checked = !draft.siteSafetyPlanRequired;
     elements.ics202SiteSafetyLocationField.classList.toggle("hidden", !draft.siteSafetyPlanRequired);
     elements.ics202SiteSafetyLocation.value = draft.siteSafetyPlanLocation;
-    elements.ics202Attachment203.checked = Boolean(draft.attachments.ics203);
-    elements.ics202Attachment204.checked = Boolean(draft.attachments.ics204);
-    elements.ics202Attachment205.checked = Boolean(draft.attachments.ics205);
-    elements.ics202Attachment205A.checked = Boolean(draft.attachments.ics205A);
-    elements.ics202Attachment206.checked = Boolean(draft.attachments.ics206);
-    elements.ics202Attachment207.checked = Boolean(draft.attachments.ics207);
-    elements.ics202Attachment208.checked = Boolean(draft.attachments.ics208);
-    elements.ics202AttachmentMapChart.checked = Boolean(draft.attachments.mapChart);
-    elements.ics202AttachmentWeather.checked = Boolean(draft.attachments.weather);
-    elements.ics202AttachmentOtherEnabled.checked = Boolean(draft.attachments.other.trim());
-    elements.ics202AttachmentOtherField.classList.toggle("hidden", !elements.ics202AttachmentOtherEnabled.checked);
-    elements.ics202AttachmentOtherText.value = draft.attachments.other;
     elements.ics202PreparedByName.value = draft.preparedBy.name;
     elements.ics202PreparedByPosition.value = draft.preparedBy.position;
     elements.ics202PreparedByDateTime.value = isoToInputValue(draft.preparedBy.datetime);
@@ -8500,19 +8423,6 @@
       renderIcs202Summary();
       updateIcs202ValidationBanner();
     });
-    [
-      elements.ics202Attachment203,
-      elements.ics202Attachment204,
-      elements.ics202Attachment205,
-      elements.ics202Attachment205A,
-      elements.ics202Attachment206,
-      elements.ics202Attachment207,
-      elements.ics202Attachment208,
-      elements.ics202AttachmentMapChart,
-      elements.ics202AttachmentWeather,
-      elements.ics202AttachmentOtherEnabled
-    ].forEach((input) => input.addEventListener("change", updateIcs202AttachmentsState));
-    elements.ics202AttachmentOtherText.addEventListener("input", updateIcs202AttachmentsState);
     elements.ics202PreparedByName.addEventListener("input", (event) => {
       ensureIcs202Draft().preparedBy.name = event.target.value;
       renderIcs202Summary();
