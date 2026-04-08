@@ -2,11 +2,12 @@ import type { FastifyPluginAsync } from 'fastify';
 import type { PoolClient } from 'pg';
 import { createHash, randomUUID } from 'node:crypto';
 import {
+  TrainerAuthError,
   TrainerForbiddenError,
   TrainerTargetNotFoundError,
-  assertTrainerOwnsSession,
-  readTrainerRefHeader
+  assertTrainerCanAccessSession
 } from './_trainerAuth.js';
+import { requireTrainerIdentity } from './_trainerIdentity.js';
 
 type CreateSessionBody = {
   scenarioId: string;
@@ -22,6 +23,16 @@ type JoinBody = {
 
 export const sessionRoutes: FastifyPluginAsync = async (app) => {
   app.post<{ Body: CreateSessionBody }>('/v1/sessions', async (request, reply) => {
+    let identity;
+    try {
+      identity = await requireTrainerIdentity(app, request.headers);
+    } catch (error) {
+      if (error instanceof TrainerAuthError) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED', message: error.message });
+      }
+      throw error;
+    }
+
     const scenarioID = request.body?.scenarioId?.trim();
     if (!scenarioID) {
       return reply.code(400).send({ error: 'BAD_REQUEST', message: 'scenarioId is required.' });
@@ -31,10 +42,13 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
     const sessionName = request.body?.sessionName?.trim() || null;
 
     try {
+      await assertTrainerCanReadScenario(app.pg, scenarioID, identity);
       const result = await createSessionWithSnapshot(app.pg, {
         scenarioID,
         sessionName,
-        ttlMinutes
+        ttlMinutes,
+        actorTrainerID: identity.trainerId,
+        actorTrainerRef: identity.trainerRef
       });
 
       return reply.code(201).send({
@@ -64,13 +78,18 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post<{ Params: { sessionId: string } }>('/v1/sessions/:sessionId/rotate-join-code', async (request, reply) => {
-    const trainerRef = readTrainerRefHeader(request.headers);
-    if (!trainerRef) {
-      return reply.code(401).send({ error: 'UNAUTHORIZED', message: 'Missing X-Trainer-Ref header.' });
+    let identity;
+    try {
+      identity = await requireTrainerIdentity(app, request.headers);
+    } catch (error) {
+      if (error instanceof TrainerAuthError) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED', message: error.message });
+      }
+      throw error;
     }
 
     try {
-      await assertTrainerOwnsSession(app.pg, request.params.sessionId, trainerRef);
+      await assertTrainerCanAccessSession(app.pg, request.params.sessionId, identity);
       const rotated = await rotateJoinCode(app.pg, request.params.sessionId, app.config.joinCodeTtlMinutes);
       return reply.send(rotated);
     } catch (error) {
@@ -92,12 +111,17 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post<{ Params: { sessionId: string } }>('/v1/sessions/:sessionId/end', async (request, reply) => {
-    const trainerRef = readTrainerRefHeader(request.headers);
-    if (!trainerRef) {
-      return reply.code(401).send({ error: 'UNAUTHORIZED', message: 'Missing X-Trainer-Ref header.' });
+    let identity;
+    try {
+      identity = await requireTrainerIdentity(app, request.headers);
+    } catch (error) {
+      if (error instanceof TrainerAuthError) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED', message: error.message });
+      }
+      throw error;
     }
     try {
-      await assertTrainerOwnsSession(app.pg, request.params.sessionId, trainerRef);
+      await assertTrainerCanAccessSession(app.pg, request.params.sessionId, identity);
       const session = await closeSession(app.pg, request.params.sessionId);
       return reply.send({
         ...session,
@@ -235,6 +259,8 @@ type CreateSessionParams = {
   scenarioID: string;
   sessionName: string | null;
   ttlMinutes: number;
+  actorTrainerID: string;
+  actorTrainerRef: string;
 };
 
 type DBScenarioRow = {
@@ -311,6 +337,47 @@ function toPublicSessionStatus(status: string): PublicSessionStatus {
   return 'active';
 }
 
+async function assertTrainerCanReadScenario(
+  pool: { query: PoolClient['query'] },
+  scenarioID: string,
+  identity: { trainerId: string; trainerRef: string; organizationId: string | null; role: string }
+): Promise<void> {
+  if (identity.role === 'super_admin') return;
+
+  const result = await pool.query<{
+    created_by_trainer_id: string | null;
+    assigned_trainer_id: string | null;
+    organization_id: string | null;
+    trainer_ref: string | null;
+    visibility: 'private' | 'org_shared' | 'assigned';
+  }>(
+    `
+      select
+        created_by_trainer_id::text as created_by_trainer_id,
+        assigned_trainer_id::text as assigned_trainer_id,
+        organization_id::text as organization_id,
+        trainer_ref,
+        visibility::text as visibility
+      from scenarios
+      where id = $1::uuid
+      limit 1
+    `,
+    [scenarioID]
+  );
+
+  if (result.rowCount === 0) {
+    throw new NotFoundError(`Scenario not found: ${scenarioID}`);
+  }
+
+  const row = result.rows[0];
+  if (row.created_by_trainer_id === identity.trainerId || row.trainer_ref === identity.trainerRef) return;
+  if (identity.role === 'org_admin' && row.organization_id && row.organization_id === identity.organizationId) return;
+  if (row.assigned_trainer_id === identity.trainerId) return;
+  if (row.organization_id && row.organization_id === identity.organizationId && row.visibility === 'org_shared') return;
+
+  throw new TrainerForbiddenError('Trainer does not have access to this scenario.');
+}
+
 async function createSessionWithSnapshot(pool: { connect(): Promise<PoolClient> }, params: CreateSessionParams) {
   const client = await pool.connect();
   try {
@@ -325,7 +392,9 @@ async function createSessionWithSnapshot(pool: { connect(): Promise<PoolClient> 
     const session = await insertSessionWithUniqueJoinCode(client, {
       scenario,
       sessionName: params.sessionName,
-      ttlMinutes: params.ttlMinutes
+      ttlMinutes: params.ttlMinutes,
+      actorTrainerID: params.actorTrainerID,
+      actorTrainerRef: params.actorTrainerRef
     });
 
     const snapshot = buildSessionSnapshot(session.id, scenario, shapes);
@@ -419,7 +488,7 @@ async function fetchScenarioShapes(client: PoolClient, scenarioID: string): Prom
 
 async function insertSessionWithUniqueJoinCode(
   client: PoolClient,
-  params: { scenario: DBScenarioRow; sessionName: string | null; ttlMinutes: number }
+  params: { scenario: DBScenarioRow; sessionName: string | null; ttlMinutes: number; actorTrainerID: string; actorTrainerRef: string }
 ): Promise<{
   id: string;
   scenarioID: string;
@@ -471,8 +540,8 @@ async function insertSessionWithUniqueJoinCode(
         `,
         [
           params.scenario.id,
-          params.scenario.trainer_id,
-          params.scenario.trainer_ref,
+          params.actorTrainerID,
+          params.actorTrainerRef,
           params.sessionName,
           joinCode,
           expiresAt.toISOString()

@@ -1,5 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { readTrainerRefHeader } from './_trainerAuth.js';
+import { TrainerAuthError } from './_trainerAuth.js';
+import { requireTrainerIdentity } from './_trainerIdentity.js';
 
 type ScenarioParams = { scenarioId: string };
 type ShapeParams = { scenarioId: string; shapeId: string };
@@ -12,6 +13,8 @@ type ScenarioBody = {
   longitude?: number | null;
   detection_device?: 'air_monitor' | 'radiation_detection' | 'ph_paper';
   notes?: string | null;
+  visibility?: 'private' | 'org_shared' | 'assigned';
+  assigned_trainer_id?: string | null;
 };
 
 type ShapeBody = {
@@ -58,6 +61,11 @@ type ScenarioRow = {
   longitude: number | null;
   detection_device: 'air_monitor' | 'radiation_detection' | 'ph_paper';
   version: number;
+  organization_id: string | null;
+  organization_name: string | null;
+  created_by_trainer_id: string | null;
+  visibility: 'private' | 'org_shared' | 'assigned';
+  assigned_trainer_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -89,39 +97,81 @@ type ShapeRow = {
 
 export const scenariosRoutes: FastifyPluginAsync = async (app) => {
   app.get('/v1/scenarios', async (request, reply) => {
-    const trainerRef = readTrainerRefHeader(request.headers);
+    let identity;
+    try {
+      identity = await requireTrainerIdentity(app, request.headers);
+    } catch (error) {
+      if (error instanceof TrainerAuthError) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED', message: error.message });
+      }
+      throw error;
+    }
+
     const result = await app.pg.query<ScenarioRow>(
       `
         select
           s.id::text as id,
           s.scenario_name,
-          coalesce(t.display_name, s.trainer_ref, 'Trainer') as trainer_name,
+          coalesce(owner.display_name, s.trainer_ref, 'Trainer') as trainer_name,
           coalesce(s.scenario_date, s.created_at)::timestamptz as scenario_date,
           case when s.center_geog is null then null else ST_Y(s.center_geog::geometry) end as latitude,
           case when s.center_geog is null then null else ST_X(s.center_geog::geometry) end as longitude,
           s.detection_device::text as detection_device,
           s.version,
+          s.organization_id::text as organization_id,
+          o.organization_name,
+          s.created_by_trainer_id::text as created_by_trainer_id,
+          s.visibility::text as visibility,
+          s.assigned_trainer_id::text as assigned_trainer_id,
           s.created_at,
           s.updated_at
         from scenarios s
-        left join trainers t on t.id = s.trainer_id
-        where ($1::text is null or s.trainer_ref = $1::text)
+        left join trainers owner on owner.id = coalesce(s.created_by_trainer_id, s.trainer_id)
+        left join organizations o on o.id = s.organization_id
+        where (
+          $1::text = 'super_admin'
+          or (
+            s.organization_id = $2::uuid
+            and (
+              s.visibility = 'org_shared'
+              or s.created_by_trainer_id = $3::uuid
+              or s.assigned_trainer_id = $3::uuid
+            )
+          )
+          or (
+            s.organization_id is null
+            and (
+              s.created_by_trainer_id = $3::uuid
+              or s.trainer_ref = $4::text
+            )
+          )
+        )
         order by s.created_at desc
       `,
-      [trainerRef]
+      [identity.role, identity.organizationId, identity.trainerId, identity.trainerRef]
     );
     return reply.send(result.rows.map(mapScenarioRow));
   });
 
   app.post<{ Body: ScenarioBody }>('/v1/scenarios', async (request, reply) => {
+    let identity;
+    try {
+      identity = await requireTrainerIdentity(app, request.headers);
+    } catch (error) {
+      if (error instanceof TrainerAuthError) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED', message: error.message });
+      }
+      throw error;
+    }
+
     const body = request.body ?? {};
     if (!body.scenario_name || !body.trainer_name || !body.scenario_date || !body.detection_device) {
       return reply.code(400).send({ error: 'BAD_REQUEST', message: 'Missing required scenario fields.' });
     }
-
-    const trainerRef = readTrainerRefHeader(request.headers) ?? body.trainer_name.trim();
-    const trainerName = body.trainer_name.trim();
+    const trainerRef = identity.trainerRef;
+    const trainerName = identity.displayName;
     const notes = body.notes ?? '';
+    const visibility = normalizeVisibility(body.visibility);
 
     const client = await app.pg.connect();
     try {
@@ -133,48 +183,68 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
           insert into scenarios (
             trainer_id,
             trainer_ref,
+            organization_id,
+            created_by_trainer_id,
             scenario_name,
             detection_device,
             scenario_date,
             notes,
             center_geog,
-            status
+            status,
+            visibility,
+            assigned_trainer_id
           )
           values (
             $1::uuid,
             $2,
-            $3,
-            $4::device_type,
-            $5::timestamptz,
-            $6,
+            $3::uuid,
+            $1::uuid,
+            $4,
+            $5::device_type,
+            $6::timestamptz,
             case
-              when $7::float8 is null or $8::float8 is null then null
-              else ST_SetSRID(ST_MakePoint($8::float8, $7::float8), 4326)::geography
+              when $7 is null then ''
+              else $7
             end,
-            'draft'
+            case
+              when $8::float8 is null or $9::float8 is null then null
+              else ST_SetSRID(ST_MakePoint($9::float8, $8::float8), 4326)::geography
+            end,
+            'draft',
+            $10::scenario_visibility,
+            case when $10::scenario_visibility = 'assigned' then $11::uuid else null end
           )
           returning
             id::text as id,
             scenario_name,
-            $9::text as trainer_name,
+            $12::text as trainer_name,
             coalesce(scenario_date, created_at)::timestamptz as scenario_date,
             case when center_geog is null then null else ST_Y(center_geog::geometry) end as latitude,
             case when center_geog is null then null else ST_X(center_geog::geometry) end as longitude,
             detection_device::text as detection_device,
             version,
+            organization_id::text as organization_id,
+            $13::text as organization_name,
+            created_by_trainer_id::text as created_by_trainer_id,
+            visibility::text as visibility,
+            assigned_trainer_id::text as assigned_trainer_id,
             created_at,
             updated_at
         `,
         [
           trainer?.id ?? null,
           trainerRef,
+          identity.organizationId,
           body.scenario_name,
           body.detection_device,
           body.scenario_date,
           notes,
           body.latitude ?? null,
           body.longitude ?? null,
-          trainerName
+          visibility,
+          body.assigned_trainer_id ?? null,
+          trainerName,
+          identity.organizationName
         ]
       );
 
@@ -190,17 +260,23 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.patch<{ Params: ScenarioParams; Body: ScenarioBody }>('/v1/scenarios/:scenarioId', async (request, reply) => {
-    const body = request.body ?? {};
-    const trainerRef = readTrainerRefHeader(request.headers);
-    if (!trainerRef) {
-      return reply.code(401).send({ error: 'UNAUTHORIZED', message: 'X-Trainer-Ref header required.' });
+    let identity;
+    try {
+      identity = await requireTrainerIdentity(app, request.headers);
+    } catch (error) {
+      if (error instanceof TrainerAuthError) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED', message: error.message });
+      }
+      throw error;
     }
-    const ownsScenario = await trainerOwnsScenario(app, request.params.scenarioId, trainerRef);
-    if (ownsScenario === 'not_found') {
+
+    const body = request.body ?? {};
+    const access = await trainerScenarioAccess(app, request.params.scenarioId, identity);
+    if (access === 'not_found') {
       return reply.code(404).send({ error: 'NOT_FOUND', message: 'Scenario not found.' });
     }
-    if (ownsScenario === 'forbidden') {
-      return reply.code(403).send({ error: 'FORBIDDEN', message: 'Trainer does not own this scenario.' });
+    if (access !== 'edit') {
+      return reply.code(403).send({ error: 'FORBIDDEN', message: 'Trainer does not have edit access to this scenario.' });
     }
     if (!body.scenario_name || !body.trainer_name || !body.scenario_date || !body.detection_device) {
       return reply.code(400).send({ error: 'BAD_REQUEST', message: 'Missing required scenario fields.' });
@@ -209,44 +285,57 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
     const client = await app.pg.connect();
     try {
       await client.query('BEGIN');
-      const trainer = await upsertTrainerIfPossible(client, trainerRef, body.trainer_name.trim());
+      const trainer = await upsertTrainerIfPossible(client, identity.trainerRef, identity.displayName);
+      const visibility = normalizeVisibility(body.visibility);
       const updated = await client.query<ScenarioRow>(
         `
           update scenarios
           set
             trainer_id = $2::uuid,
             trainer_ref = $3,
-            scenario_name = $4,
-            detection_device = $5::device_type,
-            scenario_date = $6::timestamptz,
+            organization_id = $4::uuid,
+            scenario_name = $5,
+            detection_device = $6::device_type,
+            scenario_date = $7::timestamptz,
             center_geog = case
-              when $7::float8 is null or $8::float8 is null then null
-              else ST_SetSRID(ST_MakePoint($8::float8, $7::float8), 4326)::geography
+              when $8::float8 is null or $9::float8 is null then null
+              else ST_SetSRID(ST_MakePoint($9::float8, $8::float8), 4326)::geography
             end,
+            visibility = $10::scenario_visibility,
+            assigned_trainer_id = case when $10::scenario_visibility = 'assigned' then $11::uuid else null end,
             version = version + 1
           where id = $1::uuid
           returning
             id::text as id,
             scenario_name,
-            $9::text as trainer_name,
+            $12::text as trainer_name,
             coalesce(scenario_date, created_at)::timestamptz as scenario_date,
             case when center_geog is null then null else ST_Y(center_geog::geometry) end as latitude,
             case when center_geog is null then null else ST_X(center_geog::geometry) end as longitude,
             detection_device::text as detection_device,
             version,
+            organization_id::text as organization_id,
+            $13::text as organization_name,
+            created_by_trainer_id::text as created_by_trainer_id,
+            visibility::text as visibility,
+            assigned_trainer_id::text as assigned_trainer_id,
             created_at,
             updated_at
         `,
         [
           request.params.scenarioId,
           trainer?.id ?? null,
-          trainerRef,
+          identity.trainerRef,
+          identity.organizationId,
           body.scenario_name,
           body.detection_device,
           body.scenario_date,
           body.latitude ?? null,
           body.longitude ?? null,
-          body.trainer_name.trim()
+          visibility,
+          body.assigned_trainer_id ?? null,
+          identity.displayName,
+          identity.organizationName
         ]
       );
       await client.query('COMMIT');
@@ -264,16 +353,21 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.delete<{ Params: ScenarioParams }>('/v1/scenarios/:scenarioId', async (request, reply) => {
-    const trainerRef = readTrainerRefHeader(request.headers);
-    if (!trainerRef) {
-      return reply.code(401).send({ error: 'UNAUTHORIZED', message: 'X-Trainer-Ref header required.' });
+    let identity;
+    try {
+      identity = await requireTrainerIdentity(app, request.headers);
+    } catch (error) {
+      if (error instanceof TrainerAuthError) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED', message: error.message });
+      }
+      throw error;
     }
-    const ownsScenario = await trainerOwnsScenario(app, request.params.scenarioId, trainerRef);
-    if (ownsScenario === 'not_found') {
+    const access = await trainerScenarioAccess(app, request.params.scenarioId, identity);
+    if (access === 'not_found') {
       return reply.code(404).send({ error: 'NOT_FOUND', message: 'Scenario not found.' });
     }
-    if (ownsScenario === 'forbidden') {
-      return reply.code(403).send({ error: 'FORBIDDEN', message: 'Trainer does not own this scenario.' });
+    if (access !== 'edit') {
+      return reply.code(403).send({ error: 'FORBIDDEN', message: 'Trainer does not have edit access to this scenario.' });
     }
 
     await app.pg.query('delete from scenarios where id = $1::uuid', [request.params.scenarioId]);
@@ -281,15 +375,21 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get<{ Params: ScenarioParams }>('/v1/scenarios/:scenarioId/shapes', async (request, reply) => {
-    const trainerRef = readTrainerRefHeader(request.headers);
-    if (trainerRef) {
-      const ownsScenario = await trainerOwnsScenario(app, request.params.scenarioId, trainerRef);
-      if (ownsScenario === 'not_found') {
-        return reply.code(404).send({ error: 'NOT_FOUND', message: 'Scenario not found.' });
+    let identity;
+    try {
+      identity = await requireTrainerIdentity(app, request.headers);
+    } catch (error) {
+      if (error instanceof TrainerAuthError) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED', message: error.message });
       }
-      if (ownsScenario === 'forbidden') {
-        return reply.code(403).send({ error: 'FORBIDDEN', message: 'Trainer does not own this scenario.' });
-      }
+      throw error;
+    }
+    const access = await trainerScenarioAccess(app, request.params.scenarioId, identity);
+    if (access === 'not_found') {
+      return reply.code(404).send({ error: 'NOT_FOUND', message: 'Scenario not found.' });
+    }
+    if (access === 'forbidden') {
+      return reply.code(403).send({ error: 'FORBIDDEN', message: 'Trainer does not have access to this scenario.' });
     }
 
     const result = await app.pg.query<ShapeRow>(
@@ -328,16 +428,21 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.post<{ Params: ScenarioParams; Body: ShapeBody }>('/v1/scenarios/:scenarioId/shapes', async (request, reply) => {
-    const trainerRef = readTrainerRefHeader(request.headers);
-    if (!trainerRef) {
-      return reply.code(401).send({ error: 'UNAUTHORIZED', message: 'X-Trainer-Ref header required.' });
+    let identity;
+    try {
+      identity = await requireTrainerIdentity(app, request.headers);
+    } catch (error) {
+      if (error instanceof TrainerAuthError) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED', message: error.message });
+      }
+      throw error;
     }
-    const ownsScenario = await trainerOwnsScenario(app, request.params.scenarioId, trainerRef);
-    if (ownsScenario === 'not_found') {
+    const access = await trainerScenarioAccess(app, request.params.scenarioId, identity);
+    if (access === 'not_found') {
       return reply.code(404).send({ error: 'NOT_FOUND', message: 'Scenario not found.' });
     }
-    if (ownsScenario === 'forbidden') {
-      return reply.code(403).send({ error: 'FORBIDDEN', message: 'Trainer does not own this scenario.' });
+    if (access !== 'edit') {
+      return reply.code(403).send({ error: 'FORBIDDEN', message: 'Trainer does not have edit access to this scenario.' });
     }
 
     const created = await insertOrUpdateShape(app, request.params.scenarioId, null, request.body ?? {});
@@ -348,16 +453,21 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.put<{ Params: ShapeParams; Body: ShapeBody }>('/v1/scenarios/:scenarioId/shapes/:shapeId', async (request, reply) => {
-    const trainerRef = readTrainerRefHeader(request.headers);
-    if (!trainerRef) {
-      return reply.code(401).send({ error: 'UNAUTHORIZED', message: 'X-Trainer-Ref header required.' });
+    let identity;
+    try {
+      identity = await requireTrainerIdentity(app, request.headers);
+    } catch (error) {
+      if (error instanceof TrainerAuthError) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED', message: error.message });
+      }
+      throw error;
     }
-    const ownsScenario = await trainerOwnsScenario(app, request.params.scenarioId, trainerRef);
-    if (ownsScenario === 'not_found') {
+    const access = await trainerScenarioAccess(app, request.params.scenarioId, identity);
+    if (access === 'not_found') {
       return reply.code(404).send({ error: 'NOT_FOUND', message: 'Scenario not found.' });
     }
-    if (ownsScenario === 'forbidden') {
-      return reply.code(403).send({ error: 'FORBIDDEN', message: 'Trainer does not own this scenario.' });
+    if (access !== 'edit') {
+      return reply.code(403).send({ error: 'FORBIDDEN', message: 'Trainer does not have edit access to this scenario.' });
     }
 
     const saved = await insertOrUpdateShape(app, request.params.scenarioId, request.params.shapeId, request.body ?? {});
@@ -368,16 +478,21 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.delete<{ Params: ShapeParams }>('/v1/scenarios/:scenarioId/shapes/:shapeId', async (request, reply) => {
-    const trainerRef = readTrainerRefHeader(request.headers);
-    if (!trainerRef) {
-      return reply.code(401).send({ error: 'UNAUTHORIZED', message: 'X-Trainer-Ref header required.' });
+    let identity;
+    try {
+      identity = await requireTrainerIdentity(app, request.headers);
+    } catch (error) {
+      if (error instanceof TrainerAuthError) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED', message: error.message });
+      }
+      throw error;
     }
-    const ownsScenario = await trainerOwnsScenario(app, request.params.scenarioId, trainerRef);
-    if (ownsScenario === 'not_found') {
+    const access = await trainerScenarioAccess(app, request.params.scenarioId, identity);
+    if (access === 'not_found') {
       return reply.code(404).send({ error: 'NOT_FOUND', message: 'Scenario not found.' });
     }
-    if (ownsScenario === 'forbidden') {
-      return reply.code(403).send({ error: 'FORBIDDEN', message: 'Trainer does not own this scenario.' });
+    if (access !== 'edit') {
+      return reply.code(403).send({ error: 'FORBIDDEN', message: 'Trainer does not have edit access to this scenario.' });
     }
 
     await app.pg.query(
@@ -398,6 +513,11 @@ function mapScenarioRow(row: ScenarioRow) {
     longitude: row.longitude,
     detectionDevice: row.detection_device,
     version: row.version,
+    organizationId: row.organization_id,
+    organizationName: row.organization_name,
+    createdByTrainerId: row.created_by_trainer_id,
+    visibility: row.visibility,
+    assignedTrainerId: row.assigned_trainer_id,
     createdAt: row.created_at,
     updatedAt: row.updated_at
   };
@@ -462,6 +582,58 @@ async function trainerOwnsScenario(
   const owner = (result.rows[0].trainer_ref ?? '').trim();
   if (!owner) return 'forbidden';
   return owner.localeCompare(trainerRef, undefined, { sensitivity: 'accent' }) === 0 ? 'ok' : 'forbidden';
+}
+
+async function trainerScenarioAccess(
+  app: {
+    pg: {
+      query: (
+        sql: string,
+        params?: unknown[]
+      ) => Promise<{
+        rowCount: number | null;
+        rows: Array<{
+          created_by_trainer_id: string | null;
+          assigned_trainer_id: string | null;
+          organization_id: string | null;
+          trainer_ref: string | null;
+          visibility: 'private' | 'org_shared' | 'assigned';
+        }>;
+      }>;
+    };
+  },
+  scenarioID: string,
+  identity: { trainerId: string; trainerRef: string; organizationId: string | null; role: string }
+): Promise<'read' | 'edit' | 'forbidden' | 'not_found'> {
+  if (identity.role === 'super_admin') return 'edit';
+
+  const result = await app.pg.query(
+    `
+      select
+        created_by_trainer_id::text as created_by_trainer_id,
+        assigned_trainer_id::text as assigned_trainer_id,
+        organization_id::text as organization_id,
+        trainer_ref,
+        visibility::text as visibility
+      from scenarios
+      where id = $1::uuid
+      limit 1
+    `,
+    [scenarioID]
+  );
+
+  if (result.rowCount === 0) return 'not_found';
+  const row = result.rows[0];
+  if (row.created_by_trainer_id === identity.trainerId || row.trainer_ref === identity.trainerRef) return 'edit';
+  if (identity.role === 'org_admin' && row.organization_id && row.organization_id === identity.organizationId) return 'edit';
+  if (row.assigned_trainer_id === identity.trainerId) return 'read';
+  if (row.organization_id && row.organization_id === identity.organizationId && row.visibility === 'org_shared') return 'read';
+  return 'forbidden';
+}
+
+function normalizeVisibility(value: ScenarioBody['visibility']): 'private' | 'org_shared' | 'assigned' {
+  if (value === 'org_shared' || value === 'assigned') return value;
+  return 'private';
 }
 
 async function insertOrUpdateShape(

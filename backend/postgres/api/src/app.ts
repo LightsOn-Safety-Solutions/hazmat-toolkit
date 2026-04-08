@@ -6,6 +6,9 @@ import { scenariosRoutes } from './routes/scenarios.js';
 import { sessionRoutes } from './routes/sessions.js';
 import { watchRoutes } from './routes/watch.js';
 import { trackingRoutes } from './routes/tracking.js';
+import { authRoutes } from './routes/auth.js';
+import { organizationRoutes } from './routes/organizations.js';
+import { adminRoutes } from './routes/admin.js';
 import { collabRoutes } from './routes/ics-collaborative-map/index.js';
 
 declare module 'fastify' {
@@ -36,6 +39,9 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
     overlapPriorityRule: 'LOWER_SORT_ORDER_WINS'
   }));
 
+  await app.register(authRoutes);
+  await app.register(organizationRoutes);
+  await app.register(adminRoutes);
   await app.register(scenariosRoutes);
   await app.register(sessionRoutes);
   await app.register(watchRoutes);

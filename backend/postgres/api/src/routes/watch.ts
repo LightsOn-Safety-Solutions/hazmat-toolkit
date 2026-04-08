@@ -1,12 +1,13 @@
 import type { FastifyPluginAsync } from 'fastify';
 import type { PoolClient } from 'pg';
 import {
+  TrainerAuthError,
   TrainerForbiddenError,
   TrainerTargetNotFoundError,
-  assertTrainerOwnsScenarioName,
-  assertTrainerOwnsSession,
-  readTrainerRefHeader
+  assertTrainerCanAccessScenarioName,
+  assertTrainerCanAccessSession
 } from './_trainerAuth.js';
+import { requireTrainerIdentity } from './_trainerIdentity.js';
 
 type WatchParticipantsParams = { sessionId: string };
 type WatchTrackingParams = { sessionId: string };
@@ -53,9 +54,14 @@ type LegacyTrackingRow = {
 
 export const watchRoutes: FastifyPluginAsync = async (app) => {
   app.get<{ Params: WatchParticipantsParams }>('/v1/sessions/:sessionId/watch/participants', async (request, reply) => {
-    const trainerRef = readTrainerRefHeader(request.headers);
-    if (!trainerRef) {
-      return reply.code(401).send({ error: 'UNAUTHORIZED', message: 'Missing X-Trainer-Ref header.' });
+    let identity;
+    try {
+      identity = await requireTrainerIdentity(app, request.headers);
+    } catch (error) {
+      if (error instanceof TrainerAuthError) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED', message: error.message });
+      }
+      throw error;
     }
     const sessionID = request.params.sessionId?.trim();
     if (!sessionID) {
@@ -63,7 +69,7 @@ export const watchRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      await assertTrainerOwnsSession(app.pg, sessionID, trainerRef);
+      await assertTrainerCanAccessSession(app.pg, sessionID, identity);
       const items = await listWatchParticipants(app.pg, sessionID);
       return reply.send(items);
     } catch (error) {
@@ -79,9 +85,14 @@ export const watchRoutes: FastifyPluginAsync = async (app) => {
   });
 
   app.get<{ Params: WatchTrackingParams; Querystring: WatchTrackingQuery }>('/v1/sessions/:sessionId/watch/tracking', async (request, reply) => {
-    const trainerRef = readTrainerRefHeader(request.headers);
-    if (!trainerRef) {
-      return reply.code(401).send({ error: 'UNAUTHORIZED', message: 'Missing X-Trainer-Ref header.' });
+    let identity;
+    try {
+      identity = await requireTrainerIdentity(app, request.headers);
+    } catch (error) {
+      if (error instanceof TrainerAuthError) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED', message: error.message });
+      }
+      throw error;
     }
     const sessionID = request.params.sessionId?.trim();
     if (!sessionID) {
@@ -95,7 +106,7 @@ export const watchRoutes: FastifyPluginAsync = async (app) => {
     const limit = clampLimit(request.query?.limit);
 
     try {
-      await assertTrainerOwnsSession(app.pg, sessionID, trainerRef);
+      await assertTrainerCanAccessSession(app.pg, sessionID, identity);
       const items = await listWatchTracking(app.pg, sessionID, { since, limit });
       const nextCursor = items.length > 0 ? items[items.length - 1].receivedAt : null;
       return reply.send({ items, nextCursor });
@@ -113,9 +124,14 @@ export const watchRoutes: FastifyPluginAsync = async (app) => {
 
   // Legacy endpoint kept for compatibility with the current iOS scaffold (scenarioName query)
   app.get<{ Querystring: LegacyScenarioTrackingQuery }>('/v1/watch/tracking', async (request, reply) => {
-    const trainerRef = readTrainerRefHeader(request.headers);
-    if (!trainerRef) {
-      return reply.code(401).send({ error: 'UNAUTHORIZED', message: 'Missing X-Trainer-Ref header.' });
+    let identity;
+    try {
+      identity = await requireTrainerIdentity(app, request.headers);
+    } catch (error) {
+      if (error instanceof TrainerAuthError) {
+        return reply.code(401).send({ error: 'UNAUTHORIZED', message: error.message });
+      }
+      throw error;
     }
     const scenarioName = request.query?.scenarioName?.trim();
     if (!scenarioName) {
@@ -123,7 +139,7 @@ export const watchRoutes: FastifyPluginAsync = async (app) => {
     }
 
     try {
-      await assertTrainerOwnsScenarioName(app.pg, scenarioName, trainerRef);
+      await assertTrainerCanAccessScenarioName(app.pg, scenarioName, identity);
       const rows = await listLegacyTrackingByScenarioName(app.pg, scenarioName);
       return reply.send(rows);
     } catch (error) {

@@ -5,6 +5,7 @@ export type AppConfig = {
   logLevel: string;
   corsOrigin: string;
   joinCodeTtlMinutes: number;
+  authTokenSecret: string;
   supabaseUrl: string | null;
   supabaseAnonKey: string | null;
   supabaseServiceRoleKey: string | null;
@@ -43,6 +44,7 @@ export function loadConfig(): AppConfig {
     logLevel: env("LOG_LEVEL", "info"),
     corsOrigin: env("CORS_ORIGIN", "*"),
     joinCodeTtlMinutes: envInt("JOIN_CODE_TTL_MINUTES", 60),
+    authTokenSecret: env("AUTH_TOKEN_SECRET", "hazmat-dev-secret-change-me"),
     supabaseUrl: envOptional("SUPABASE_URL"),
     supabaseAnonKey: envOptional("SUPABASE_ANON_KEY"),
     supabaseServiceRoleKey: envOptional("SUPABASE_SERVICE_ROLE_KEY"),
