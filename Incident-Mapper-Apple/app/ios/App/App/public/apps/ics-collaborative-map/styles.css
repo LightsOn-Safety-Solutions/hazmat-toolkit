@@ -34,12 +34,12 @@
   --radius-control: 12px;
   --radius-card: 22px;
   --radius-panel: 28px;
-  --control-height: 46px;
-  --control-height-compact: 38px;
+  --control-height: 42px;
+  --control-height-compact: 34px;
   --font-size-body: 14px;
   --font-size-label: 12px;
   --font-size-help: 13px;
-  --font-size-title: 30px;
+  --font-size-title: 22px;
   --safe-top: max(12px, env(safe-area-inset-top));
   --safe-right: max(12px, env(safe-area-inset-right));
   --safe-bottom: max(12px, env(safe-area-inset-bottom));
@@ -105,8 +105,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 20px;
-  padding: calc(var(--safe-top) + 6px) calc(var(--safe-right) + 18px) 14px calc(var(--safe-left) + 18px);
+  gap: 14px;
+  padding: calc(var(--safe-top) + 2px) calc(var(--safe-right) + 14px) 8px calc(var(--safe-left) + 14px);
   border-bottom: 1px solid var(--separator);
   background: color-mix(in srgb, var(--panel) 74%, transparent);
   backdrop-filter: blur(24px) saturate(155%);
@@ -115,24 +115,24 @@ body {
 .topbar h1 {
   margin: 0;
   font-size: var(--font-size-title);
-  line-height: 1.02;
+  line-height: 1.04;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-weight: 780;
   letter-spacing: -0.045em;
 }
 .topbar-brand {
   display: grid;
-  gap: 8px;
+  gap: 4px;
   align-content: start;
   min-width: 0;
 }
 .topbar-copy {
   display: grid;
-  gap: 6px;
+  gap: 2px;
 }
 .eyebrow {
   color: var(--accent);
-  font-size: 11px;
+  font-size: 10px;
   letter-spacing: .14em;
   text-transform: uppercase;
   font-weight: 780;
@@ -140,20 +140,20 @@ body {
 .subtitle {
   margin: 0;
   color: var(--muted);
-  max-width: 760px;
-  font-size: 14px;
-  line-height: 1.42;
+  max-width: 520px;
+  font-size: 12px;
+  line-height: 1.28;
 }
 .topbar-actions {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 6px;
   align-items: flex-end;
-  min-width: min(48%, 620px);
+  min-width: min(54%, 720px);
 }
 .topbar-action-row {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   align-items: flex-start;
   justify-content: flex-end;
   flex-wrap: wrap;
@@ -166,21 +166,23 @@ body {
   position: relative;
 }
 .topbar-settings-btn {
-  min-width: 44px;
+  min-width: 38px;
+  min-height: 38px;
   padding-inline: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 700;
 }
 .topbar-icon-btn {
-  min-width: 44px;
+  min-width: 38px;
+  min-height: 38px;
   padding-inline: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 19px;
+  font-size: 17px;
   font-weight: 700;
 }
 .topbar-settings-dropdown {
@@ -204,16 +206,16 @@ body {
   text-align: left;
 }
 .status-shell {
-  padding: 12px calc(var(--safe-right) + 18px) 0 calc(var(--safe-left) + 18px);
+  padding: 6px calc(var(--safe-right) + 14px) 0 calc(var(--safe-left) + 14px);
 }
 .status-bar {
   margin: 0 auto;
   width: min(100%, 1160px);
-  padding: 12px 16px;
-  font-size: 13px;
+  padding: 7px 12px;
+  font-size: 12px;
   color: color-mix(in srgb, var(--text) 74%, var(--muted) 26%);
   border: 1px solid var(--separator);
-  border-radius: 18px;
+  border-radius: 14px;
   background: color-mix(in srgb, var(--panel) 82%, transparent);
   box-shadow: var(--shadow-soft);
   backdrop-filter: blur(18px) saturate(145%);
@@ -1910,7 +1912,7 @@ button {
   width: auto;
   max-width: 100%;
   border-radius: 14px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   cursor: pointer;
   transition: transform .08s ease, opacity .2s ease, background .2s ease, box-shadow .2s ease, border-color .2s ease;
   font-weight: 650;
@@ -1943,6 +1945,20 @@ button.topbar-alert-btn {
   border-color: color-mix(in srgb, var(--danger) 26%, transparent);
   font-weight: 800;
   box-shadow: 0 12px 26px color-mix(in srgb, var(--danger) 28%, transparent);
+}
+.topbar .primary,
+.topbar .secondary,
+.topbar .danger {
+  min-height: 38px;
+  padding: 7px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+.topbar .topbar-icon-btn,
+.topbar .topbar-settings-btn {
+  width: 38px;
 }
 button.topbar-alert-btn:hover {
   background: linear-gradient(180deg, color-mix(in srgb, var(--danger) 74%, #ffffff 26%) 0%, color-mix(in srgb, var(--danger) 92%, #7f1d1d 8%) 100%);
