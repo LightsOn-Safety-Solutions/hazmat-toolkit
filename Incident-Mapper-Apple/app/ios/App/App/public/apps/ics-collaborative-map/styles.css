@@ -2449,6 +2449,9 @@ body[data-theme="light"] .attachment-preview-img {
 .session-card, .participant-card, .guided-step, .palette-group {
   padding: 10px;
 }
+.palette-group {
+  padding: 6px 10px;
+}
 .session-card {
   display: grid;
   gap: var(--space-2);
@@ -2498,11 +2501,14 @@ body[data-theme="light"] .attachment-preview-img {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  min-height: 28px;
   padding: 0;
   background: transparent;
   border: 0;
   color: var(--accent);
   font-weight: 700;
+  font-size: 0.92rem;
+  line-height: 1.15;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
@@ -2515,14 +2521,15 @@ body[data-theme="light"] .attachment-preview-img {
 
 .toggle-symbol {
   display: inline-flex;
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
   background: var(--panel-strong);
   color: var(--text);
   flex-shrink: 0;
+  font-size: 14px;
 }
 
 .template-grid {
