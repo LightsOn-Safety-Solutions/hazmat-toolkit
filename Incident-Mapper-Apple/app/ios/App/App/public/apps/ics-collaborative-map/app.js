@@ -11313,12 +11313,28 @@
     });
   }
 
+  function buildLabeledPointIcon(color, label) {
+    return L.divIcon({
+      className: "",
+      html: `
+        <div class="point-marker point-marker-labeled" style="background:${escapeAttribute(color)}">
+          <span>${escapeHtml(label)}</span>
+        </div>
+      `,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14]
+    });
+  }
+
   function buildPointObjectIcon(object, template, color) {
     if (object.objectType === MAP_NOTE_OBJECT_TYPE) {
       return buildMapNoteIcon(object);
     }
     if (object.objectType === ICON_MARKER_OBJECT_TYPE && object.fields?.iconAssetPath) {
       return buildIconMarkerIcon(object, template);
+    }
+    if (object.objectType === "IncidentCommand") {
+      return buildLabeledPointIcon(color, "IC");
     }
     return L.divIcon({
       className: "",
