@@ -3512,16 +3512,20 @@
   function positionGuidePopup(targetElement) {
     if (!elements.guidePopup || !targetElement) return;
     const rect = targetElement.getBoundingClientRect();
+    const margin = 12;
+    const safeTop = 12;
+    const safeBottom = 12;
     const popupWidth = elements.guidePopup.offsetWidth || 340;
     const popupHeight = elements.guidePopup.offsetHeight || 180;
     const viewportWidth = window.innerWidth || 1280;
     const viewportHeight = window.innerHeight || 720;
     let left = rect.left + (rect.width / 2) - (popupWidth / 2);
-    left = Math.max(12, Math.min(viewportWidth - popupWidth - 12, left));
-    let top = rect.bottom + 12;
-    if (top + popupHeight > viewportHeight - 12) {
-      top = Math.max(12, rect.top - popupHeight - 12);
+    left = Math.max(margin, Math.min(viewportWidth - popupWidth - margin, left));
+    let top = rect.bottom + margin;
+    if (top + popupHeight > viewportHeight - safeBottom) {
+      top = rect.top - popupHeight - margin;
     }
+    top = Math.max(safeTop, Math.min(viewportHeight - popupHeight - safeBottom, top));
     elements.guidePopup.style.left = `${Math.round(left)}px`;
     elements.guidePopup.style.top = `${Math.round(top)}px`;
   }

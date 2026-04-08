@@ -2039,6 +2039,7 @@ button.topbar-alert-btn:hover {
   z-index: 1200;
   min-width: 300px;
   max-width: min(420px, 92vw);
+  max-height: calc(100vh - var(--safe-top) - var(--safe-bottom) - 24px);
   border-radius: 16px;
   border: 1px solid rgba(196, 155, 0, 0.35);
   background: color-mix(in srgb, var(--panel) 96%, #fff 4%);
@@ -2046,6 +2047,7 @@ button.topbar-alert-btn:hover {
   padding: var(--space-4);
   box-shadow: 0 20px 48px rgba(15, 23, 42, 0.22);
   display: none;
+  overflow-y: auto;
 }
 .guide-popup.visible {
   display: block;
