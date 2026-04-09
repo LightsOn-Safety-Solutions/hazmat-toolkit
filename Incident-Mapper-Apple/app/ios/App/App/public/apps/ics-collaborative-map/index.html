@@ -1144,6 +1144,38 @@
     </div>
   </div>
 
+  <div id="attachmentDirectionModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="attachmentDirectionTitle">
+    <div class="modal-card attachment-direction-card">
+      <div class="modal-header">
+        <h2 id="attachmentDirectionTitle">Photo Direction</h2>
+        <button id="closeAttachmentDirectionBtn" class="secondary" type="button">Close</button>
+      </div>
+      <p class="muted attachment-direction-copy">Tap the compass to show which direction the camera was facing when the photo was taken.</p>
+      <div class="attachment-direction-layout">
+        <button id="attachmentDirectionCompass" class="attachment-direction-compass" type="button" aria-label="Select photo direction">
+          <span class="attachment-direction-ring"></span>
+          <span class="attachment-direction-label attachment-direction-label-n">N</span>
+          <span class="attachment-direction-label attachment-direction-label-e">E</span>
+          <span class="attachment-direction-label attachment-direction-label-s">S</span>
+          <span class="attachment-direction-label attachment-direction-label-w">W</span>
+          <span id="attachmentDirectionNeedle" class="attachment-direction-needle">
+            <span class="attachment-direction-needle-tip"></span>
+          </span>
+          <span class="attachment-direction-center"></span>
+        </button>
+        <div class="attachment-direction-meta">
+          <strong id="attachmentDirectionValue">Not set</strong>
+          <div class="muted">North is up. The arrow will be saved on the image pin.</div>
+        </div>
+      </div>
+      <div class="attachment-toolbar">
+        <button id="attachmentDirectionSkipBtn" class="secondary" type="button">Skip for Now</button>
+        <button id="attachmentDirectionClearBtn" class="secondary" type="button">Clear Direction</button>
+        <button id="attachmentDirectionConfirmBtn" class="primary" type="button">Use Direction</button>
+      </div>
+    </div>
+  </div>
+
   <div id="addToCostModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="addToCostTitle">
     <div class="modal-card add-to-cost-modal-card">
       <div class="modal-header">

@@ -2383,6 +2383,117 @@ body[data-theme="light"] .attachment-preview-img {
   gap: var(--space-2);
   flex-wrap: wrap;
 }
+.attachment-direction-card {
+  width: min(460px, 92vw);
+}
+.attachment-direction-copy {
+  margin: 0 0 var(--space-3);
+}
+.attachment-direction-layout {
+  display: grid;
+  gap: var(--space-3);
+  justify-items: center;
+  margin-bottom: var(--space-3);
+}
+.attachment-direction-compass {
+  position: relative;
+  width: 220px;
+  height: 220px;
+  padding: 0;
+  border-radius: 999px;
+  border: 1px solid var(--separator);
+  background:
+    radial-gradient(circle at center, color-mix(in srgb, var(--panel) 88%, white 12%) 0 28px, transparent 29px),
+    radial-gradient(circle at center, transparent 0 86px, color-mix(in srgb, var(--separator) 72%, transparent) 87px 88px, transparent 89px),
+    linear-gradient(180deg, color-mix(in srgb, var(--panel-alt) 94%, transparent), color-mix(in srgb, var(--panel) 88%, transparent));
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+.attachment-direction-compass::before,
+.attachment-direction-compass::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: color-mix(in srgb, var(--separator) 84%, transparent);
+  transform: translate(-50%, -50%);
+}
+.attachment-direction-compass::before {
+  width: 2px;
+  height: 166px;
+}
+.attachment-direction-compass::after {
+  width: 166px;
+  height: 2px;
+}
+.attachment-direction-ring {
+  position: absolute;
+  inset: 16px;
+  border-radius: 999px;
+  border: 1px dashed color-mix(in srgb, var(--separator) 82%, transparent);
+}
+.attachment-direction-label {
+  position: absolute;
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--muted);
+}
+.attachment-direction-label-n { top: 16px; left: 50%; transform: translateX(-50%); }
+.attachment-direction-label-e { right: 18px; top: 50%; transform: translateY(-50%); }
+.attachment-direction-label-s { bottom: 16px; left: 50%; transform: translateX(-50%); }
+.attachment-direction-label-w { left: 18px; top: 50%; transform: translateY(-50%); }
+.attachment-direction-needle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform: translate(-50%, -50%) rotate(var(--attachment-direction-preview, 0deg));
+  transform-origin: center;
+}
+.attachment-direction-needle::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -74px;
+  width: 4px;
+  height: 68px;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.92);
+  box-shadow: 0 0 0 2px rgba(255,255,255,0.92);
+}
+.attachment-direction-needle-tip {
+  position: absolute;
+  left: 50%;
+  top: -88px;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 9px solid transparent;
+  border-right: 9px solid transparent;
+  border-bottom: 16px solid rgba(17, 24, 39, 0.96);
+  filter: drop-shadow(0 0 0 2px rgba(255,255,255,0.94));
+}
+.attachment-direction-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 16px;
+  transform: translate(-50%, -50%);
+  border-radius: 999px;
+  background: rgba(17, 24, 39, 0.95);
+  box-shadow: 0 0 0 4px rgba(255,255,255,0.92);
+}
+.attachment-direction-meta {
+  display: grid;
+  gap: 6px;
+  text-align: center;
+}
+.attachment-direction-meta strong {
+  font-size: 17px;
+}
 .icon-marker-shell {
   position: relative;
   display: inline-flex;

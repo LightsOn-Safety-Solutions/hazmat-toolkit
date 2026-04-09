@@ -619,6 +619,14 @@
     attachmentRenameBtn: document.getElementById("attachmentRenameBtn"),
     attachmentDeleteBtn: document.getElementById("attachmentDeleteBtn"),
     closeAttachmentPreviewBtn: document.getElementById("closeAttachmentPreviewBtn"),
+    attachmentDirectionModal: document.getElementById("attachmentDirectionModal"),
+    closeAttachmentDirectionBtn: document.getElementById("closeAttachmentDirectionBtn"),
+    attachmentDirectionCompass: document.getElementById("attachmentDirectionCompass"),
+    attachmentDirectionNeedle: document.getElementById("attachmentDirectionNeedle"),
+    attachmentDirectionValue: document.getElementById("attachmentDirectionValue"),
+    attachmentDirectionSkipBtn: document.getElementById("attachmentDirectionSkipBtn"),
+    attachmentDirectionClearBtn: document.getElementById("attachmentDirectionClearBtn"),
+    attachmentDirectionConfirmBtn: document.getElementById("attachmentDirectionConfirmBtn"),
     ics202Workspace: document.getElementById("ics202Workspace"),
     ics202BackBtn: document.getElementById("ics202BackBtn"),
     ics202SaveBtn: document.getElementById("ics202SaveBtn"),
@@ -845,6 +853,11 @@
     attachmentPreview: {
       objectId: null,
       index: 0
+    },
+    attachmentDirectionPicker: {
+      resolve: null,
+      value: null,
+      allowSkip: false
     },
     addToCostObjectId: null,
     ergCatalog: { materials: [], lookup: new Map() },
@@ -1123,21 +1136,67 @@
     return `${directionToCardinal(normalized)} · ${Math.round(normalized)}°`;
   }
 
-  function promptAttachmentDirection(initialValue = null) {
-    const initialDirection = normalizeAttachmentDirection(initialValue);
-    const response = window.prompt(
-      "Optional photo direction. Enter degrees (0-359) or a compass direction like N, NE, E, or SW. Leave blank to skip.",
-      initialDirection == null ? "" : String(Math.round(initialDirection))
-    );
-    if (response == null) return undefined;
-    const trimmed = response.trim();
-    if (!trimmed) return null;
-    const parsed = parseAttachmentDirectionInput(trimmed);
-    if (parsed == null) {
-      window.alert("Enter a direction like 90, 225, N, NE, E, or SW.");
-      return promptAttachmentDirection(initialDirection);
+  function renderAttachmentDirectionPicker() {
+    const value = normalizeAttachmentDirection(state.attachmentDirectionPicker.value);
+    if (elements.attachmentDirectionNeedle) {
+      elements.attachmentDirectionNeedle.style.setProperty("--attachment-direction-preview", `${value == null ? 0 : value}deg`);
+      elements.attachmentDirectionNeedle.classList.toggle("hidden", value == null);
     }
-    return parsed;
+    if (elements.attachmentDirectionValue) {
+      elements.attachmentDirectionValue.textContent = formatAttachmentDirection(value);
+    }
+    if (elements.attachmentDirectionConfirmBtn) {
+      elements.attachmentDirectionConfirmBtn.disabled = value == null;
+    }
+    if (elements.attachmentDirectionSkipBtn) {
+      elements.attachmentDirectionSkipBtn.classList.toggle("hidden", !state.attachmentDirectionPicker.allowSkip);
+    }
+  }
+
+  function closeAttachmentDirectionModal(result = undefined) {
+    const resolve = state.attachmentDirectionPicker.resolve;
+    state.attachmentDirectionPicker.resolve = null;
+    state.attachmentDirectionPicker.value = null;
+    state.attachmentDirectionPicker.allowSkip = false;
+    elements.attachmentDirectionModal?.classList.add("hidden");
+    renderAttachmentDirectionPicker();
+    if (typeof resolve === "function") {
+      resolve(result);
+    }
+  }
+
+  function openAttachmentDirectionModal(initialValue = null, options = {}) {
+    const normalized = normalizeAttachmentDirection(initialValue);
+    state.attachmentDirectionPicker.value = normalized;
+    state.attachmentDirectionPicker.allowSkip = Boolean(options.allowSkip);
+    if (elements.attachmentDirectionConfirmBtn) {
+      elements.attachmentDirectionConfirmBtn.textContent = options.confirmLabel || "Use Direction";
+    }
+    if (elements.closeAttachmentDirectionBtn) {
+      elements.closeAttachmentDirectionBtn.textContent = options.closeLabel || "Close";
+    }
+    renderAttachmentDirectionPicker();
+    elements.attachmentDirectionModal?.classList.remove("hidden");
+    return new Promise((resolve) => {
+      state.attachmentDirectionPicker.resolve = resolve;
+    });
+  }
+
+  function updateAttachmentDirectionFromCompassEvent(event) {
+    const target = elements.attachmentDirectionCompass;
+    if (!target) return;
+    const rect = target.getBoundingClientRect();
+    const centerX = rect.left + (rect.width / 2);
+    const centerY = rect.top + (rect.height / 2);
+    const point = "touches" in event && event.touches?.length
+      ? event.touches[0]
+      : ("changedTouches" in event && event.changedTouches?.length ? event.changedTouches[0] : event);
+    const dx = Number(point.clientX) - centerX;
+    const dy = Number(point.clientY) - centerY;
+    const distance = Math.hypot(dx, dy);
+    if (distance < 14) return;
+    state.attachmentDirectionPicker.value = normalizeAttachmentDirection((Math.atan2(dx, -dy) * 180) / Math.PI);
+    renderAttachmentDirectionPicker();
   }
 
   function normalizeAttachmentFields(fields) {
@@ -1224,9 +1283,13 @@
       return;
     }
     void prepareAttachmentPayload(file)
-      .then((payload) => {
-        const promptedDirection = promptAttachmentDirection(null);
-        payload.cameraDirectionDeg = promptedDirection == null ? null : promptedDirection;
+      .then(async (payload) => {
+        const selectedDirection = await openAttachmentDirectionModal(null, {
+          allowSkip: true,
+          confirmLabel: "Use Direction",
+          closeLabel: "Skip"
+        });
+        payload.cameraDirectionDeg = selectedDirection == null ? null : selectedDirection;
         state.pendingAttachmentPayload = payload;
         state.drawState = null;
         redrawPreviewLayer();
@@ -1583,9 +1646,27 @@
     elements.attachmentRenameBtn?.addEventListener("click", renameCurrentAttachment);
     elements.attachmentDeleteBtn?.addEventListener("click", deleteCurrentAttachment);
     elements.closeAttachmentPreviewBtn?.addEventListener("click", closeAttachmentPreviewModal);
+    elements.attachmentDirectionCompass?.addEventListener("click", updateAttachmentDirectionFromCompassEvent);
+    elements.attachmentDirectionConfirmBtn?.addEventListener("click", () => {
+      closeAttachmentDirectionModal(normalizeAttachmentDirection(state.attachmentDirectionPicker.value));
+    });
+    elements.attachmentDirectionClearBtn?.addEventListener("click", () => {
+      closeAttachmentDirectionModal(null);
+    });
+    elements.attachmentDirectionSkipBtn?.addEventListener("click", () => {
+      closeAttachmentDirectionModal(null);
+    });
+    elements.closeAttachmentDirectionBtn?.addEventListener("click", () => {
+      closeAttachmentDirectionModal(state.attachmentDirectionPicker.allowSkip ? null : undefined);
+    });
     elements.attachmentPreviewModal?.addEventListener("click", (event) => {
       if (event.target === elements.attachmentPreviewModal) {
         closeAttachmentPreviewModal();
+      }
+    });
+    elements.attachmentDirectionModal?.addEventListener("click", (event) => {
+      if (event.target === elements.attachmentDirectionModal) {
+        closeAttachmentDirectionModal(state.attachmentDirectionPicker.allowSkip ? null : undefined);
       }
     });
     elements.addSelectedToCostBtn?.addEventListener("click", openAddToCostModal);
@@ -9588,7 +9669,11 @@
   async function updateAttachmentDirection() {
     const { object } = getAttachmentPreviewContext();
     if (!object || !attachmentObjectIsEditable(object)) return;
-    const nextDirection = promptAttachmentDirection(object.fields?.cameraDirectionDeg);
+    const nextDirection = await openAttachmentDirectionModal(object.fields?.cameraDirectionDeg, {
+      allowSkip: false,
+      confirmLabel: "Save Direction",
+      closeLabel: "Cancel"
+    });
     if (nextDirection === undefined) return;
     const draftFields = { ...(object.fields || {}) };
     if (nextDirection == null) {
