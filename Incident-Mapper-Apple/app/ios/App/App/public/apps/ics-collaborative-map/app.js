@@ -4435,6 +4435,7 @@
     if (!elements.mapStyleTray || !elements.mapStyleLauncherBtn || !elements.mapStyleTrayGrid) return;
     elements.mapStyleTray.classList.toggle("hidden", !state.mapStyleTrayOpen);
     elements.mapStyleLauncherBtn.setAttribute("aria-expanded", String(state.mapStyleTrayOpen));
+    elements.mapStyleLauncherBtn.title = state.mapStyleTrayOpen ? "Hide Map Styles" : "Show Map Styles";
     elements.mapStyleTrayGrid.innerHTML = "";
     MAP_STYLE_OPTIONS.forEach((styleOption) => {
       const card = document.createElement("button");
