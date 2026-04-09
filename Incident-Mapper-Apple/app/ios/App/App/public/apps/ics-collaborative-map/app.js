@@ -141,6 +141,11 @@
     { key: "satellite", label: "Satellite", description: "Aerial imagery", chip: "SAT", color: "#8cc46f" },
     { key: "topo", label: "Topographic", description: "Terrain and contours", chip: "TOP", color: "#e1c26f" }
   ];
+  const MAP_LAYER_MAX_ZOOM = {
+    road: 19,
+    satellite: 19,
+    topo: 17
+  };
   const ICON_CATEGORY_GROUP_OVERRIDES = {
     hazard: "HazMat"
   };
@@ -1649,6 +1654,7 @@
     }).setView([39.5, -98.35], 4);
     state.baseLayers = createBaseLayers();
     state.baseLayers[state.activeBaseLayerKey].addTo(state.map);
+    syncMapZoomLimit();
     L.control.layers(
       {
         Road: state.baseLayers.road,
@@ -1665,6 +1671,7 @@
       const nextKey = Object.entries(state.baseLayers || {}).find(([, layer]) => layer === event.layer)?.[0];
       if (nextKey) {
         state.activeBaseLayerKey = nextKey;
+        syncMapZoomLimit();
         renderMapStyleTray();
       }
     });
@@ -1711,6 +1718,15 @@
     };
   }
 
+  function syncMapZoomLimit() {
+    if (!state.map) return;
+    const maxZoom = MAP_LAYER_MAX_ZOOM[state.activeBaseLayerKey] || 19;
+    state.map.setMaxZoom(maxZoom);
+    if (state.map.getZoom() > maxZoom) {
+      state.map.setZoom(maxZoom);
+    }
+  }
+
   function setBaseLayer(layerKey) {
     if (!state.map || !state.baseLayers || !state.baseLayers[layerKey]) return;
     if (state.baseLayers[state.activeBaseLayerKey]) {
@@ -1718,6 +1734,7 @@
     }
     state.activeBaseLayerKey = layerKey;
     state.baseLayers[layerKey].addTo(state.map);
+    syncMapZoomLimit();
     renderMapStyleTray();
   }
 
