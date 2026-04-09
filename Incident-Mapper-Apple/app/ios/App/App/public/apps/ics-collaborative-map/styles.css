@@ -3093,11 +3093,21 @@ body[data-theme="light"] .attachment-preview-img {
 }
 
 .point-marker {
+  position: relative;
   width: 20px;
   height: 20px;
   border-radius: 50%;
   border: 2px solid rgba(255,255,255,0.75);
   box-shadow: 0 4px 10px rgba(0,0,0,0.25);
+}
+.point-marker-focus::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+  border-radius: 999px;
+  border: 2px solid color-mix(in srgb, currentColor 50%, transparent);
+  opacity: 0.6;
+  animation: incident-focus-pulse 1.9s ease-out infinite;
 }
 .point-marker-labeled {
   width: 28px;
@@ -3114,6 +3124,20 @@ body[data-theme="light"] .attachment-preview-img {
   letter-spacing: 0.02em;
   color: #081018;
   text-transform: uppercase;
+}
+@keyframes incident-focus-pulse {
+  0% {
+    transform: scale(0.84);
+    opacity: 0.65;
+  }
+  70% {
+    transform: scale(1.38);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1.38);
+    opacity: 0;
+  }
 }
 .geometry-handle {
   width: 18px;

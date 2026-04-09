@@ -11345,11 +11345,11 @@
     });
   }
 
-  function buildLabeledPointIcon(color, label) {
+  function buildLabeledPointIcon(color, label, extraClass = "") {
     return L.divIcon({
       className: "",
       html: `
-        <div class="point-marker point-marker-labeled" style="background:${escapeAttribute(color)}">
+        <div class="point-marker point-marker-labeled ${escapeAttribute(extraClass)}" style="background:${escapeAttribute(color)}">
           <span>${escapeHtml(label)}</span>
         </div>
       `,
@@ -11359,6 +11359,9 @@
   }
 
   function buildPointObjectIcon(object, template, color) {
+    const isIncidentFocus = object?.objectType === "HazardSource"
+      && String(object?.id || "") === String(findIncidentFocusObject()?.id || "");
+    const markerClass = isIncidentFocus ? "point-marker-focus" : "";
     if (object.objectType === MAP_NOTE_OBJECT_TYPE) {
       return buildMapNoteIcon(object);
     }
@@ -11366,11 +11369,11 @@
       return buildIconMarkerIcon(object, template);
     }
     if (object.objectType === "IncidentCommand") {
-      return buildLabeledPointIcon(color, "IC");
+      return buildLabeledPointIcon(color, "IC", markerClass);
     }
     return L.divIcon({
       className: "",
-      html: `<div class="point-marker" style="background:${escapeAttribute(color)}"></div>`,
+      html: `<div class="point-marker ${escapeAttribute(markerClass)}" style="background:${escapeAttribute(color)}"></div>`,
       iconSize: [20, 20],
       iconAnchor: [10, 10]
     });
