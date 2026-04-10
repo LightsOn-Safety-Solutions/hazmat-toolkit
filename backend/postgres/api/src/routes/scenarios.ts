@@ -217,8 +217,8 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
             $4::device_type,
             $5::timestamptz,
             case
-              when $6 is null then ''
-              else $6
+              when $6::text is null then ''
+              else $6::text
             end,
             case
               when $7::float8 is null or $8::float8 is null then null
