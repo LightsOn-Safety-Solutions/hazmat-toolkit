@@ -29,6 +29,16 @@ type ShapeBody = {
   carbon_monoxide?: string | null;
   hydrogen_sulfide?: string | null;
   pid?: string | null;
+  oxygenHighFeatherPercent?: number | null;
+  oxygenLowFeatherPercent?: number | null;
+  lelHighFeatherPercent?: number | null;
+  lelLowFeatherPercent?: number | null;
+  carbonMonoxideHighFeatherPercent?: number | null;
+  carbonMonoxideLowFeatherPercent?: number | null;
+  hydrogenSulfideHighFeatherPercent?: number | null;
+  hydrogenSulfideLowFeatherPercent?: number | null;
+  pidHighFeatherPercent?: number | null;
+  pidLowFeatherPercent?: number | null;
   chemical_readings?: unknown;
   dose_rate?: string | null;
   background?: string | null;
@@ -84,6 +94,16 @@ type ShapeRow = {
   carbon_monoxide: string | null;
   hydrogen_sulfide: string | null;
   pid: string | null;
+  oxygen_high_feather_percent: number | null;
+  oxygen_low_feather_percent: number | null;
+  lel_high_feather_percent: number | null;
+  lel_low_feather_percent: number | null;
+  carbon_monoxide_high_feather_percent: number | null;
+  carbon_monoxide_low_feather_percent: number | null;
+  hydrogen_sulfide_high_feather_percent: number | null;
+  hydrogen_sulfide_low_feather_percent: number | null;
+  pid_high_feather_percent: number | null;
+  pid_low_feather_percent: number | null;
   chemical_readings: unknown;
   dose_rate: string | null;
   background: string | null;
@@ -178,53 +198,68 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
       await client.query('BEGIN');
       const trainer = await upsertTrainerIfPossible(client, trainerRef, trainerName);
 
-      const inserted = await client.query<ScenarioRow>(
+      const inserted = await client.query<{ id: string }>(
         `
           insert into scenarios (
             trainer_id,
             trainer_ref,
-            organization_id,
-            created_by_trainer_id,
             scenario_name,
             detection_device,
             scenario_date,
             notes,
             center_geog,
-            status,
-            visibility,
-            assigned_trainer_id
+            status
           )
           values (
             $1::uuid,
             $2,
-            $3::uuid,
-            $1::uuid,
-            $4,
-            $5::device_type,
-            $6::timestamptz,
+            $3,
+            $4::device_type,
+            $5::timestamptz,
             case
-              when $7 is null then ''
-              else $7
+              when $6 is null then ''
+              else $6
             end,
             case
-              when $8::float8 is null or $9::float8 is null then null
-              else ST_SetSRID(ST_MakePoint($9::float8, $8::float8), 4326)::geography
+              when $7::float8 is null or $8::float8 is null then null
+              else ST_SetSRID(ST_MakePoint($8::float8, $7::float8), 4326)::geography
             end,
-            'draft',
-            $10::scenario_visibility,
-            case when $10::scenario_visibility = 'assigned' then $11::uuid else null end
+            'draft'
           )
+          returning id::text as id
+        `,
+        [
+          trainer?.id ?? null,
+          trainerRef,
+          body.scenario_name,
+          body.detection_device,
+          body.scenario_date,
+          notes,
+          body.latitude ?? null,
+          body.longitude ?? null
+        ]
+      );
+
+      const hydrated = await client.query<ScenarioRow>(
+        `
+          update scenarios
+          set
+            organization_id = $2::uuid,
+            created_by_trainer_id = coalesce(created_by_trainer_id, $3::uuid),
+            visibility = $4::scenario_visibility,
+            assigned_trainer_id = case when $4::scenario_visibility = 'assigned' then $5::uuid else null end
+          where id = $1::uuid
           returning
             id::text as id,
             scenario_name,
-            $12::text as trainer_name,
+            $6::text as trainer_name,
             coalesce(scenario_date, created_at)::timestamptz as scenario_date,
             case when center_geog is null then null else ST_Y(center_geog::geometry) end as latitude,
             case when center_geog is null then null else ST_X(center_geog::geometry) end as longitude,
             detection_device::text as detection_device,
             version,
             organization_id::text as organization_id,
-            $13::text as organization_name,
+            $7::text as organization_name,
             created_by_trainer_id::text as created_by_trainer_id,
             visibility::text as visibility,
             assigned_trainer_id::text as assigned_trainer_id,
@@ -232,15 +267,9 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
             updated_at
         `,
         [
-          trainer?.id ?? null,
-          trainerRef,
+          inserted.rows[0].id,
           identity.organizationId,
-          body.scenario_name,
-          body.detection_device,
-          body.scenario_date,
-          notes,
-          body.latitude ?? null,
-          body.longitude ?? null,
+          trainer?.id ?? null,
           visibility,
           body.assigned_trainer_id ?? null,
           trainerName,
@@ -249,11 +278,12 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
       );
 
       await client.query('COMMIT');
-      return reply.code(201).send(mapScenarioRow(inserted.rows[0]));
+      return reply.code(201).send(mapScenarioRow(hydrated.rows[0]));
     } catch (error) {
       await client.query('ROLLBACK');
       app.log.error({ err: error }, 'createScenario failed');
-      return reply.code(500).send({ error: 'INTERNAL_ERROR', message: 'Failed to create scenario.' });
+      const detail = error instanceof Error ? error.message : String(error);
+      return reply.code(500).send({ error: 'INTERNAL_ERROR', message: `Failed to create scenario: ${detail}` });
     } finally {
       client.release();
     }
@@ -346,7 +376,8 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
     } catch (error) {
       await client.query('ROLLBACK');
       app.log.error({ err: error }, 'updateScenario failed');
-      return reply.code(500).send({ error: 'INTERNAL_ERROR', message: 'Failed to update scenario.' });
+      const detail = error instanceof Error ? error.message : String(error);
+      return reply.code(500).send({ error: 'INTERNAL_ERROR', message: `Failed to update scenario: ${detail}` });
     } finally {
       client.release();
     }
@@ -408,6 +439,16 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
           ss.carbon_monoxide::text as carbon_monoxide,
           ss.hydrogen_sulfide::text as hydrogen_sulfide,
           ss.pid::text as pid,
+          (ss.properties_json ->> 'oxygenHighFeatherPercent')::float8 as oxygen_high_feather_percent,
+          (ss.properties_json ->> 'oxygenLowFeatherPercent')::float8 as oxygen_low_feather_percent,
+          (ss.properties_json ->> 'lelHighFeatherPercent')::float8 as lel_high_feather_percent,
+          (ss.properties_json ->> 'lelLowFeatherPercent')::float8 as lel_low_feather_percent,
+          (ss.properties_json ->> 'carbonMonoxideHighFeatherPercent')::float8 as carbon_monoxide_high_feather_percent,
+          (ss.properties_json ->> 'carbonMonoxideLowFeatherPercent')::float8 as carbon_monoxide_low_feather_percent,
+          (ss.properties_json ->> 'hydrogenSulfideHighFeatherPercent')::float8 as hydrogen_sulfide_high_feather_percent,
+          (ss.properties_json ->> 'hydrogenSulfideLowFeatherPercent')::float8 as hydrogen_sulfide_low_feather_percent,
+          (ss.properties_json ->> 'pidHighFeatherPercent')::float8 as pid_high_feather_percent,
+          (ss.properties_json ->> 'pidLowFeatherPercent')::float8 as pid_low_feather_percent,
           coalesce(ss.properties_json -> 'chemicalReadings', '[]'::jsonb) as chemical_readings,
           ss.dose_rate,
           ss.background,
@@ -538,6 +579,16 @@ function mapShapeRow(row: ShapeRow) {
     carbonMonoxide: row.carbon_monoxide,
     hydrogenSulfide: row.hydrogen_sulfide,
     pid: row.pid,
+    oxygenHighFeatherPercent: row.oxygen_high_feather_percent,
+    oxygenLowFeatherPercent: row.oxygen_low_feather_percent,
+    lelHighFeatherPercent: row.lel_high_feather_percent,
+    lelLowFeatherPercent: row.lel_low_feather_percent,
+    carbonMonoxideHighFeatherPercent: row.carbon_monoxide_high_feather_percent,
+    carbonMonoxideLowFeatherPercent: row.carbon_monoxide_low_feather_percent,
+    hydrogenSulfideHighFeatherPercent: row.hydrogen_sulfide_high_feather_percent,
+    hydrogenSulfideLowFeatherPercent: row.hydrogen_sulfide_low_feather_percent,
+    pidHighFeatherPercent: row.pid_high_feather_percent,
+    pidLowFeatherPercent: row.pid_low_feather_percent,
     chemicalReadings: Array.isArray(row.chemical_readings) ? row.chemical_readings : [],
     doseRate: row.dose_rate,
     background: row.background,
@@ -648,7 +699,19 @@ async function insertOrUpdateShape(
   }
 
   const chemicalReadings = Array.isArray(normalized.chemical_readings) ? normalized.chemical_readings : [];
-  const propertiesJSON = JSON.stringify({ chemicalReadings });
+  const propertiesJSON = JSON.stringify({
+    chemicalReadings,
+    oxygenHighFeatherPercent: normalizePercent(normalized.oxygenHighFeatherPercent),
+    oxygenLowFeatherPercent: normalizePercent(normalized.oxygenLowFeatherPercent),
+    lelHighFeatherPercent: normalizePercent(normalized.lelHighFeatherPercent),
+    lelLowFeatherPercent: normalizePercent(normalized.lelLowFeatherPercent),
+    carbonMonoxideHighFeatherPercent: normalizePercent(normalized.carbonMonoxideHighFeatherPercent),
+    carbonMonoxideLowFeatherPercent: normalizePercent(normalized.carbonMonoxideLowFeatherPercent),
+    hydrogenSulfideHighFeatherPercent: normalizePercent(normalized.hydrogenSulfideHighFeatherPercent),
+    hydrogenSulfideLowFeatherPercent: normalizePercent(normalized.hydrogenSulfideLowFeatherPercent),
+    pidHighFeatherPercent: normalizePercent(normalized.pidHighFeatherPercent),
+    pidLowFeatherPercent: normalizePercent(normalized.pidLowFeatherPercent)
+  });
 
   const params = [
     shapeID ?? null,
@@ -727,6 +790,16 @@ const shapeReturningColumns = `
     carbon_monoxide::text as carbon_monoxide,
     hydrogen_sulfide::text as hydrogen_sulfide,
     pid::text as pid,
+    (properties_json ->> 'oxygenHighFeatherPercent')::float8 as oxygen_high_feather_percent,
+    (properties_json ->> 'oxygenLowFeatherPercent')::float8 as oxygen_low_feather_percent,
+    (properties_json ->> 'lelHighFeatherPercent')::float8 as lel_high_feather_percent,
+    (properties_json ->> 'lelLowFeatherPercent')::float8 as lel_low_feather_percent,
+    (properties_json ->> 'carbonMonoxideHighFeatherPercent')::float8 as carbon_monoxide_high_feather_percent,
+    (properties_json ->> 'carbonMonoxideLowFeatherPercent')::float8 as carbon_monoxide_low_feather_percent,
+    (properties_json ->> 'hydrogenSulfideHighFeatherPercent')::float8 as hydrogen_sulfide_high_feather_percent,
+    (properties_json ->> 'hydrogenSulfideLowFeatherPercent')::float8 as hydrogen_sulfide_low_feather_percent,
+    (properties_json ->> 'pidHighFeatherPercent')::float8 as pid_high_feather_percent,
+    (properties_json ->> 'pidLowFeatherPercent')::float8 as pid_low_feather_percent,
     coalesce(properties_json -> 'chemicalReadings', '[]'::jsonb) as chemical_readings,
     dose_rate,
     background,
@@ -805,4 +878,9 @@ function normalizeNumericString(value: string | null | undefined): string | null
   if (value == null) return null;
   const trimmed = value.trim();
   return trimmed.length ? trimmed : null;
+}
+
+function normalizePercent(value: number | null | undefined): number | null {
+  if (value == null || !Number.isFinite(value)) return null;
+  return Math.min(100, Math.max(0, value));
 }
