@@ -12408,7 +12408,8 @@
   }
 
   async function exportMapPdf() {
-    setStatus("Preparing map PDF...");
+    hidePrintExportModal();
+    setStatus("Preparing map PDF…");
     try {
       const capture = await captureBufferedMapImage();
       if (!capture) return;
