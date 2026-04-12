@@ -1490,7 +1490,16 @@ body[data-theme="light"] .map-sidebar-toggle {
   opacity: 0.46;
 }
 .incident-focus-lock #setIncidentFocusBtn.attention {
-  box-shadow: 0 0 0 3px rgba(243,198,19,0.2);
+  animation: focus-btn-pulse 1.6s ease-out infinite;
+}
+@keyframes focus-btn-pulse {
+  0%   { box-shadow: 0 0 0 2px rgba(243,198,19,0.95), 0 0 0 2px rgba(243,198,19,0.95); }
+  60%  { box-shadow: 0 0 0 2px rgba(243,198,19,0.95), 0 0 0 10px rgba(243,198,19,0.0); }
+  100% { box-shadow: 0 0 0 2px rgba(243,198,19,0.95), 0 0 0 10px rgba(243,198,19,0.0); }
+}
+.map-stage.focus-placement-active #map,
+.map-stage.focus-placement-active .leaflet-container {
+  cursor: crosshair !important;
 }
 .app {
   flex: 1;

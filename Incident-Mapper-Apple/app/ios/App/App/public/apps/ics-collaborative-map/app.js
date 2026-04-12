@@ -4220,6 +4220,7 @@
       elements.setIncidentFocusBtn.textContent = focusPlacementActive ? "Tap Map to Place Focus" : "Set Initial Focus";
       elements.setIncidentFocusBtn.classList.toggle("attention", focusLocked);
     }
+    elements.mapStage?.classList.toggle("focus-placement-active", focusPlacementActive);
     if (elements.addressIncidentFocusBtn) {
       elements.addressIncidentFocusBtn.disabled = !canCreateObjects();
     }
