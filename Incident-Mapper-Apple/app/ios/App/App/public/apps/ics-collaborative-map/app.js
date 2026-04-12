@@ -12342,9 +12342,16 @@
         allowTaint: true,
         scale: Math.min(window.devicePixelRatio || 1, 2),
         logging: false,
-        onclone: (_doc, el) => {
+        onclone: (doc, el) => {
           el.style.borderRadius = "0";
           el.style.overflow = "visible";
+          // html2canvas can't parse color-mix() or CSS variables used in our
+          // stylesheet. Strip non-Leaflet stylesheets from the clone so
+          // computed styles fall back to simple browser defaults.
+          doc.querySelectorAll('link[rel="stylesheet"], style').forEach((node) => {
+            const href = node.getAttribute("href") || "";
+            if (!href.includes("leaflet")) node.remove();
+          });
         }
       });
       return {
