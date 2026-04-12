@@ -1969,6 +1969,8 @@ button.topbar-alert-btn {
 .topbar .topbar-icon-btn,
 .topbar .topbar-settings-btn {
   width: 44px;
+  min-height: 44px;
+  font-size: 20px;
 }
 button.topbar-alert-btn:hover {
   background: linear-gradient(180deg, color-mix(in srgb, var(--danger) 74%, #ffffff 26%) 0%, color-mix(in srgb, var(--danger) 92%, #7f1d1d 8%) 100%);
