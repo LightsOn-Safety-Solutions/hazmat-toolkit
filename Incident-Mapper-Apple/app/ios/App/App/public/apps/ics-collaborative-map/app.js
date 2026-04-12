@@ -12422,75 +12422,40 @@
 
   async function exportMapPdf() {
     hidePrintExportModal();
-    setStatus("Preparing map PDF…");
+    const bounds = getMapExportBounds();
+    if (!bounds || !bounds.isValid()) {
+      setStatus("Place one or more map items before exporting PDF.");
+      return;
+    }
+    setStatus("Fitting map for PDF export…");
+    const previousCenter = state.map.getCenter();
+    const previousZoom = state.map.getZoom();
+    const previousMapStyleTrayOpen = state.mapStyleTrayOpen;
+    const previousWeatherPanelOpen = state.weatherPanelOpen;
+    closeMapStyleTray();
+    state.weatherPanelOpen = false;
+    renderWeatherUI();
     try {
-      const capture = await captureBufferedMapImage();
-      if (!capture) return;
-      const exportLibraries = await ensureExportLibraries({ pdf: true });
-      if (!exportLibraries.ok) {
-        setStatus(exportLibraries.message);
-        return;
-      }
-      const jspdfNs = window.jspdf;
-      if (!jspdfNs?.jsPDF) {
-        setStatus("PDF library unavailable.");
-        return;
-      }
-      const { jsPDF } = jspdfNs;
-      const doc = new jsPDF({ orientation: "landscape", unit: "pt", format: "letter" });
-      const pageW = doc.internal.pageSize.getWidth();
-      const pageH = doc.internal.pageSize.getHeight();
-      const margin = 28;
-      const headerHeight = 42;
-      const footerHeight = 20;
-      const usableW = pageW - margin * 2;
-      const usableH = pageH - margin * 2 - headerHeight - footerHeight;
-      const imageRatio = capture.width / capture.height;
-      let imageW = usableW;
-      let imageH = imageW / imageRatio;
-      if (imageH > usableH) {
-        imageH = usableH;
-        imageW = imageH * imageRatio;
-      }
-      const incidentName = state.activeSession?.incidentName || state.scenarioReview?.incidentName || "Collaborative Incident";
-      const exportedAt = new Date().toLocaleString();
-
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(16);
-      doc.text("ICS Collaborative Map", margin, margin + 14);
-      doc.setFont("helvetica", "normal");
-      doc.setFontSize(10);
-      doc.text(incidentName, margin, margin + 30);
-      doc.text(exportedAt, pageW - margin, margin + 14, { align: "right" });
-      doc.addImage(capture.pdfImageDataUrl || capture.imageDataUrl, "JPEG", margin, margin + headerHeight, imageW, imageH);
-      doc.setDrawColor(0, 0, 0);
-      doc.rect(margin, margin + headerHeight, imageW, imageH);
-      doc.setFontSize(9);
-      doc.text(`${state.layers.size} mapped item${state.layers.size === 1 ? "" : "s"} | buffered to mapped extent`, margin, pageH - margin);
-
-      const blob = doc.output("blob");
-      const filename = buildExportFilename("map", "pdf");
-      if (window.exportPdfHelper?.saveAndSharePdfBlob) {
-        try {
-          const result = await window.exportPdfHelper.saveAndSharePdfBlob(blob, filename);
-          if (result?.shared) {
-            setStatus(`Map PDF shared: ${filename}`);
-          } else if (result?.uri) {
-            setStatus(`Map PDF downloaded: ${filename}`);
-          } else {
-            setStatus(`Map PDF downloaded: ${filename}`);
-          }
-          return;
-        } catch (error) {
-          console.error("Unable to open map PDF share/save prompt.", error);
-        }
-      }
-      await downloadBlob(blob, filename);
-      setStatus(`Map PDF downloaded: ${filename}`);
-    } catch (error) {
-      console.error("Unable to export map PDF.", error);
-      const detail = error?.message ? ` (${error.message})` : "";
-      setStatus(`Map PDF export failed${detail}.`);
+      state.map.invalidateSize({ pan: false, animate: false });
+      state.map.fitBounds(bounds.pad(0.18), { padding: [56, 56], maxZoom: 16, animate: false });
+      await waitForMapMoveEnd();
+      await waitForActiveTilesLoaded();
+      document.body.classList.add("print-map-live");
+      setStatus("Print dialog open — choose 'Save as PDF'.");
+      const cleanup = () => {
+        document.body.classList.remove("print-map-live");
+        window.removeEventListener("afterprint", cleanup);
+      };
+      window.addEventListener("afterprint", cleanup);
+      window.print();
+      window.setTimeout(cleanup, 1200);
+    } finally {
+      state.map.setView(previousCenter, previousZoom, { animate: false });
+      state.mapStyleTrayOpen = previousMapStyleTrayOpen;
+      renderMapStyleTray();
+      state.weatherPanelOpen = previousWeatherPanelOpen;
+      renderWeatherUI();
+      scheduleMapResizeRefresh();
     }
   }
 
