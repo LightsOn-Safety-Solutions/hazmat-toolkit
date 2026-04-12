@@ -1959,7 +1959,7 @@ button.topbar-alert-btn {
 .topbar .primary,
 .topbar .secondary,
 .topbar .danger {
-  min-height: 38px;
+  min-height: 44px;
   padding: 7px 12px;
   border-radius: 12px;
   font-size: 12px;
