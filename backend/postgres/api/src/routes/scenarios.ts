@@ -401,8 +401,28 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(403).send({ error: 'FORBIDDEN', message: 'Trainer does not have edit access to this scenario.' });
     }
 
-    await app.pg.query('delete from scenarios where id = $1::uuid', [request.params.scenarioId]);
-    return reply.code(204).send();
+    const client = await app.pg.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query('delete from scenario_sessions where scenario_id = $1::uuid', [request.params.scenarioId]);
+      await client.query('delete from scenarios where id = $1::uuid', [request.params.scenarioId]);
+      await client.query('COMMIT');
+      return reply.code(204).send();
+    } catch (error) {
+      await client.query('ROLLBACK');
+      const pgError = error as { code?: string };
+      if (pgError.code === '23503') {
+        return reply.code(409).send({
+          error: 'CONFLICT',
+          message: 'Scenario cannot be deleted because related records still exist.'
+        });
+      }
+      app.log.error({ err: error }, 'deleteScenario failed');
+      const detail = error instanceof Error ? error.message : String(error);
+      return reply.code(500).send({ error: 'INTERNAL_ERROR', message: `Failed to delete scenario: ${detail}` });
+    } finally {
+      client.release();
+    }
   });
 
   app.get<{ Params: ScenarioParams }>('/v1/scenarios/:scenarioId/shapes', async (request, reply) => {
