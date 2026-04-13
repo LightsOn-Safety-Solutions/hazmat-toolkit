@@ -12378,8 +12378,8 @@
 
     try {
       state.map.invalidateSize({ pan: false, animate: false });
-      state.map.fitBounds(bounds.pad(0.08), {
-        padding: [24, 24],
+      state.map.fitBounds(bounds.pad(0.12), {
+        padding: [40, 40],
         maxZoom: 16,
         animate: false
       });
