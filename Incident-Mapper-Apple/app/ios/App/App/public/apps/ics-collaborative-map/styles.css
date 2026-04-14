@@ -432,7 +432,7 @@ body {
 }
 .super-admin-filter-row {
   display: grid;
-  grid-template-columns: minmax(240px, 360px);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: var(--space-2);
   margin-bottom: var(--space-3);
 }
