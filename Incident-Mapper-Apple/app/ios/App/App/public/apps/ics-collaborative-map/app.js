@@ -1770,10 +1770,10 @@
         void copySuperAdminSessionId(session);
       }
     });
-    elements.superAdminSessionDeleteBtn?.addEventListener("click", () => {
+    elements.superAdminSessionDeleteBtn?.addEventListener("click", async () => {
       const session = getSelectedSuperAdminSession();
       if (session) {
-        void deleteSuperAdminSession(session);
+        await deleteSuperAdminSession(session);
       }
     });
     elements.superAdminSessionDetailModal?.addEventListener("click", (event) => {
@@ -5853,8 +5853,8 @@
       return;
     }
     const label = session?.incidentName || "this session";
-    const confirmation = window.prompt(`Type DELETE to permanently remove "${label}" (${session.sessionId}).`);
-    if (confirmation !== "DELETE") {
+    const confirmation = window.confirm(`Are you sure you want to permanently delete "${label}"?`);
+    if (!confirmation) {
       setStatus("Session delete canceled.");
       return;
     }
