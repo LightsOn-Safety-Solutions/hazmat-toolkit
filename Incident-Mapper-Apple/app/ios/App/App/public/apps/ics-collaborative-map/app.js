@@ -1801,15 +1801,6 @@
     state.baseLayers = createBaseLayers();
     state.baseLayers[state.activeBaseLayerKey].addTo(state.map);
     syncMapZoomLimit();
-    L.control.layers(
-      {
-        Road: state.baseLayers.road,
-        Satellite: state.baseLayers.satellite,
-        Topographic: state.baseLayers.topo
-      },
-      {},
-      { collapsed: true }
-    ).addTo(state.map);
     state.objectLayerGroup = L.layerGroup().addTo(state.map);
     state.editHandleLayerGroup = L.layerGroup().addTo(state.map);
     state.map.on("click", onMapClick);
