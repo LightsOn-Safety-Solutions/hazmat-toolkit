@@ -18,6 +18,7 @@ import {
 import { signIn, signOut, userIsSuperAdmin } from "./auth.js";
 import { normalizeTrainerArray, normalizeTrainerRecord, trainerToDbRow } from "./trainer-schema.js";
 import { DEMO_TRAINERS } from "./demo-data.js";
+import { buildModerationUpdate, DEFAULT_REJECTION_REASON } from "./admin-moderation.js";
 import { getSupabaseClient, hasSupabaseConfig } from "./supabase-client.js";
 import { createCheckbox, createOption, escapeHtml, setStatus } from "./utils.js";
 
@@ -130,28 +131,32 @@ function activeAdminIdentifier() {
 }
 
 async function updateTrainerStatus(trainer, status) {
-  const payload = {
-    ...trainer,
-    recordStatus: status,
-    visibility: status === "approved" ? "public" : "admin-only",
-    reviewedAt: new Date().toISOString(),
-    reviewedBy: activeAdminIdentifier()
-  };
-
+  let rejectionReasonInput;
   if (status === "rejected") {
-    const reason = prompt("Rejection reason (optional):", trainer.rejectionReason || "");
-    payload.rejectionReason = String(reason || "").trim();
+    rejectionReasonInput = prompt(
+      `Rejection reason (leave blank to use: ${DEFAULT_REJECTION_REASON}):`,
+      trainer.rejectionReason || ""
+    );
   }
 
-  if (status === "approved") {
-    payload.rejectionReason = "";
+  const decision = buildModerationUpdate({
+    trainer,
+    status,
+    adminIdentifier: activeAdminIdentifier(),
+    rejectionReasonInput
+  });
+
+  if (decision.cancelled) {
+    return { cancelled: true };
   }
 
   const supabase = getSupabaseClient();
-  const { error } = await supabase.from(TABLE_NAME).update(trainerToDbRow(payload)).eq("id", trainer.id);
+  const { error } = await supabase.from(TABLE_NAME).update(decision.update).eq("id", trainer.id);
   if (error) {
     throw new Error(error.message);
   }
+
+  return { cancelled: false };
 }
 
 async function loadAll() {
@@ -428,10 +433,18 @@ function bindEvents() {
         return;
       }
       if (action === "approve") {
-        await updateTrainerStatus(trainer, "approved");
+        const result = await updateTrainerStatus(trainer, "approved");
+        if (result?.cancelled) {
+          setStatus(ui.status, "Approval cancelled.");
+          return;
+        }
       }
       if (action === "reject") {
-        await updateTrainerStatus(trainer, "rejected");
+        const result = await updateTrainerStatus(trainer, "rejected");
+        if (result?.cancelled) {
+          setStatus(ui.status, "Reject action cancelled.");
+          return;
+        }
       }
       await loadAll();
       setStatus(ui.status, "Trainer status updated.", "ok");
