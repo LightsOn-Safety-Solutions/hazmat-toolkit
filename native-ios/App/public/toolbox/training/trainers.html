@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Trainer Locator | The Hazmat Guys</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="./trainers/css/trainers.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./trainers/config.runtime.js"></script>
+</head>
+<body class="conference-page">
+  <header class="conference-hero">
+    <img class="brand-logo" src="../assets/thmg-web-logo.png" alt="The Hazmat Guys logo" />
+    <p class="conference-eyebrow">Trainer Locator</p>
+    <h1>Find Approved Hazmat Training Experts</h1>
+    <p class="conference-sub">Filter by discipline, certifications, geography, and delivery type to locate the right trainer quickly.</p>
+    <a class="back-link" href="../index.html">Back to Toolboxes</a>
+  </header>
+
+  <main class="conference-shell">
+    <div class="wrap">
+      <div class="grid" id="grid">
+        <section class="leftPanel">
+          <article class="card">
+            <div class="hd">
+              <div class="title">Filter Trainers</div>
+              <div class="count" id="resultCount">0 of 0 trainers</div>
+            </div>
+            <div class="bd">
+              <form id="filtersForm" class="filters">
+                <div class="group">
+                  <h4>Search</h4>
+                  <label for="filterQuery">Keyword Search</label>
+                  <input id="filterQuery" placeholder="Name, org, specialty, topics, notes..." />
+                </div>
+
+                <div class="group">
+                  <h4>Training Classification</h4>
+                  <label>Discipline</label>
+                  <div class="checkGrid" id="disciplineOptions"></div>
+                  <label style="margin-top:8px;">Hazmat Specialties</label>
+                  <div class="checkGrid" id="hazmatOptions"></div>
+                  <label style="margin-top:8px;">Training Type</label>
+                  <div class="checkGrid" id="trainingTypeOptions"></div>
+                </div>
+
+                <div class="group">
+                  <h4>Geography / Travel</h4>
+                  <div class="row">
+                    <div>
+                      <label for="filterState">State</label>
+                      <select id="filterState" name="state"><option value="">Any</option></select>
+                    </div>
+                    <div>
+                      <label for="filterRegion">Region</label>
+                      <select id="filterRegion" name="region"><option value="">Any</option></select>
+                    </div>
+                  </div>
+                  <label for="filterTravel" style="margin-top:8px;">Travel Capability</label>
+                  <select id="filterTravel" name="travelCapability"><option value="">Any</option></select>
+                </div>
+
+                <div class="group">
+                  <h4>Credentials / Experience</h4>
+                  <label>Certifications</label>
+                  <div class="checkGrid" id="certificationOptions"></div>
+                  <label style="margin-top:8px;">Background</label>
+                  <div class="checkGrid" id="backgroundOptions"></div>
+                  <label for="filterExperience" style="margin-top:8px;">Experience Level</label>
+                  <select id="filterExperience" name="experienceLevel"><option value="">Any</option></select>
+                </div>
+
+                <div class="group">
+                  <h4>Delivery / Budget / Availability</h4>
+                  <label>Industry Experience</label>
+                  <div class="checkGrid" id="industryOptions"></div>
+                  <div class="row" style="margin-top:8px;">
+                    <div>
+                      <label for="filterClassSize">Class Size</label>
+                      <select id="filterClassSize" name="classSize"><option value="">Any</option></select>
+                    </div>
+                    <div>
+                      <label for="filterCurriculum">Custom Curriculum</label>
+                      <select id="filterCurriculum" name="customCurriculum"><option value="">Any</option></select>
+                    </div>
+                  </div>
+                  <div class="row" style="margin-top:8px;">
+                    <div>
+                      <label for="filterPrice">Price Range</label>
+                      <select id="filterPrice" name="priceRange"><option value="">Any</option></select>
+                    </div>
+                    <div>
+                      <label for="filterAvailability">Availability</label>
+                      <select id="filterAvailability" name="availability"><option value="">Any</option></select>
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              <div class="actions">
+                <button class="btn-primary" type="button" id="btnResetFilters">Reset Filters</button>
+                <button class="btn-ghost" type="button" id="btnCenterUS">Center Map (US)</button>
+                <button class="btn-ghost" type="button" id="btnExport">Export Filtered</button>
+              </div>
+              <div class="hint">Filter logic: AND across categories, OR within multi-select groups.</div>
+              <div class="status" id="status"><strong>Status:</strong> Ready.</div>
+            </div>
+          </article>
+
+          <article class="card list sectionSpacer">
+            <div class="hd">
+              <div class="title">Approved Trainers</div>
+              <a class="miniBtn" href="./trainers-submit.html">Submit Profile</a>
+            </div>
+            <div class="bd">
+              <div class="items" id="items"></div>
+              <div class="emptyState" id="noResults" hidden>No trainers match current filters.</div>
+              <div class="hint" style="margin-top:8px;">
+                Need to add or moderate trainers? <a href="./trainers-admin.html" style="color: rgba(255,209,0,.95);">Super Admin Review</a>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <div class="gutter" aria-label="Collapse/expand handle">
+          <button class="gutterBtn" id="btnGutter" type="button" title="Collapse/Expand filters">
+            <span class="gutterIcon" id="gutterIcon"><</span>
+          </button>
+        </div>
+
+        <section>
+          <div id="map" class="card" aria-label="United States map"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="./trainers/js/public-page.js"></script>
+</body>
+</html>

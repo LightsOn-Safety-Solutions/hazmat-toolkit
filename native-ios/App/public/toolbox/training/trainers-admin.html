@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Trainer Super Admin | The Hazmat Guys</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../styles.css" />
+  <link rel="stylesheet" href="./trainers/css/admin.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./trainers/config.runtime.js"></script>
+</head>
+<body class="conference-page">
+  <header class="conference-hero">
+    <img class="brand-logo" src="../assets/thmg-web-logo.png" alt="The Hazmat Guys logo" />
+    <p class="conference-eyebrow">Super Admin</p>
+    <h1>Trainer Moderation Dashboard</h1>
+    <p class="conference-sub">Review pending submissions, approve public records, and retain rejected records for future status updates.</p>
+    <a class="back-link" href="./trainers.html">Back to Trainer Locator</a>
+  </header>
+
+  <main class="conference-shell">
+    <div class="wrap" style="max-width:1100px;">
+      <article class="card" id="adminAuthCard">
+        <div class="hd"><div class="title">Super Admin Sign In</div></div>
+        <div class="bd">
+          <form id="authForm">
+            <div class="row">
+              <div>
+                <label for="email">Email</label>
+                <input id="email" type="email" required />
+              </div>
+              <div>
+                <label for="password">Password</label>
+                <input id="password" type="password" required />
+              </div>
+            </div>
+            <div class="actions">
+              <button type="submit" class="btn-primary">Sign In</button>
+            </div>
+            <div class="status" id="authStatus"><strong>Status:</strong> Awaiting login.</div>
+          </form>
+        </div>
+      </article>
+
+      <article class="card" id="adminPanel" hidden>
+        <div class="hd">
+          <div class="title">Review Queue</div>
+          <div class="count" id="userBadge">Signed in</div>
+        </div>
+        <div class="bd">
+          <div class="tabRow">
+            <button class="tabBtn miniBtn active" type="button" data-tab="pending">Pending</button>
+            <button class="tabBtn miniBtn" type="button" data-tab="approved">Approved</button>
+            <button class="tabBtn miniBtn" type="button" data-tab="rejected">Rejected</button>
+          </div>
+
+          <div class="actions">
+            <button class="btn-ghost" id="btnRefresh" type="button">Refresh</button>
+            <button class="btn-ghost" id="btnSeedDemo" type="button">Seed Demo Records</button>
+            <button class="btn-ghost" id="btnImportLegacy" type="button">Import Legacy Local Data</button>
+            <button class="btn-danger" id="btnSignOut" type="button">Sign Out</button>
+          </div>
+
+          <div class="status" id="status"><strong>Status:</strong> Ready.</div>
+
+          <section class="sectionSpacer" id="adminList"></section>
+        </div>
+      </article>
+    </div>
+  </main>
+
+  <dialog id="editDialog">
+    <form id="editForm" method="dialog">
+      <h3 style="margin-top:0;">Edit Trainer Record</h3>
+      <div class="group">
+        <h4>Core</h4>
+        <div class="row">
+          <div><label for="editName">Name</label><input id="editName" required /></div>
+          <div><label for="editOrg">Organization</label><input id="editOrg" /></div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <div><label for="editEmail">Email</label><input id="editEmail" /></div>
+          <div><label for="editPhone">Phone</label><input id="editPhone" /></div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <div><label for="editSpecialty">Specialty</label><input id="editSpecialty" /></div>
+          <div><label for="editTopics">Topics</label><input id="editTopics" /></div>
+        </div>
+        <label for="editNotes" style="margin-top:8px;">Notes</label>
+        <textarea id="editNotes"></textarea>
+      </div>
+
+      <div class="group">
+        <h4>Location</h4>
+        <div class="row3">
+          <div><label for="editLat">Lat</label><input id="editLat" /></div>
+          <div><label for="editLng">Lng</label><input id="editLng" /></div>
+          <div><label for="editState">State</label><select id="editState"><option value=""></option></select></div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <div><label for="editRegion">Region</label><select id="editRegion"><option value=""></option></select></div>
+          <div><label for="editTravelCapability">Travel Capability</label><select id="editTravelCapability"><option value=""></option></select></div>
+        </div>
+        <label for="editLocationLabel" style="margin-top:8px;">Location Label</label>
+        <input id="editLocationLabel" />
+      </div>
+
+      <div class="group">
+        <h4>Structured Metadata</h4>
+        <label>Discipline</label>
+        <div class="checkGrid" id="editDisciplineOptions"></div>
+        <label style="margin-top:8px;">Hazmat Specialties</label>
+        <div class="checkGrid" id="editHazmatSpecialtiesOptions"></div>
+        <label style="margin-top:8px;">Certifications</label>
+        <div class="checkGrid" id="editCertificationsOptions"></div>
+        <label style="margin-top:8px;">Background</label>
+        <div class="checkGrid" id="editBackgroundOptions"></div>
+        <label style="margin-top:8px;">Industry Experience</label>
+        <div class="checkGrid" id="editIndustryExperienceOptions"></div>
+        <label style="margin-top:8px;">Training Type</label>
+        <div class="checkGrid" id="editTrainingTypeOptions"></div>
+
+        <div class="row" style="margin-top:8px;">
+          <div><label for="editExperienceLevel">Experience Level</label><select id="editExperienceLevel"><option value=""></option></select></div>
+          <div><label for="editClassSize">Class Size</label><select id="editClassSize"><option value=""></option></select></div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <div><label for="editCustomCurriculum">Custom Curriculum</label><select id="editCustomCurriculum"><option value=""></option></select></div>
+          <div><label for="editPriceRange">Price Range</label><select id="editPriceRange"><option value=""></option></select></div>
+        </div>
+        <div class="row" style="margin-top:8px;">
+          <div><label for="editAvailability">Availability</label><select id="editAvailability"><option value=""></option></select></div>
+          <div><label for="editRecordStatus">Record Status</label><select id="editRecordStatus"><option value="pending">pending</option></select></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h4>Moderation</h4>
+        <label for="editRejectionReason">Rejection Reason</label>
+        <textarea id="editRejectionReason"></textarea>
+      </div>
+
+      <div class="actions">
+        <button type="submit" class="btn-primary">Save Changes</button>
+        <button type="button" class="btn-ghost" id="btnCloseDialog">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script type="module" src="./trainers/js/admin-page.js"></script>
+</body>
+</html>

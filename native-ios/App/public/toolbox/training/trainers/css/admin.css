@@ -1,0 +1,9 @@
+@import url('./trainers.css');
+
+#adminAuthCard {
+  margin-bottom: 12px;
+}
+
+#adminPanel[hidden] {
+  display: none;
+}
