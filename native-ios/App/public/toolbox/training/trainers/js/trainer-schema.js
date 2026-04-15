@@ -56,7 +56,7 @@ export function normalizeTrainerRecord(input, options = {}) {
     customCurriculum: asTrimmedString(record.customCurriculum || record.custom_curriculum),
     priceRange: asTrimmedString(record.priceRange || record.price_range),
     availability: asTrimmedString(record.availability),
-    recordStatus: asTrimmedString(record.recordStatus || record.record_status || "pending"),
+    recordStatus: asTrimmedString(record.record_status || record.recordStatus || "pending"),
     submittedAt: asTrimmedString(record.submittedAt || record.submitted_at),
     reviewedAt: asTrimmedString(record.reviewedAt || record.reviewed_at),
     reviewedBy: asTrimmedString(record.reviewedBy || record.reviewed_by),
