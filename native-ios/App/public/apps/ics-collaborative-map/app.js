@@ -966,6 +966,10 @@
       if (opened) {
         return;
       }
+      if (explicitViewerMode) {
+        renderAll();
+        return;
+      }
       state.viewerMode = false;
       state.viewerJoinCode = null;
     }
