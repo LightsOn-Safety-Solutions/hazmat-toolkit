@@ -4,13 +4,18 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Hazmat Toolkit</title>
-  <meta http-equiv="refresh" content="0; url=/apps/ics-collaborative-map/" />
   <script>
-    window.location.replace('/apps/ics-collaborative-map/');
+    (function () {
+      var target = '/apps/ics-collaborative-map/' + window.location.search + window.location.hash;
+      window.location.replace(target);
+    })();
   </script>
 </head>
 <body>
   <p>Redirecting to the ICS Collaborative Map...</p>
+  <noscript>
+    <p>This redirect keeps your shared-link parameters, but JavaScript is required.</p>
+  </noscript>
   <p>If not redirected, open <a href="/apps/ics-collaborative-map/">ICS Collaborative Map</a>.</p>
   <p>Trainer tools: <a href="/toolbox/training/trainers.html">Trainer Locator</a>.</p>
 </body>
