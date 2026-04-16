@@ -1,24 +1,359 @@
-import {
-  AVAILABILITY_OPTIONS,
-  BACKGROUND_OPTIONS,
-  CERTIFICATION_OPTIONS,
-  CLASS_SIZE_OPTIONS,
-  CUSTOM_CURRICULUM_OPTIONS,
-  DEFAULT_US_VIEW,
-  DISCIPLINE_OPTIONS,
-  EXPERIENCE_LEVEL_OPTIONS,
-  HAZMAT_SPECIALTY_OPTIONS,
-  INDUSTRY_EXPERIENCE_OPTIONS,
-  REGION_OPTIONS,
-  STATE_OPTIONS,
-  TABLE_NAME,
-  TRAINING_TYPE_OPTIONS,
-  TRAVEL_CAPABILITY_OPTIONS
-} from "./constants.js";
-import { getFilteredTrainers } from "./trainer-filters.js";
-import { normalizeTrainerArray } from "./trainer-schema.js";
-import { getSupabaseClient, hasSupabaseConfig } from "./supabase-client.js";
-import { createCheckbox, createOption, debounce, escapeHtml, joinSummary, setStatus } from "./utils.js";
+const TABLE_NAME = "trainers";
+
+const DISCIPLINE_OPTIONS = [
+  "Fire Suppression",
+  "Hazardous Materials",
+  "Rescue",
+  "Incident Command",
+  "Industrial Safety",
+  "EMS"
+];
+
+const HAZMAT_SPECIALTY_OPTIONS = [
+  "Air Monitoring",
+  "LNG / Natural Gas",
+  "CO2 / Cryogenics",
+  "Rail Incidents",
+  "Tanker / Cargo Tank",
+  "Pipeline Emergencies",
+  "WMD / Terrorism",
+  "Decon",
+  "Foam Operations",
+  "Battery / EV Incidents"
+];
+
+const TRAVEL_CAPABILITY_OPTIONS = ["Local Only", "Regional", "National", "International"];
+
+const REGION_OPTIONS = [
+  "Northeast",
+  "Southeast",
+  "Midwest",
+  "South Central",
+  "Mountain West",
+  "Southwest",
+  "West Coast",
+  "Mid-Atlantic",
+  "Great Plains"
+];
+
+const CERTIFICATION_OPTIONS = [
+  "NFPA 470 Hazmat Technician",
+  "NFPA 470 Hazmat Specialist",
+  "Instructor I",
+  "Instructor II",
+  "Instructor III",
+  "OSHA HAZWOPER Trainer",
+  "ICS 300",
+  "ICS 400",
+  "State-Certified Instructor",
+  "TEEX Affiliated",
+  "LSU FETI Affiliated",
+  "NFA Affiliated"
+];
+
+const EXPERIENCE_LEVEL_OPTIONS = ["Under 5 Years", "5 to 10 Years", "10 to 20 Years", "20+ Years"];
+
+const BACKGROUND_OPTIONS = [
+  "Fire Department",
+  "Industrial",
+  "Military",
+  "Law Enforcement",
+  "Private Contractor",
+  "Emergency Management",
+  "EMS"
+];
+
+const INDUSTRY_EXPERIENCE_OPTIONS = [
+  "Oil and Gas",
+  "Pipeline",
+  "Chemical Plants",
+  "Railroads",
+  "Agriculture",
+  "Maritime / Port",
+  "Utilities",
+  "Transportation",
+  "Public Sector",
+  "Healthcare"
+];
+
+const TRAINING_TYPE_OPTIONS = [
+  "Classroom",
+  "Hands-On / Field",
+  "Full-Scale Exercises",
+  "Tabletop",
+  "Virtual / Online",
+  "Augmented Reality"
+];
+
+const CLASS_SIZE_OPTIONS = ["Small Group", "Mid-Size Group", "Large Group", "Conference / Keynote"];
+const CUSTOM_CURRICULUM_OPTIONS = ["Yes", "No", "Pre-Built Only", "Fully Customizable"];
+const AVAILABILITY_OPTIONS = ["Available This Month", "1 to 3 Months Out", "3+ Months Out"];
+
+const STATE_OPTIONS = [
+  "AL", "AK", "AZ", "AR", "CA", "CO", "CT", "DE", "FL", "GA",
+  "HI", "ID", "IL", "IN", "IA", "KS", "KY", "LA", "ME", "MD",
+  "MA", "MI", "MN", "MS", "MO", "MT", "NE", "NV", "NH", "NJ",
+  "NM", "NY", "NC", "ND", "OH", "OK", "OR", "PA", "RI", "SC",
+  "SD", "TN", "TX", "UT", "VT", "VA", "WA", "WV", "WI", "WY", "DC"
+];
+
+const ARRAY_FIELDS = [
+  "discipline",
+  "hazmatSpecialties",
+  "certifications",
+  "background",
+  "industryExperience",
+  "trainingType"
+];
+
+const SINGLE_FILTER_FIELDS = [
+  "travelCapability",
+  "state",
+  "region",
+  "experienceLevel",
+  "classSize",
+  "customCurriculum",
+  "availability"
+];
+
+const SEARCHABLE_FIELDS = [
+  "name",
+  "org",
+  "specialty",
+  "topics",
+  "notes",
+  "discipline",
+  "hazmatSpecialties",
+  "certifications",
+  "background",
+  "industryExperience",
+  "trainingType",
+  "state",
+  "region"
+];
+
+const DEFAULT_US_VIEW = {
+  center: [39.8283, -98.5795],
+  zoom: 4
+};
+
+function escapeHtml(input) {
+  return String(input ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
+function toArray(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item ?? "").trim()).filter(Boolean);
+  }
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+function asTrimmedString(value) {
+  return String(value ?? "").trim();
+}
+
+function createOption(label, value = label) {
+  const option = document.createElement("option");
+  option.value = value;
+  option.textContent = label;
+  return option;
+}
+
+function createCheckbox(name, value, checked = false) {
+  const label = document.createElement("label");
+  label.className = "checkItem";
+  label.innerHTML = `<input type="checkbox" name="${escapeHtml(name)}" value="${escapeHtml(value)}" ${checked ? "checked" : ""}/> <span>${escapeHtml(value)}</span>`;
+  return label;
+}
+
+function debounce(fn, delay = 180) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delay);
+  };
+}
+
+function setStatus(el, msg, kind = "info") {
+  if (!el) {
+    return;
+  }
+  const klass = kind === "ok" ? "ok" : kind === "bad" ? "bad" : "";
+  el.innerHTML = `<strong>Status:</strong> <span class="${klass}">${escapeHtml(msg)}</span>`;
+}
+
+function joinSummary(values, max = 3) {
+  const list = toArray(values);
+  if (!list.length) {
+    return "";
+  }
+  if (list.length <= max) {
+    return list.join(", ");
+  }
+  return `${list.slice(0, max).join(", ")} +${list.length - max} more`;
+}
+
+function normalizeTrainerRecord(input) {
+  const record = { ...(input || {}) };
+  const normalized = {
+    ...record,
+    id: asTrimmedString(record.id),
+    name: asTrimmedString(record.name),
+    org: asTrimmedString(record.org),
+    email: asTrimmedString(record.email),
+    phone: asTrimmedString(record.phone),
+    specialty: asTrimmedString(record.specialty),
+    topics: asTrimmedString(record.topics),
+    notes: asTrimmedString(record.notes),
+    lat: Number.isFinite(Number(record.lat)) ? Number(record.lat) : null,
+    lng: Number.isFinite(Number(record.lng)) ? Number(record.lng) : null,
+    locationLabel: asTrimmedString(record.locationLabel || record.location_label),
+    travelCapability: asTrimmedString(record.travelCapability || record.travel_capability),
+    state: asTrimmedString(record.state).toUpperCase(),
+    region: asTrimmedString(record.region),
+    experienceLevel: asTrimmedString(record.experienceLevel || record.experience_level),
+    classSize: asTrimmedString(record.classSize || record.class_size),
+    customCurriculum: asTrimmedString(record.customCurriculum || record.custom_curriculum),
+    availability: asTrimmedString(record.availability),
+    recordStatus: asTrimmedString(record.record_status || record.recordStatus || "pending"),
+    submittedAt: asTrimmedString(record.submittedAt || record.submitted_at),
+    reviewedAt: asTrimmedString(record.reviewedAt || record.reviewed_at),
+    reviewedBy: asTrimmedString(record.reviewedBy || record.reviewed_by),
+    rejectionReason: asTrimmedString(record.rejectionReason || record.rejection_reason),
+    submitterType: asTrimmedString(record.submitterType || record.submitter_type || "self-submitted"),
+    visibility: asTrimmedString(record.visibility || "")
+  };
+
+  ARRAY_FIELDS.forEach((field) => {
+    const snake = field.replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`);
+    normalized[field] = toArray(record[field] ?? record[snake]);
+  });
+
+  return normalized;
+}
+
+function normalizeTrainerArray(records) {
+  return (records || []).map((record) => normalizeTrainerRecord(record));
+}
+
+function buildSearchIndexString(trainer) {
+  const tokens = [];
+  SEARCHABLE_FIELDS.forEach((field) => {
+    const value = trainer[field];
+    if (Array.isArray(value)) {
+      tokens.push(value.join(" "));
+    } else if (value) {
+      tokens.push(String(value));
+    }
+  });
+  return tokens.join(" ").toLowerCase();
+}
+
+function matchArrayField(trainerValues, selectedValues) {
+  if (!selectedValues.length) {
+    return true;
+  }
+  const set = new Set(toArray(trainerValues));
+  return selectedValues.some((value) => set.has(value));
+}
+
+function matchSingleField(trainerValue, selectedValue) {
+  if (!selectedValue) {
+    return true;
+  }
+  return asTrimmedString(trainerValue) === selectedValue;
+}
+
+function getFilteredTrainers(trainers, filters) {
+  return (trainers || []).filter((trainer) => {
+    for (const field of ARRAY_FIELDS) {
+      if (!matchArrayField(trainer[field], filters[field] || [])) {
+        return false;
+      }
+    }
+
+    for (const field of SINGLE_FILTER_FIELDS) {
+      if (!matchSingleField(trainer[field], filters[field] || "")) {
+        return false;
+      }
+    }
+
+    const query = asTrimmedString(filters.query).toLowerCase();
+    if (query) {
+      const index = buildSearchIndexString(trainer);
+      if (!index.includes(query)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+}
+
+const APP_CONFIG = {
+  supabaseUrl: "",
+  supabaseAnonKey: ""
+};
+
+function resolveConfig() {
+  const runtime = window.TRAINER_LOCATOR_CONFIG || {};
+  return {
+    ...APP_CONFIG,
+    ...runtime,
+    supabaseUrl: String(runtime.supabaseUrl || APP_CONFIG.supabaseUrl || "").replace(/\/$/, ""),
+    supabaseAnonKey: String(runtime.supabaseAnonKey || APP_CONFIG.supabaseAnonKey || "")
+  };
+}
+
+const config = resolveConfig();
+let supabaseClient;
+
+function hasSupabaseConfig() {
+  return Boolean(config.supabaseUrl && config.supabaseAnonKey);
+}
+
+function getSupabaseClient() {
+  if (supabaseClient) {
+    return supabaseClient;
+  }
+  if (!window.supabase || !window.supabase.createClient) {
+    throw new Error("Supabase client SDK not loaded.");
+  }
+  if (!hasSupabaseConfig()) {
+    throw new Error("Missing Supabase URL or anon key. Set window.TRAINER_LOCATOR_CONFIG first.");
+  }
+  supabaseClient = window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true
+    }
+  });
+  return supabaseClient;
+}
+
+function el(id) {
+  return document.getElementById(id);
+}
+
+if (!window.L) {
+  const status = el("status");
+  if (status) {
+    setStatus(status, "Map library failed to load. Reload the page.", "bad");
+  }
+  throw new Error("Leaflet (window.L) is not available.");
+}
 
 const map = L.map("map", { zoomControl: true, minZoom: 3 }).setView(DEFAULT_US_VIEW.center, DEFAULT_US_VIEW.zoom);
 L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
@@ -39,10 +374,6 @@ const state = {
   markersById: new Map(),
   collapsed: false
 };
-
-function el(id) {
-  return document.getElementById(id);
-}
 
 const ui = {
   grid: el("grid"),
