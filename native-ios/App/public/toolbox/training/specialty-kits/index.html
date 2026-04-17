@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Specialty Kit Finder | The Hazmat Guys</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Work+Sans:wght@400;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../trainers/css/trainers.css" />
+  <link rel="stylesheet" href="./css/specialty-kits.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./config.runtime.js"></script>
+</head>
+<body class="conference-page">
+  <header class="conference-hero">
+    <div class="hero-brand">
+      <img class="brand-logo" src="../trainers/assets/thmg-web-logo.png" alt="The Hazmat Guys logo" />
+    </div>
+    <div class="hero-copy">
+      <p class="conference-eyebrow">Specialty Kit Finder</p>
+      <h1>Find Approved Specialty Response Kits</h1>
+      <p class="conference-sub">Locate approved hazardous materials and firefighting specialty kits by type, capability, and region.</p>
+    </div>
+  </header>
+
+  <main class="conference-shell">
+    <div class="wrap">
+      <div class="grid" id="grid">
+        <section class="leftPanel">
+          <article class="card">
+            <div class="hd">
+              <div class="title">Filter Kits</div>
+              <div class="count" id="resultCount">0 of 0 kits</div>
+            </div>
+            <div class="bd">
+              <form id="filtersForm" class="filters">
+                <div class="group">
+                  <h4>Search</h4>
+                  <label for="filterQuery">Keyword Search</label>
+                  <input id="filterQuery" placeholder="Kit name, org, category, type, notes..." />
+                </div>
+
+                <div class="group">
+                  <h4>Kit Classification</h4>
+                  <label for="filterKitCategory">Kit Category</label>
+                  <select id="filterKitCategory" name="kitCategory"><option value="">Any</option></select>
+                  <label style="margin-top:8px;">Kit Types</label>
+                  <div class="checkGrid" id="kitTypeOptions"></div>
+                  <label style="margin-top:8px;">Hazard Focus</label>
+                  <div class="checkGrid" id="hazardFocusOptions"></div>
+                  <label style="margin-top:8px;">Equipment Capabilities</label>
+                  <div class="checkGrid" id="equipmentCapabilitiesOptions"></div>
+                </div>
+
+                <div class="group">
+                  <h4>Geography / Location</h4>
+                  <div class="row">
+                    <div>
+                      <label for="filterState">State</label>
+                      <select id="filterState" name="state"><option value="">Any</option></select>
+                    </div>
+                    <div>
+                      <label for="filterRegion">Region</label>
+                      <select id="filterRegion" name="region"><option value="">Any</option></select>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="group">
+                  <h4>Deployment / Operations</h4>
+                  <label for="filterDeploymentType">Deployment Type</label>
+                  <select id="filterDeploymentType" name="deploymentType"><option value="">Any</option></select>
+                  <label for="filterAvailabilityStatus" style="margin-top:8px;">Availability Status</label>
+                  <select id="filterAvailabilityStatus" name="availabilityStatus"><option value="">Any</option></select>
+                  <label for="filterAccessType" style="margin-top:8px;">Access Type</label>
+                  <select id="filterAccessType" name="accessType"><option value="">Any</option></select>
+                  <label for="filterStorageEnvironment" style="margin-top:8px;">Storage Environment</label>
+                  <select id="filterStorageEnvironment" name="storageEnvironment"><option value="">Any</option></select>
+                </div>
+
+                <div class="group">
+                  <h4>Kit Requirements</h4>
+                  <label for="filterTransportCapable">Transport Capable</label>
+                  <select id="filterTransportCapable" name="transportCapable"><option value="">Any</option></select>
+                  <label for="filterResponseTeamIncluded" style="margin-top:8px;">Response Team Included</label>
+                  <select id="filterResponseTeamIncluded" name="responseTeamIncluded"><option value="">Any</option></select>
+                  <label for="filterTrainingRequired" style="margin-top:8px;">Training Required</label>
+                  <select id="filterTrainingRequired" name="trainingRequired"><option value="">Any</option></select>
+                </div>
+              </form>
+
+              <div class="actions">
+                <button class="btn-primary" type="button" id="btnResetFilters">Reset Filters</button>
+                <button class="btn-ghost" type="button" id="btnCenterUS">Center Map (US)</button>
+              </div>
+              <div class="hint">Filter logic: AND across categories, OR within multi-select groups.</div>
+              <div class="status" id="status"><strong>Status:</strong> Ready.</div>
+            </div>
+          </article>
+
+          <article class="card list sectionSpacer">
+            <div class="hd">
+              <div class="title">Approved Kits</div>
+              <a class="miniBtn" href="./submit.html">Submit a Kit</a>
+            </div>
+            <div class="bd">
+              <div class="items" id="items"></div>
+              <div class="emptyState" id="noResults" hidden>No kits match current filters.</div>
+              <div class="hint" style="margin-top:8px;">
+                Need to review or manage kits? <a href="./admin.html" style="color: rgba(255,209,0,.95);">Super Admin Review</a>
+              </div>
+            </div>
+          </article>
+        </section>
+
+        <div class="gutter" aria-label="Collapse/expand handle">
+          <button class="gutterBtn" id="btnGutter" type="button" title="Collapse/Expand filters">
+            <span class="gutterIcon" id="gutterIcon"><</span>
+          </button>
+        </div>
+
+        <section>
+          <div id="map" class="card" aria-label="United States map with approved specialty kits"></div>
+        </section>
+      </div>
+    </div>
+  </main>
+
+  <script src="./js/public-page.classic.js"></script>
+</body>
+</html>

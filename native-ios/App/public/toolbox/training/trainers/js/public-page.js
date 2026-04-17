@@ -363,10 +363,78 @@ if (!window.L) {
 }
 
 const map = L.map("map", { zoomControl: true, minZoom: 3 }).setView(DEFAULT_US_VIEW.center, DEFAULT_US_VIEW.zoom);
-L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-  maxZoom: 18,
-  attribution: "&copy; OpenStreetMap contributors"
-}).addTo(map);
+
+function attachResilientBaseMap(targetMap, onFallback) {
+  let switched = false;
+  let switchedToSecondary = false;
+  let tileLoaded = false;
+  let tileErrors = 0;
+
+  const primary = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: "&copy; OpenStreetMap contributors"
+  });
+
+  function switchToFallback() {
+    if (switched) {
+      return;
+    }
+    switched = true;
+    targetMap.removeLayer(primary);
+    const fallbackLayer = L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
+      maxZoom: 20,
+      subdomains: "abcd",
+      attribution: "&copy; OpenStreetMap contributors &copy; CARTO"
+    }).addTo(targetMap);
+
+    let fallbackLoaded = false;
+    fallbackLayer.on("tileload", () => {
+      fallbackLoaded = true;
+    });
+
+    window.setTimeout(() => {
+      if (fallbackLoaded || switchedToSecondary) {
+        return;
+      }
+      switchedToSecondary = true;
+      targetMap.removeLayer(fallbackLayer);
+      L.tileLayer(
+        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+        {
+          maxZoom: 19,
+          attribution: "Tiles &copy; Esri"
+        }
+      ).addTo(targetMap);
+    }, 5000);
+
+    onFallback();
+  }
+
+  primary.on("tileload", () => {
+    tileLoaded = true;
+    tileErrors = Math.max(0, tileErrors - 1);
+  });
+
+  primary.on("tileerror", () => {
+    tileErrors += 1;
+    if (tileErrors >= 8) {
+      switchToFallback();
+    }
+  });
+
+  primary.addTo(targetMap);
+
+  window.setTimeout(() => {
+    if (!tileLoaded) {
+      switchToFallback();
+    }
+  }, 5000);
+}
+
+attachResilientBaseMap(map, () => {
+  const statusEl = el("status");
+  setStatus(statusEl, "Map tiles switched to backup provider.", "ok");
+});
 
 const pinIcon = L.divIcon({
   className: "",
