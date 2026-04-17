@@ -31,7 +31,7 @@ services:
     runtime: static
     rootDir: native-ios/App/public
     buildCommand: cd toolbox/training/specialty-kits && npm ci && npm run build
-    staticPublishPath: native-ios/App/public
+    staticPublishPath: .
     envVars:
       - key: SPECIALTY_KITS_SUPABASE_URL
         value: https://domebvsyhexhgvsducbm.supabase.co
