@@ -269,7 +269,7 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
         [
           inserted.rows[0].id,
           identity.organizationId,
-          trainer?.id ?? null,
+          identity.trainerId,
           visibility,
           body.assigned_trainer_id ?? null,
           trainerName,
