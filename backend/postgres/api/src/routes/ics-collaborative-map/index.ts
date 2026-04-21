@@ -1098,6 +1098,7 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
             on county.id = org.county_id
           where (
             s.organization_id = $1::uuid
+            or lower(s.trainer_ref) = lower($2)
             or exists (
               select 1
               from collab_map_session_org_access soa
@@ -1117,7 +1118,6 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
                   or s.created_at >= osa.created_at
                 )
             )
-            or (s.organization_id is null and lower(s.trainer_ref) = lower($2))
           )
           order by s.created_at desc
         `,
@@ -1190,6 +1190,7 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
             and s.operational_period_end > now()
             and (
               s.organization_id = $1::uuid
+              or lower(s.trainer_ref) = lower($2)
               or exists (
                 select 1
                 from collab_map_session_org_access soa
@@ -1204,7 +1205,6 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
                     or (osa.source_organization_id = $1::uuid and osa.target_organization_id = s.organization_id)
                   )
               )
-              or (s.organization_id is null and lower(s.trainer_ref) = lower($2))
             )
           order by s.created_at desc
         `,
