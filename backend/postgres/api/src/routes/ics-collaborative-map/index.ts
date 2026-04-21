@@ -352,6 +352,19 @@ type CollabOrgMembershipRow = {
   default_mileage_rate: string | number | null;
 };
 
+type BaseOrgMembershipRow = {
+  organization_id: string;
+  trainer_id: string;
+  trainer_ref: string;
+  email: string;
+  display_name: string;
+  role: string;
+  is_active: boolean;
+  organization_name: string;
+  license_status: 'trial' | 'active' | 'inactive';
+  seat_limit: number | null;
+};
+
 type CollabParticipantRow = {
   id: string;
   session_id: string;
@@ -2797,7 +2810,170 @@ async function fetchLicensedCollabMembership(
     `,
     [normalized]
   );
+  if (result.rows[0]) return result.rows[0];
+  return await provisionCollabMembershipFromPrimaryOrg(pool, normalized);
+}
+
+async function provisionCollabMembershipFromPrimaryOrg(
+  pool: { query: PoolClient['query'] },
+  trainerRef: string
+) {
+  const baseMembership = await fetchPrimaryAuthenticatedOrgMembership(pool, trainerRef);
+  if (!baseMembership || !baseMembership.is_active) return null;
+
+  const collabOrganizationId = await ensureCollabOrganizationMirror(pool, baseMembership);
+  if (!collabOrganizationId) return null;
+
+  await pool.query(
+    `
+      insert into collab_org_members (
+        organization_id,
+        trainer_id,
+        trainer_ref,
+        email,
+        display_name,
+        is_admin,
+        is_active
+      )
+      values ($1::uuid, $2::uuid, $3, $4, $5, $6, $7)
+      on conflict (trainer_ref)
+      do update set
+        organization_id = excluded.organization_id,
+        trainer_id = excluded.trainer_id,
+        email = excluded.email,
+        display_name = excluded.display_name,
+        is_admin = excluded.is_admin,
+        is_active = excluded.is_active
+    `,
+    [
+      collabOrganizationId,
+      baseMembership.trainer_id,
+      baseMembership.trainer_ref,
+      baseMembership.email,
+      baseMembership.display_name,
+      isOrgAdminRole(baseMembership.role),
+      baseMembership.is_active
+    ]
+  );
+
+  const mirrored = await pool.query<CollabOrgMembershipRow>(
+    `
+      select
+        m.id::text as id,
+        m.organization_id::text as organization_id,
+        m.trainer_id::text as trainer_id,
+        m.trainer_ref,
+        m.email,
+        m.display_name,
+        m.is_admin,
+        m.is_active,
+        org.organization_name,
+        org.license_status,
+        org.seat_limit,
+        org.county_id::text as county_id,
+        county.county_name,
+        org.station_name,
+        org.station_address,
+        org.station_lat,
+        org.station_lng,
+        org.default_mileage_rate
+      from collab_org_members m
+      join collab_organizations org
+        on org.id = m.organization_id
+      left join collab_counties county
+        on county.id = org.county_id
+      where lower(m.trainer_ref) = $1
+      limit 1
+    `,
+    [trainerRef]
+  );
+  return mirrored.rows[0] ?? null;
+}
+
+async function fetchPrimaryAuthenticatedOrgMembership(
+  pool: { query: PoolClient['query'] },
+  trainerRef: string
+) {
+  const result = await pool.query<BaseOrgMembershipRow>(
+    `
+      select
+        m.organization_id::text as organization_id,
+        m.trainer_id::text as trainer_id,
+        coalesce(t.trainer_ref, lower(t.email)) as trainer_ref,
+        lower(t.email) as email,
+        t.display_name,
+        m.role::text as role,
+        m.is_active,
+        o.organization_name,
+        o.license_status::text as license_status,
+        o.seat_limit
+      from organization_memberships m
+      join organizations o
+        on o.id = m.organization_id
+      join trainers t
+        on t.id = m.trainer_id
+      where lower(coalesce(t.trainer_ref, t.email)) = $1
+        and m.is_active = true
+      order by m.created_at asc
+      limit 1
+    `,
+    [trainerRef]
+  );
   return result.rows[0] ?? null;
+}
+
+async function ensureCollabOrganizationMirror(
+  pool: { query: PoolClient['query'] },
+  membership: BaseOrgMembershipRow
+) {
+  const existing = await pool.query<{ id: string }>(
+    `
+      select id::text as id
+      from collab_organizations
+      where county_id is null
+        and lower(organization_name) = lower($1)
+      limit 1
+    `,
+    [membership.organization_name]
+  );
+
+  const licenseStatus = mapAuthenticatedLicenseStatusToCollabStatus(membership.license_status);
+  if (existing.rows[0]?.id) {
+    await pool.query(
+      `
+        update collab_organizations
+        set
+          license_status = $2,
+          seat_limit = $3
+        where id = $1::uuid
+      `,
+      [existing.rows[0].id, licenseStatus, membership.seat_limit]
+    );
+    return existing.rows[0].id;
+  }
+
+  const created = await pool.query<{ id: string }>(
+    `
+      insert into collab_organizations (
+        county_id,
+        organization_name,
+        license_status,
+        seat_limit
+      )
+      values (null, $1, $2, $3)
+      returning id::text as id
+    `,
+    [membership.organization_name, licenseStatus, membership.seat_limit]
+  );
+  return created.rows[0]?.id ?? null;
+}
+
+function mapAuthenticatedLicenseStatusToCollabStatus(status: BaseOrgMembershipRow['license_status']): LicenseStatus {
+  return status === 'inactive' ? 'inactive' : 'active';
+}
+
+function isOrgAdminRole(role: string): boolean {
+  return role === 'org_admin' || role === 'super_admin';
 }
 
 async function fetchSuperAdmin(
