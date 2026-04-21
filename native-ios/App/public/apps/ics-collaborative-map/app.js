@@ -11977,6 +11977,10 @@
     } else if (state.commanderAuth?.accessToken) {
       await refreshCommanderTokenIfNeeded();
       headers.Authorization = `Bearer ${state.commanderAuth.accessToken}`;
+      const trainerRef = normalizeTrainerRef(state.commanderAuth.email);
+      if (trainerRef) {
+        headers["X-Trainer-Ref"] = trainerRef;
+      }
     }
     const response = await fetch(`${API_BASE_URL}${path}`, {
       method: options.method || "GET",
@@ -12121,6 +12125,10 @@
       email: session.user?.email || state.commanderAuth?.email || "",
       displayName: session.user?.user_metadata?.display_name || fallbackDisplayName || session.user?.email || ""
     };
+  }
+
+  function normalizeTrainerRef(value) {
+    return String(value || "").trim().toLowerCase();
   }
 
   function setDefaultOperationalPeriodInputs() {
