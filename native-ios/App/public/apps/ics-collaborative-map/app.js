@@ -10690,10 +10690,7 @@
   async function toggleViewerAccess() {
     if (!state.activeSession || isScenarioReviewMode() || !canToggleViewerAccess()) return;
     const nextEnabled = !isViewerAccessEnabled();
-    const prompt = nextEnabled
-      ? "Enable viewer QR access for this session again?"
-      : "Disable viewer QR access for this session? Existing viewers will lose access on their next refresh.";
-    if (!window.confirm(prompt)) return;
+    setStatus(nextEnabled ? "Enabling viewer access…" : "Disabling viewer access…");
     try {
       const session = await apiFetch(`/v1/ics-collab/sessions/${encodeURIComponent(state.activeSession.id)}/viewer-access`, {
         method: "PATCH",

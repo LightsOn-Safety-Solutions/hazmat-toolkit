@@ -1678,16 +1678,13 @@ export const collabRoutes: FastifyPluginAsync = async (app) => {
       await client.query('BEGIN');
       const actor = await resolveSessionActorWithClient(client, app, request.params.sessionId, request.headers.authorization, { requireCommander: true });
       const previousSession = (await fetchSessionByID(client, actor.session.id)) ?? actor.session;
-      const nextJoinCode = await getViewerAccessJoinCodeUpdate(client, request.body.enabled);
       await client.query<CollabSessionRow>(
         `
           update collab_map_sessions
-          set
-            viewer_access_enabled = $2,
-            join_code = coalesce($3, join_code)
+          set viewer_access_enabled = $2
           where id = $1::uuid
         `,
-        [actor.session.id, request.body.enabled, nextJoinCode]
+        [actor.session.id, request.body.enabled]
       );
       const refreshed = await recordSessionMutation(client, app.config, {
         sessionID: actor.session.id,
@@ -3832,13 +3829,12 @@ async function generateUniqueCollabJoinCode(pool: { query: PoolClient['query'] }
 }
 
 export async function getViewerAccessJoinCodeUpdate(
-  pool: { query: PoolClient['query'] },
-  enabled: boolean
+  _pool: { query: PoolClient['query'] },
+  _enabled: boolean
 ) {
-  if (enabled) {
-    return null;
-  }
-  return generateUniqueCollabJoinCode(pool);
+  // Viewer access is enforced by viewer_access_enabled, so existing links are
+  // denied on refresh without relying on join-code rotation.
+  return null;
 }
 
 function createParticipantToken() {
