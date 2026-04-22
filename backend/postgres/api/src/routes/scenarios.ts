@@ -1,6 +1,7 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { TrainerAuthError } from './_trainerAuth.js';
 import { requireTrainerIdentity } from './_trainerIdentity.js';
+import { refreshSessionSnapshotsForScenario } from './sessionSnapshots.js';
 
 type ScenarioParams = { scenarioId: string };
 type ShapeParams = { scenarioId: string; shapeId: string };
@@ -540,6 +541,7 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
     if (!created) {
       return reply.code(400).send({ error: 'BAD_REQUEST', message: 'Invalid shape payload.' });
     }
+    await refreshSessionSnapshotsForScenario(app.pg, request.params.scenarioId);
     return reply.code(201).send(created);
   });
 
@@ -565,6 +567,7 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
     if (!saved) {
       return reply.code(400).send({ error: 'BAD_REQUEST', message: 'Invalid shape payload.' });
     }
+    await refreshSessionSnapshotsForScenario(app.pg, request.params.scenarioId);
     return reply.send(saved);
   });
 
@@ -590,6 +593,7 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
       'delete from scenario_shapes where id = $1::uuid and scenario_id = $2::uuid',
       [request.params.shapeId, request.params.scenarioId]
     );
+    await refreshSessionSnapshotsForScenario(app.pg, request.params.scenarioId);
     return reply.code(204).send();
   });
 };

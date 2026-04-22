@@ -8,6 +8,14 @@ import {
   assertTrainerCanAccessSession
 } from './_trainerAuth.js';
 import { requireTrainerIdentity } from './_trainerIdentity.js';
+import {
+  buildSessionSnapshot,
+  fetchScenarioForSnapshot,
+  fetchScenarioShapesForSnapshot,
+  refreshSessionSnapshotIfStale,
+  type DBScenarioRow,
+  type DBShapeRow
+} from './sessionSnapshots.js';
 
 type CreateSessionBody = {
   scenarioId: string;
@@ -263,66 +271,6 @@ type CreateSessionParams = {
   actorTrainerRef: string;
 };
 
-type DBScenarioRow = {
-  id: string;
-  scenario_name: string;
-  trainer_name: string;
-  scenario_date: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  detection_device: 'air_monitor' | 'radiation_detection' | 'ph_paper';
-  version: number;
-  created_at: string;
-  updated_at: string;
-  trainer_id: string | null;
-  trainer_ref: string | null;
-};
-
-type DBShapeRow = {
-  id: string;
-  scenario_id: string;
-  description: string;
-  kind: 'polygon' | 'circle' | 'point';
-  sort_order: number;
-  display_color_hex: string | null;
-  shape_geojson: string;
-  radius_m: number | null;
-  oxygen: string | null;
-  lel: string | null;
-  carbon_monoxide: string | null;
-  hydrogen_sulfide: string | null;
-  pid: string | null;
-  oxygen_high_sampling_mode: string | null;
-  oxygen_high_feather_percent: string | null;
-  oxygen_low_sampling_mode: string | null;
-  oxygen_low_feather_percent: string | null;
-  lel_high_sampling_mode: string | null;
-  lel_high_feather_percent: string | null;
-  lel_low_sampling_mode: string | null;
-  lel_low_feather_percent: string | null;
-  carbon_monoxide_high_sampling_mode: string | null;
-  carbon_monoxide_high_feather_percent: string | null;
-  carbon_monoxide_low_sampling_mode: string | null;
-  carbon_monoxide_low_feather_percent: string | null;
-  hydrogen_sulfide_high_sampling_mode: string | null;
-  hydrogen_sulfide_high_feather_percent: string | null;
-  hydrogen_sulfide_low_sampling_mode: string | null;
-  hydrogen_sulfide_low_feather_percent: string | null;
-  pid_high_sampling_mode: string | null;
-  pid_high_feather_percent: string | null;
-  pid_low_sampling_mode: string | null;
-  pid_low_feather_percent: string | null;
-  chemical_readings: unknown;
-  dose_rate: string | null;
-  background: string | null;
-  shielding: string | null;
-  rad_latitude: string | null;
-  rad_longitude: string | null;
-  rad_dose_unit: string | null;
-  rad_exposure_unit: string | null;
-  ph: number | null;
-};
-
 type DBSessionRow = {
   id: string;
   scenario_id: string;
@@ -446,84 +394,11 @@ async function createSessionWithSnapshot(pool: { connect(): Promise<PoolClient> 
 }
 
 async function fetchScenario(client: PoolClient, scenarioID: string): Promise<DBScenarioRow | null> {
-  const result = await client.query<DBScenarioRow>(
-    `
-      select
-        s.id::text as id,
-        s.scenario_name,
-        coalesce(t.display_name, s.trainer_ref, 'Trainer') as trainer_name,
-        s.scenario_date,
-        case when s.center_geog is null then null else ST_Y(s.center_geog::geometry) end as latitude,
-        case when s.center_geog is null then null else ST_X(s.center_geog::geometry) end as longitude,
-        s.detection_device::text as detection_device,
-        s.version,
-        s.created_at,
-        s.updated_at,
-        s.trainer_id::text as trainer_id,
-        s.trainer_ref
-      from scenarios s
-      left join trainers t on t.id = s.trainer_id
-      where s.id = $1::uuid
-      limit 1
-    `,
-    [scenarioID]
-  );
-  return result.rows[0] ?? null;
+  return fetchScenarioForSnapshot(client, scenarioID);
 }
 
 async function fetchScenarioShapes(client: PoolClient, scenarioID: string): Promise<DBShapeRow[]> {
-  const result = await client.query<DBShapeRow>(
-    `
-      select
-        ss.id::text as id,
-        ss.scenario_id::text as scenario_id,
-        ss.description,
-        ss.kind::text as kind,
-        ss.sort_order,
-        ss.display_color_hex,
-        ST_AsGeoJSON(ss.geom)::text as shape_geojson,
-        ss.radius_m,
-        ss.oxygen::text as oxygen,
-        ss.lel::text as lel,
-        ss.carbon_monoxide::text as carbon_monoxide,
-        ss.hydrogen_sulfide::text as hydrogen_sulfide,
-        ss.pid::text as pid,
-        ss.oxygen_high_sampling_mode,
-        ss.oxygen_high_feather_percent::text as oxygen_high_feather_percent,
-        ss.oxygen_low_sampling_mode,
-        ss.oxygen_low_feather_percent::text as oxygen_low_feather_percent,
-        ss.lel_high_sampling_mode,
-        ss.lel_high_feather_percent::text as lel_high_feather_percent,
-        ss.lel_low_sampling_mode,
-        ss.lel_low_feather_percent::text as lel_low_feather_percent,
-        ss.carbon_monoxide_high_sampling_mode,
-        ss.carbon_monoxide_high_feather_percent::text as carbon_monoxide_high_feather_percent,
-        ss.carbon_monoxide_low_sampling_mode,
-        ss.carbon_monoxide_low_feather_percent::text as carbon_monoxide_low_feather_percent,
-        ss.hydrogen_sulfide_high_sampling_mode,
-        ss.hydrogen_sulfide_high_feather_percent::text as hydrogen_sulfide_high_feather_percent,
-        ss.hydrogen_sulfide_low_sampling_mode,
-        ss.hydrogen_sulfide_low_feather_percent::text as hydrogen_sulfide_low_feather_percent,
-        ss.pid_high_sampling_mode,
-        ss.pid_high_feather_percent::text as pid_high_feather_percent,
-        ss.pid_low_sampling_mode,
-        ss.pid_low_feather_percent::text as pid_low_feather_percent,
-        coalesce(ss.properties_json -> 'chemicalReadings', '[]'::jsonb) as chemical_readings,
-        ss.dose_rate,
-        ss.background,
-        ss.shielding,
-        ss.rad_latitude::text as rad_latitude,
-        ss.rad_longitude::text as rad_longitude,
-        ss.rad_dose_unit,
-        ss.rad_exposure_unit,
-        ss.ph::float8 as ph
-      from scenario_shapes ss
-      where ss.scenario_id = $1::uuid
-      order by ss.sort_order asc, ss.created_at asc
-    `,
-    [scenarioID]
-  );
-  return result.rows;
+  return fetchScenarioShapesForSnapshot(client, scenarioID);
 }
 
 async function insertSessionWithUniqueJoinCode(
@@ -619,71 +494,6 @@ function isUniqueViolation(error: unknown): boolean {
   );
 }
 
-function buildSessionSnapshot(sessionID: string, scenario: DBScenarioRow, shapes: DBShapeRow[]) {
-  return {
-    sessionId: sessionID,
-    scenario: {
-      id: scenario.id,
-      scenarioName: scenario.scenario_name,
-      trainerName: scenario.trainer_name,
-      scenarioDate: scenario.scenario_date ?? new Date().toISOString(),
-      latitude: scenario.latitude,
-      longitude: scenario.longitude,
-      detectionDevice: scenario.detection_device,
-      version: scenario.version,
-      createdAt: scenario.created_at,
-      updatedAt: scenario.updated_at
-    },
-    shapes: shapes.map((shape) => ({
-      id: shape.id,
-      scenarioId: shape.scenario_id,
-      description: shape.description,
-      kind: shape.kind,
-      sortOrder: shape.sort_order,
-      displayColorHex: shape.display_color_hex,
-      shapeGeoJSON: shape.shape_geojson,
-      radiusM: shape.radius_m,
-      oxygen: shape.oxygen,
-      lel: shape.lel,
-      carbonMonoxide: shape.carbon_monoxide,
-      hydrogenSulfide: shape.hydrogen_sulfide,
-      pid: shape.pid,
-      oxygenHighSamplingMode: shape.oxygen_high_sampling_mode,
-      oxygenHighFeatherPercent: shape.oxygen_high_feather_percent ? parseFloat(shape.oxygen_high_feather_percent) : null,
-      oxygenLowSamplingMode: shape.oxygen_low_sampling_mode,
-      oxygenLowFeatherPercent: shape.oxygen_low_feather_percent ? parseFloat(shape.oxygen_low_feather_percent) : null,
-      lelHighSamplingMode: shape.lel_high_sampling_mode,
-      lelHighFeatherPercent: shape.lel_high_feather_percent ? parseFloat(shape.lel_high_feather_percent) : null,
-      lelLowSamplingMode: shape.lel_low_sampling_mode,
-      lelLowFeatherPercent: shape.lel_low_feather_percent ? parseFloat(shape.lel_low_feather_percent) : null,
-      carbonMonoxideHighSamplingMode: shape.carbon_monoxide_high_sampling_mode,
-      carbonMonoxideHighFeatherPercent: shape.carbon_monoxide_high_feather_percent ? parseFloat(shape.carbon_monoxide_high_feather_percent) : null,
-      carbonMonoxideLowSamplingMode: shape.carbon_monoxide_low_sampling_mode,
-      carbonMonoxideLowFeatherPercent: shape.carbon_monoxide_low_feather_percent ? parseFloat(shape.carbon_monoxide_low_feather_percent) : null,
-      hydrogenSulfideHighSamplingMode: shape.hydrogen_sulfide_high_sampling_mode,
-      hydrogenSulfideHighFeatherPercent: shape.hydrogen_sulfide_high_feather_percent ? parseFloat(shape.hydrogen_sulfide_high_feather_percent) : null,
-      hydrogenSulfideLowSamplingMode: shape.hydrogen_sulfide_low_sampling_mode,
-      hydrogenSulfideLowFeatherPercent: shape.hydrogen_sulfide_low_feather_percent ? parseFloat(shape.hydrogen_sulfide_low_feather_percent) : null,
-      pidHighSamplingMode: shape.pid_high_sampling_mode,
-      pidHighFeatherPercent: shape.pid_high_feather_percent ? parseFloat(shape.pid_high_feather_percent) : null,
-      pidLowSamplingMode: shape.pid_low_sampling_mode,
-      pidLowFeatherPercent: shape.pid_low_feather_percent ? parseFloat(shape.pid_low_feather_percent) : null,
-      chemicalReadings: Array.isArray(shape.chemical_readings) ? shape.chemical_readings : [],
-      doseRate: shape.dose_rate,
-      background: shape.background,
-      shielding: shape.shielding,
-      radLatitude: shape.rad_latitude,
-      radLongitude: shape.rad_longitude,
-      radDoseUnit: shape.rad_dose_unit,
-      radExposureUnit: shape.rad_exposure_unit,
-      pH: shape.ph
-    })),
-    rules: {
-      overlapPriority: 'LOWER_SORT_ORDER_WINS'
-    }
-  };
-}
-
 type DBJoinLookupRow = {
   session_id: string;
   status: string;
@@ -738,6 +548,8 @@ async function joinSessionByCode(
       throw new JoinCodeExpiredError('Join code has expired.');
     }
 
+    await refreshSessionSnapshotIfStale(client, session.session_id);
+
     const rawToken = `sess_${randomUUID()}${randomUUID().replace(/-/g, '')}`;
     const tokenHash = hashSessionToken(rawToken);
     const tokenExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -769,6 +581,16 @@ async function joinSessionByCode(
     );
     const participantRow = upserted.rows[0];
 
+    const refreshedSnapshot = await client.query<{ snapshot_json: unknown }>(
+      `
+        select snapshot_json
+        from session_snapshots
+        where session_id = $1::uuid
+        limit 1
+      `,
+      [session.session_id]
+    );
+
     await client.query('COMMIT');
 
     return {
@@ -786,7 +608,7 @@ async function joinSessionByCode(
         accessToken: rawToken,
         expiresAt: participantRow.token_expires_at
       },
-      snapshot: session.snapshot_json
+      snapshot: refreshedSnapshot.rows[0]?.snapshot_json ?? session.snapshot_json
     };
   } catch (error) {
     await client.query('ROLLBACK');
@@ -958,7 +780,26 @@ async function getSnapshotForSessionToken(pool: { query: PoolClient['query'] }, 
     throw new UnauthorizedError('Invalid or expired session token.');
   }
 
-  return result.rows[0].snapshot_json;
+  const row = result.rows[0];
+  await refreshSessionSnapshotIfStale(pool, row.session_id);
+
+  const refreshed = await pool.query<DBSnapshotAuthRow>(
+    `
+      select
+        sp.session_id::text as session_id,
+        snap.snapshot_json
+      from session_participants sp
+      join scenario_sessions ss on ss.id = sp.session_id
+      join session_snapshots snap on snap.session_id = sp.session_id
+      where sp.session_token_hash = $1
+        and sp.token_expires_at > now()
+        and ss.status in ('scheduled', 'live')
+      limit 1
+    `,
+    [tokenHash]
+  );
+
+  return refreshed.rows[0]?.snapshot_json ?? row.snapshot_json;
 }
 
 type DBParticipantSessionInfoRow = {

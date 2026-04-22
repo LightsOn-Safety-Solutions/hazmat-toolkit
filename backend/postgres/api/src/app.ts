@@ -27,6 +27,44 @@ const REQUIRED_TRAINERS_COLUMNS = [
   'is_active'
 ] as const;
 
+const REQUIRED_UUID_COLUMNS = [
+  ['trainers', 'id'],
+  ['scenarios', 'created_by_trainer_id'],
+  ['scenarios', 'assigned_trainer_id'],
+  ['scenarios', 'trainer_id'],
+  ['scenario_sessions', 'trainer_id'],
+  ['organization_memberships', 'trainer_id'],
+  ['trainer_entitlements', 'trainer_id']
+] as const;
+
+export type SchemaColumnRow = {
+  table_name: string;
+  column_name: string;
+  data_type: string;
+  udt_name: string;
+};
+
+export function summarizeStartupSchemaWarnings(rows: SchemaColumnRow[]): string[] {
+  const warnings: string[] = [];
+  const present = new Set(rows.map((row) => `${row.table_name}.${row.column_name}`));
+
+  const missingTrainerColumns = REQUIRED_TRAINERS_COLUMNS.filter((column) => !present.has(`trainers.${column}`));
+  if (missingTrainerColumns.length) {
+    warnings.push(`trainers schema missing required columns: ${missingTrainerColumns.join(', ')}`);
+  }
+
+  for (const [tableName, columnName] of REQUIRED_UUID_COLUMNS) {
+    const match = rows.find((row) => row.table_name === tableName && row.column_name === columnName);
+    if (match && (match.data_type !== 'uuid' || match.udt_name !== 'uuid')) {
+      warnings.push(
+        `schema type mismatch: ${tableName}.${columnName} should be uuid, found ${match.data_type}/${match.udt_name}`
+      );
+    }
+  }
+
+  return warnings;
+}
+
 export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
   const app = Fastify({
     logger: { level: config.logLevel }
@@ -71,19 +109,21 @@ export async function buildApp(config: AppConfig): Promise<FastifyInstance> {
 async function runStartupSchemaChecks(app: FastifyInstance) {
   const warnings: string[] = [];
   try {
-    const result = await app.pg.query<{ column_name: string }>(
+    const result = await app.pg.query<SchemaColumnRow>(
       `
-        select column_name
+        select table_name, column_name, data_type, udt_name
         from information_schema.columns
         where table_schema = 'public'
-          and table_name = 'trainers'
+          and (
+            table_name = 'trainers'
+            or (table_name = 'scenarios' and column_name in ('created_by_trainer_id', 'assigned_trainer_id', 'trainer_id'))
+            or (table_name = 'scenario_sessions' and column_name = 'trainer_id')
+            or (table_name = 'organization_memberships' and column_name = 'trainer_id')
+            or (table_name = 'trainer_entitlements' and column_name = 'trainer_id')
+          )
       `
     );
-    const present = new Set(result.rows.map((row) => row.column_name));
-    const missing = REQUIRED_TRAINERS_COLUMNS.filter((column) => !present.has(column));
-    if (missing.length) {
-      warnings.push(`trainers schema missing required columns: ${missing.join(', ')}`);
-    }
+    warnings.push(...summarizeStartupSchemaWarnings(result.rows));
   } catch (error) {
     warnings.push('unable to validate trainers schema at startup');
     app.log.warn({ err: error }, 'Startup schema check failed.');
