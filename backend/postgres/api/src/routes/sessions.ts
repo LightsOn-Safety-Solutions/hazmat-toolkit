@@ -292,6 +292,26 @@ type DBShapeRow = {
   carbon_monoxide: string | null;
   hydrogen_sulfide: string | null;
   pid: string | null;
+  oxygen_high_sampling_mode: string | null;
+  oxygen_high_feather_percent: string | null;
+  oxygen_low_sampling_mode: string | null;
+  oxygen_low_feather_percent: string | null;
+  lel_high_sampling_mode: string | null;
+  lel_high_feather_percent: string | null;
+  lel_low_sampling_mode: string | null;
+  lel_low_feather_percent: string | null;
+  carbon_monoxide_high_sampling_mode: string | null;
+  carbon_monoxide_high_feather_percent: string | null;
+  carbon_monoxide_low_sampling_mode: string | null;
+  carbon_monoxide_low_feather_percent: string | null;
+  hydrogen_sulfide_high_sampling_mode: string | null;
+  hydrogen_sulfide_high_feather_percent: string | null;
+  hydrogen_sulfide_low_sampling_mode: string | null;
+  hydrogen_sulfide_low_feather_percent: string | null;
+  pid_high_sampling_mode: string | null;
+  pid_high_feather_percent: string | null;
+  pid_low_sampling_mode: string | null;
+  pid_low_feather_percent: string | null;
   chemical_readings: unknown;
   dose_rate: string | null;
   background: string | null;
@@ -468,6 +488,26 @@ async function fetchScenarioShapes(client: PoolClient, scenarioID: string): Prom
         ss.carbon_monoxide::text as carbon_monoxide,
         ss.hydrogen_sulfide::text as hydrogen_sulfide,
         ss.pid::text as pid,
+        ss.oxygen_high_sampling_mode,
+        ss.oxygen_high_feather_percent::text as oxygen_high_feather_percent,
+        ss.oxygen_low_sampling_mode,
+        ss.oxygen_low_feather_percent::text as oxygen_low_feather_percent,
+        ss.lel_high_sampling_mode,
+        ss.lel_high_feather_percent::text as lel_high_feather_percent,
+        ss.lel_low_sampling_mode,
+        ss.lel_low_feather_percent::text as lel_low_feather_percent,
+        ss.carbon_monoxide_high_sampling_mode,
+        ss.carbon_monoxide_high_feather_percent::text as carbon_monoxide_high_feather_percent,
+        ss.carbon_monoxide_low_sampling_mode,
+        ss.carbon_monoxide_low_feather_percent::text as carbon_monoxide_low_feather_percent,
+        ss.hydrogen_sulfide_high_sampling_mode,
+        ss.hydrogen_sulfide_high_feather_percent::text as hydrogen_sulfide_high_feather_percent,
+        ss.hydrogen_sulfide_low_sampling_mode,
+        ss.hydrogen_sulfide_low_feather_percent::text as hydrogen_sulfide_low_feather_percent,
+        ss.pid_high_sampling_mode,
+        ss.pid_high_feather_percent::text as pid_high_feather_percent,
+        ss.pid_low_sampling_mode,
+        ss.pid_low_feather_percent::text as pid_low_feather_percent,
         coalesce(ss.properties_json -> 'chemicalReadings', '[]'::jsonb) as chemical_readings,
         ss.dose_rate,
         ss.background,
@@ -608,6 +648,26 @@ function buildSessionSnapshot(sessionID: string, scenario: DBScenarioRow, shapes
       carbonMonoxide: shape.carbon_monoxide,
       hydrogenSulfide: shape.hydrogen_sulfide,
       pid: shape.pid,
+      oxygenHighSamplingMode: shape.oxygen_high_sampling_mode,
+      oxygenHighFeatherPercent: shape.oxygen_high_feather_percent ? parseFloat(shape.oxygen_high_feather_percent) : null,
+      oxygenLowSamplingMode: shape.oxygen_low_sampling_mode,
+      oxygenLowFeatherPercent: shape.oxygen_low_feather_percent ? parseFloat(shape.oxygen_low_feather_percent) : null,
+      lelHighSamplingMode: shape.lel_high_sampling_mode,
+      lelHighFeatherPercent: shape.lel_high_feather_percent ? parseFloat(shape.lel_high_feather_percent) : null,
+      lelLowSamplingMode: shape.lel_low_sampling_mode,
+      lelLowFeatherPercent: shape.lel_low_feather_percent ? parseFloat(shape.lel_low_feather_percent) : null,
+      carbonMonoxideHighSamplingMode: shape.carbon_monoxide_high_sampling_mode,
+      carbonMonoxideHighFeatherPercent: shape.carbon_monoxide_high_feather_percent ? parseFloat(shape.carbon_monoxide_high_feather_percent) : null,
+      carbonMonoxideLowSamplingMode: shape.carbon_monoxide_low_sampling_mode,
+      carbonMonoxideLowFeatherPercent: shape.carbon_monoxide_low_feather_percent ? parseFloat(shape.carbon_monoxide_low_feather_percent) : null,
+      hydrogenSulfideHighSamplingMode: shape.hydrogen_sulfide_high_sampling_mode,
+      hydrogenSulfideHighFeatherPercent: shape.hydrogen_sulfide_high_feather_percent ? parseFloat(shape.hydrogen_sulfide_high_feather_percent) : null,
+      hydrogenSulfideLowSamplingMode: shape.hydrogen_sulfide_low_sampling_mode,
+      hydrogenSulfideLowFeatherPercent: shape.hydrogen_sulfide_low_feather_percent ? parseFloat(shape.hydrogen_sulfide_low_feather_percent) : null,
+      pidHighSamplingMode: shape.pid_high_sampling_mode,
+      pidHighFeatherPercent: shape.pid_high_feather_percent ? parseFloat(shape.pid_high_feather_percent) : null,
+      pidLowSamplingMode: shape.pid_low_sampling_mode,
+      pidLowFeatherPercent: shape.pid_low_feather_percent ? parseFloat(shape.pid_low_feather_percent) : null,
       chemicalReadings: Array.isArray(shape.chemical_readings) ? shape.chemical_readings : [],
       doseRate: shape.dose_rate,
       background: shape.background,
