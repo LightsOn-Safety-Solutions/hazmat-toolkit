@@ -724,26 +724,26 @@ final class AppStore: ObservableObject {
             shape.lel = cleanedReadings.first(where: { $0.abbr == "LEL" })?.value ?? shape.lel
             shape.carbonMonoxide = cleanedReadings.first(where: { $0.abbr == "CO" })?.value ?? shape.carbonMonoxide
             shape.hydrogenSulfide = cleanedReadings.first(where: { $0.abbr == "H2S" })?.value ?? shape.hydrogenSulfide
-            shape.oxygenHighSamplingMode = oxygenHighSamplingMode ?? shape.oxygenHighSamplingMode
-            shape.oxygenHighFeatherPercent = oxygenHighFeatherPercent ?? shape.oxygenHighFeatherPercent
-            shape.oxygenLowSamplingMode = oxygenLowSamplingMode ?? shape.oxygenLowSamplingMode
-            shape.oxygenLowFeatherPercent = oxygenLowFeatherPercent ?? shape.oxygenLowFeatherPercent
-            shape.lelHighSamplingMode = lelHighSamplingMode ?? shape.lelHighSamplingMode
-            shape.lelHighFeatherPercent = lelHighFeatherPercent ?? shape.lelHighFeatherPercent
-            shape.lelLowSamplingMode = lelLowSamplingMode ?? shape.lelLowSamplingMode
-            shape.lelLowFeatherPercent = lelLowFeatherPercent ?? shape.lelLowFeatherPercent
-            shape.carbonMonoxideHighSamplingMode = carbonMonoxideHighSamplingMode ?? shape.carbonMonoxideHighSamplingMode
-            shape.carbonMonoxideHighFeatherPercent = carbonMonoxideHighFeatherPercent ?? shape.carbonMonoxideHighFeatherPercent
-            shape.carbonMonoxideLowSamplingMode = carbonMonoxideLowSamplingMode ?? shape.carbonMonoxideLowSamplingMode
-            shape.carbonMonoxideLowFeatherPercent = carbonMonoxideLowFeatherPercent ?? shape.carbonMonoxideLowFeatherPercent
-            shape.hydrogenSulfideHighSamplingMode = hydrogenSulfideHighSamplingMode ?? shape.hydrogenSulfideHighSamplingMode
-            shape.hydrogenSulfideHighFeatherPercent = hydrogenSulfideHighFeatherPercent ?? shape.hydrogenSulfideHighFeatherPercent
-            shape.hydrogenSulfideLowSamplingMode = hydrogenSulfideLowSamplingMode ?? shape.hydrogenSulfideLowSamplingMode
-            shape.hydrogenSulfideLowFeatherPercent = hydrogenSulfideLowFeatherPercent ?? shape.hydrogenSulfideLowFeatherPercent
-            shape.pidHighSamplingMode = pidHighSamplingMode ?? shape.pidHighSamplingMode
-            shape.pidHighFeatherPercent = pidHighFeatherPercent ?? shape.pidHighFeatherPercent
-            shape.pidLowSamplingMode = pidLowSamplingMode ?? shape.pidLowSamplingMode
-            shape.pidLowFeatherPercent = pidLowFeatherPercent ?? shape.pidLowFeatherPercent
+            shape.oxygenHighSamplingMode = oxygenHighSamplingMode
+            shape.oxygenHighFeatherPercent = oxygenHighFeatherPercent
+            shape.oxygenLowSamplingMode = oxygenLowSamplingMode
+            shape.oxygenLowFeatherPercent = oxygenLowFeatherPercent
+            shape.lelHighSamplingMode = lelHighSamplingMode
+            shape.lelHighFeatherPercent = lelHighFeatherPercent
+            shape.lelLowSamplingMode = lelLowSamplingMode
+            shape.lelLowFeatherPercent = lelLowFeatherPercent
+            shape.carbonMonoxideHighSamplingMode = carbonMonoxideHighSamplingMode
+            shape.carbonMonoxideHighFeatherPercent = carbonMonoxideHighFeatherPercent
+            shape.carbonMonoxideLowSamplingMode = carbonMonoxideLowSamplingMode
+            shape.carbonMonoxideLowFeatherPercent = carbonMonoxideLowFeatherPercent
+            shape.hydrogenSulfideHighSamplingMode = hydrogenSulfideHighSamplingMode
+            shape.hydrogenSulfideHighFeatherPercent = hydrogenSulfideHighFeatherPercent
+            shape.hydrogenSulfideLowSamplingMode = hydrogenSulfideLowSamplingMode
+            shape.hydrogenSulfideLowFeatherPercent = hydrogenSulfideLowFeatherPercent
+            shape.pidHighSamplingMode = pidHighSamplingMode
+            shape.pidHighFeatherPercent = pidHighFeatherPercent
+            shape.pidLowSamplingMode = pidLowSamplingMode
+            shape.pidLowFeatherPercent = pidLowFeatherPercent
         case .radiation:
             let center = centroid(of: vertices)
             shape.radLatitude = center.latitude.formatted(.number.precision(.fractionLength(6)))
