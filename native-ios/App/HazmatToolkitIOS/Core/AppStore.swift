@@ -545,10 +545,6 @@ final class AppStore: ObservableObject {
         pidLowSamplingMode: String? = nil,
         pidLowFeatherPercent: Double? = nil
     ) async {
-        print("=== addPolygonShape called ===")
-        print("LEL High Sampling Mode received: \(lelHighSamplingMode)")
-        print("LEL High Feather Percent received: \(lelHighFeatherPercent)")
-
         guard vertices.count >= 3 else {
             errorMessage = "Polygon needs at least 3 points."
             return
@@ -612,8 +608,9 @@ final class AppStore: ObservableObject {
 
         do {
             let saved = try await repository.upsertShape(shape)
+            let merged = mergedSamplingFields(saved: saved, submitted: shape)
             var updated = shapesByScenarioID[scenarioID] ?? []
-            updated.append(saved)
+            updated.append(merged)
             shapesByScenarioID[scenarioID] = updated.sorted { $0.sortOrder < $1.sortOrder }
         } catch {
             errorMessage = error.localizedDescription
@@ -758,7 +755,7 @@ final class AppStore: ObservableObject {
 
         do {
             let saved = try await repository.upsertShape(shape)
-            bucket[index] = saved
+            bucket[index] = mergedSamplingFields(saved: saved, submitted: shape)
             shapesByScenarioID[scenarioID] = bucket.sorted { $0.sortOrder < $1.sortOrder }
         } catch {
             errorMessage = error.localizedDescription
@@ -880,6 +877,37 @@ final class AppStore: ObservableObject {
         guard trimmed.lowercased().hasPrefix("zone ") else { return nil }
         let suffix = trimmed.dropFirst(5).trimmingCharacters(in: .whitespacesAndNewlines)
         return Int(suffix)
+    }
+
+    private func mergedSamplingFields(saved: GeoSimShape, submitted: GeoSimShape) -> GeoSimShape {
+        var merged = saved
+
+        merged.oxygenHighSamplingMode = saved.oxygenHighSamplingMode ?? submitted.oxygenHighSamplingMode
+        merged.oxygenHighFeatherPercent = saved.oxygenHighFeatherPercent ?? submitted.oxygenHighFeatherPercent
+        merged.oxygenLowSamplingMode = saved.oxygenLowSamplingMode ?? submitted.oxygenLowSamplingMode
+        merged.oxygenLowFeatherPercent = saved.oxygenLowFeatherPercent ?? submitted.oxygenLowFeatherPercent
+
+        merged.lelHighSamplingMode = saved.lelHighSamplingMode ?? submitted.lelHighSamplingMode
+        merged.lelHighFeatherPercent = saved.lelHighFeatherPercent ?? submitted.lelHighFeatherPercent
+        merged.lelLowSamplingMode = saved.lelLowSamplingMode ?? submitted.lelLowSamplingMode
+        merged.lelLowFeatherPercent = saved.lelLowFeatherPercent ?? submitted.lelLowFeatherPercent
+
+        merged.carbonMonoxideHighSamplingMode = saved.carbonMonoxideHighSamplingMode ?? submitted.carbonMonoxideHighSamplingMode
+        merged.carbonMonoxideHighFeatherPercent = saved.carbonMonoxideHighFeatherPercent ?? submitted.carbonMonoxideHighFeatherPercent
+        merged.carbonMonoxideLowSamplingMode = saved.carbonMonoxideLowSamplingMode ?? submitted.carbonMonoxideLowSamplingMode
+        merged.carbonMonoxideLowFeatherPercent = saved.carbonMonoxideLowFeatherPercent ?? submitted.carbonMonoxideLowFeatherPercent
+
+        merged.hydrogenSulfideHighSamplingMode = saved.hydrogenSulfideHighSamplingMode ?? submitted.hydrogenSulfideHighSamplingMode
+        merged.hydrogenSulfideHighFeatherPercent = saved.hydrogenSulfideHighFeatherPercent ?? submitted.hydrogenSulfideHighFeatherPercent
+        merged.hydrogenSulfideLowSamplingMode = saved.hydrogenSulfideLowSamplingMode ?? submitted.hydrogenSulfideLowSamplingMode
+        merged.hydrogenSulfideLowFeatherPercent = saved.hydrogenSulfideLowFeatherPercent ?? submitted.hydrogenSulfideLowFeatherPercent
+
+        merged.pidHighSamplingMode = saved.pidHighSamplingMode ?? submitted.pidHighSamplingMode
+        merged.pidHighFeatherPercent = saved.pidHighFeatherPercent ?? submitted.pidHighFeatherPercent
+        merged.pidLowSamplingMode = saved.pidLowSamplingMode ?? submitted.pidLowSamplingMode
+        merged.pidLowFeatherPercent = saved.pidLowFeatherPercent ?? submitted.pidLowFeatherPercent
+
+        return merged
     }
 
     private static func makeRepositorySelectionFromConfiguration(
