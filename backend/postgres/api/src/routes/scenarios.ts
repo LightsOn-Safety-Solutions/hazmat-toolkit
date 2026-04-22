@@ -29,15 +29,25 @@ type ShapeBody = {
   carbon_monoxide?: string | null;
   hydrogen_sulfide?: string | null;
   pid?: string | null;
+  oxygenHighSamplingMode?: string | null;
   oxygenHighFeatherPercent?: number | null;
+  oxygenLowSamplingMode?: string | null;
   oxygenLowFeatherPercent?: number | null;
+  lelHighSamplingMode?: string | null;
   lelHighFeatherPercent?: number | null;
+  lelLowSamplingMode?: string | null;
   lelLowFeatherPercent?: number | null;
+  carbonMonoxideHighSamplingMode?: string | null;
   carbonMonoxideHighFeatherPercent?: number | null;
+  carbonMonoxideLowSamplingMode?: string | null;
   carbonMonoxideLowFeatherPercent?: number | null;
+  hydrogenSulfideHighSamplingMode?: string | null;
   hydrogenSulfideHighFeatherPercent?: number | null;
+  hydrogenSulfideLowSamplingMode?: string | null;
   hydrogenSulfideLowFeatherPercent?: number | null;
+  pidHighSamplingMode?: string | null;
   pidHighFeatherPercent?: number | null;
+  pidLowSamplingMode?: string | null;
   pidLowFeatherPercent?: number | null;
   chemical_readings?: unknown;
   dose_rate?: string | null;
@@ -94,15 +104,25 @@ type ShapeRow = {
   carbon_monoxide: string | null;
   hydrogen_sulfide: string | null;
   pid: string | null;
+  oxygen_high_sampling_mode: string | null;
   oxygen_high_feather_percent: number | null;
+  oxygen_low_sampling_mode: string | null;
   oxygen_low_feather_percent: number | null;
+  lel_high_sampling_mode: string | null;
   lel_high_feather_percent: number | null;
+  lel_low_sampling_mode: string | null;
   lel_low_feather_percent: number | null;
+  carbon_monoxide_high_sampling_mode: string | null;
   carbon_monoxide_high_feather_percent: number | null;
+  carbon_monoxide_low_sampling_mode: string | null;
   carbon_monoxide_low_feather_percent: number | null;
+  hydrogen_sulfide_high_sampling_mode: string | null;
   hydrogen_sulfide_high_feather_percent: number | null;
+  hydrogen_sulfide_low_sampling_mode: string | null;
   hydrogen_sulfide_low_feather_percent: number | null;
+  pid_high_sampling_mode: string | null;
   pid_high_feather_percent: number | null;
+  pid_low_sampling_mode: string | null;
   pid_low_feather_percent: number | null;
   chemical_readings: unknown;
   dose_rate: string | null;
@@ -459,16 +479,26 @@ export const scenariosRoutes: FastifyPluginAsync = async (app) => {
           ss.carbon_monoxide::text as carbon_monoxide,
           ss.hydrogen_sulfide::text as hydrogen_sulfide,
           ss.pid::text as pid,
-          (ss.properties_json ->> 'oxygenHighFeatherPercent')::float8 as oxygen_high_feather_percent,
-          (ss.properties_json ->> 'oxygenLowFeatherPercent')::float8 as oxygen_low_feather_percent,
-          (ss.properties_json ->> 'lelHighFeatherPercent')::float8 as lel_high_feather_percent,
-          (ss.properties_json ->> 'lelLowFeatherPercent')::float8 as lel_low_feather_percent,
-          (ss.properties_json ->> 'carbonMonoxideHighFeatherPercent')::float8 as carbon_monoxide_high_feather_percent,
-          (ss.properties_json ->> 'carbonMonoxideLowFeatherPercent')::float8 as carbon_monoxide_low_feather_percent,
-          (ss.properties_json ->> 'hydrogenSulfideHighFeatherPercent')::float8 as hydrogen_sulfide_high_feather_percent,
-          (ss.properties_json ->> 'hydrogenSulfideLowFeatherPercent')::float8 as hydrogen_sulfide_low_feather_percent,
-          (ss.properties_json ->> 'pidHighFeatherPercent')::float8 as pid_high_feather_percent,
-          (ss.properties_json ->> 'pidLowFeatherPercent')::float8 as pid_low_feather_percent,
+          ss.oxygen_high_sampling_mode,
+          ss.oxygen_high_feather_percent::float8 as oxygen_high_feather_percent,
+          ss.oxygen_low_sampling_mode,
+          ss.oxygen_low_feather_percent::float8 as oxygen_low_feather_percent,
+          ss.lel_high_sampling_mode,
+          ss.lel_high_feather_percent::float8 as lel_high_feather_percent,
+          ss.lel_low_sampling_mode,
+          ss.lel_low_feather_percent::float8 as lel_low_feather_percent,
+          ss.carbon_monoxide_high_sampling_mode,
+          ss.carbon_monoxide_high_feather_percent::float8 as carbon_monoxide_high_feather_percent,
+          ss.carbon_monoxide_low_sampling_mode,
+          ss.carbon_monoxide_low_feather_percent::float8 as carbon_monoxide_low_feather_percent,
+          ss.hydrogen_sulfide_high_sampling_mode,
+          ss.hydrogen_sulfide_high_feather_percent::float8 as hydrogen_sulfide_high_feather_percent,
+          ss.hydrogen_sulfide_low_sampling_mode,
+          ss.hydrogen_sulfide_low_feather_percent::float8 as hydrogen_sulfide_low_feather_percent,
+          ss.pid_high_sampling_mode,
+          ss.pid_high_feather_percent::float8 as pid_high_feather_percent,
+          ss.pid_low_sampling_mode,
+          ss.pid_low_feather_percent::float8 as pid_low_feather_percent,
           coalesce(ss.properties_json -> 'chemicalReadings', '[]'::jsonb) as chemical_readings,
           ss.dose_rate,
           ss.background,
@@ -599,15 +629,25 @@ function mapShapeRow(row: ShapeRow) {
     carbonMonoxide: row.carbon_monoxide,
     hydrogenSulfide: row.hydrogen_sulfide,
     pid: row.pid,
+    oxygenHighSamplingMode: row.oxygen_high_sampling_mode,
     oxygenHighFeatherPercent: row.oxygen_high_feather_percent,
+    oxygenLowSamplingMode: row.oxygen_low_sampling_mode,
     oxygenLowFeatherPercent: row.oxygen_low_feather_percent,
+    lelHighSamplingMode: row.lel_high_sampling_mode,
     lelHighFeatherPercent: row.lel_high_feather_percent,
+    lelLowSamplingMode: row.lel_low_sampling_mode,
     lelLowFeatherPercent: row.lel_low_feather_percent,
+    carbonMonoxideHighSamplingMode: row.carbon_monoxide_high_sampling_mode,
     carbonMonoxideHighFeatherPercent: row.carbon_monoxide_high_feather_percent,
+    carbonMonoxideLowSamplingMode: row.carbon_monoxide_low_sampling_mode,
     carbonMonoxideLowFeatherPercent: row.carbon_monoxide_low_feather_percent,
+    hydrogenSulfideHighSamplingMode: row.hydrogen_sulfide_high_sampling_mode,
     hydrogenSulfideHighFeatherPercent: row.hydrogen_sulfide_high_feather_percent,
+    hydrogenSulfideLowSamplingMode: row.hydrogen_sulfide_low_sampling_mode,
     hydrogenSulfideLowFeatherPercent: row.hydrogen_sulfide_low_feather_percent,
+    pidHighSamplingMode: row.pid_high_sampling_mode,
     pidHighFeatherPercent: row.pid_high_feather_percent,
+    pidLowSamplingMode: row.pid_low_sampling_mode,
     pidLowFeatherPercent: row.pid_low_feather_percent,
     chemicalReadings: Array.isArray(row.chemical_readings) ? row.chemical_readings : [],
     doseRate: row.dose_rate,
@@ -720,17 +760,7 @@ async function insertOrUpdateShape(
 
   const chemicalReadings = Array.isArray(normalized.chemical_readings) ? normalized.chemical_readings : [];
   const propertiesJSON = JSON.stringify({
-    chemicalReadings,
-    oxygenHighFeatherPercent: normalizePercent(normalized.oxygenHighFeatherPercent),
-    oxygenLowFeatherPercent: normalizePercent(normalized.oxygenLowFeatherPercent),
-    lelHighFeatherPercent: normalizePercent(normalized.lelHighFeatherPercent),
-    lelLowFeatherPercent: normalizePercent(normalized.lelLowFeatherPercent),
-    carbonMonoxideHighFeatherPercent: normalizePercent(normalized.carbonMonoxideHighFeatherPercent),
-    carbonMonoxideLowFeatherPercent: normalizePercent(normalized.carbonMonoxideLowFeatherPercent),
-    hydrogenSulfideHighFeatherPercent: normalizePercent(normalized.hydrogenSulfideHighFeatherPercent),
-    hydrogenSulfideLowFeatherPercent: normalizePercent(normalized.hydrogenSulfideLowFeatherPercent),
-    pidHighFeatherPercent: normalizePercent(normalized.pidHighFeatherPercent),
-    pidLowFeatherPercent: normalizePercent(normalized.pidLowFeatherPercent)
+    chemicalReadings
   });
 
   const params = [
@@ -747,6 +777,26 @@ async function insertOrUpdateShape(
     normalizeNumericString(normalized.carbon_monoxide),
     normalizeNumericString(normalized.hydrogen_sulfide),
     normalizeNumericString(normalized.pid),
+    normalized.oxygenHighSamplingMode ?? null,
+    normalizePercent(normalized.oxygenHighFeatherPercent),
+    normalized.oxygenLowSamplingMode ?? null,
+    normalizePercent(normalized.oxygenLowFeatherPercent),
+    normalized.lelHighSamplingMode ?? null,
+    normalizePercent(normalized.lelHighFeatherPercent),
+    normalized.lelLowSamplingMode ?? null,
+    normalizePercent(normalized.lelLowFeatherPercent),
+    normalized.carbonMonoxideHighSamplingMode ?? null,
+    normalizePercent(normalized.carbonMonoxideHighFeatherPercent),
+    normalized.carbonMonoxideLowSamplingMode ?? null,
+    normalizePercent(normalized.carbonMonoxideLowFeatherPercent),
+    normalized.hydrogenSulfideHighSamplingMode ?? null,
+    normalizePercent(normalized.hydrogenSulfideHighFeatherPercent),
+    normalized.hydrogenSulfideLowSamplingMode ?? null,
+    normalizePercent(normalized.hydrogenSulfideLowFeatherPercent),
+    normalized.pidHighSamplingMode ?? null,
+    normalizePercent(normalized.pidHighFeatherPercent),
+    normalized.pidLowSamplingMode ?? null,
+    normalizePercent(normalized.pidLowFeatherPercent),
     normalized.dose_rate ?? null,
     normalized.background ?? null,
     normalized.shielding ?? null,
@@ -810,16 +860,26 @@ const shapeReturningColumns = `
     carbon_monoxide::text as carbon_monoxide,
     hydrogen_sulfide::text as hydrogen_sulfide,
     pid::text as pid,
-    (properties_json ->> 'oxygenHighFeatherPercent')::float8 as oxygen_high_feather_percent,
-    (properties_json ->> 'oxygenLowFeatherPercent')::float8 as oxygen_low_feather_percent,
-    (properties_json ->> 'lelHighFeatherPercent')::float8 as lel_high_feather_percent,
-    (properties_json ->> 'lelLowFeatherPercent')::float8 as lel_low_feather_percent,
-    (properties_json ->> 'carbonMonoxideHighFeatherPercent')::float8 as carbon_monoxide_high_feather_percent,
-    (properties_json ->> 'carbonMonoxideLowFeatherPercent')::float8 as carbon_monoxide_low_feather_percent,
-    (properties_json ->> 'hydrogenSulfideHighFeatherPercent')::float8 as hydrogen_sulfide_high_feather_percent,
-    (properties_json ->> 'hydrogenSulfideLowFeatherPercent')::float8 as hydrogen_sulfide_low_feather_percent,
-    (properties_json ->> 'pidHighFeatherPercent')::float8 as pid_high_feather_percent,
-    (properties_json ->> 'pidLowFeatherPercent')::float8 as pid_low_feather_percent,
+    oxygen_high_sampling_mode,
+    oxygen_high_feather_percent::float8 as oxygen_high_feather_percent,
+    oxygen_low_sampling_mode,
+    oxygen_low_feather_percent::float8 as oxygen_low_feather_percent,
+    lel_high_sampling_mode,
+    lel_high_feather_percent::float8 as lel_high_feather_percent,
+    lel_low_sampling_mode,
+    lel_low_feather_percent::float8 as lel_low_feather_percent,
+    carbon_monoxide_high_sampling_mode,
+    carbon_monoxide_high_feather_percent::float8 as carbon_monoxide_high_feather_percent,
+    carbon_monoxide_low_sampling_mode,
+    carbon_monoxide_low_feather_percent::float8 as carbon_monoxide_low_feather_percent,
+    hydrogen_sulfide_high_sampling_mode,
+    hydrogen_sulfide_high_feather_percent::float8 as hydrogen_sulfide_high_feather_percent,
+    hydrogen_sulfide_low_sampling_mode,
+    hydrogen_sulfide_low_feather_percent::float8 as hydrogen_sulfide_low_feather_percent,
+    pid_high_sampling_mode,
+    pid_high_feather_percent::float8 as pid_high_feather_percent,
+    pid_low_sampling_mode,
+    pid_low_feather_percent::float8 as pid_low_feather_percent,
     coalesce(properties_json -> 'chemicalReadings', '[]'::jsonb) as chemical_readings,
     dose_rate,
     background,
@@ -845,15 +905,35 @@ const updateShapeSQL = `
     carbon_monoxide = $11::numeric,
     hydrogen_sulfide = $12::numeric,
     pid = $13::numeric,
-    dose_rate = $14,
-    background = $15,
-    shielding = $16,
-    rad_latitude = $17::float8,
-    rad_longitude = $18::float8,
-    rad_dose_unit = $19,
-    rad_exposure_unit = $20,
-    ph = $21::numeric,
-    properties_json = $22::jsonb
+    oxygen_high_sampling_mode = $14,
+    oxygen_high_feather_percent = $15::numeric,
+    oxygen_low_sampling_mode = $16,
+    oxygen_low_feather_percent = $17::numeric,
+    lel_high_sampling_mode = $18,
+    lel_high_feather_percent = $19::numeric,
+    lel_low_sampling_mode = $20,
+    lel_low_feather_percent = $21::numeric,
+    carbon_monoxide_high_sampling_mode = $22,
+    carbon_monoxide_high_feather_percent = $23::numeric,
+    carbon_monoxide_low_sampling_mode = $24,
+    carbon_monoxide_low_feather_percent = $25::numeric,
+    hydrogen_sulfide_high_sampling_mode = $26,
+    hydrogen_sulfide_high_feather_percent = $27::numeric,
+    hydrogen_sulfide_low_sampling_mode = $28,
+    hydrogen_sulfide_low_feather_percent = $29::numeric,
+    pid_high_sampling_mode = $30,
+    pid_high_feather_percent = $31::numeric,
+    pid_low_sampling_mode = $32,
+    pid_low_feather_percent = $33::numeric,
+    dose_rate = $34,
+    background = $35,
+    shielding = $36,
+    rad_latitude = $37::float8,
+    rad_longitude = $38::float8,
+    rad_dose_unit = $39,
+    rad_exposure_unit = $40,
+    ph = $41::numeric,
+    properties_json = $42::jsonb
   where id = $1::uuid and scenario_id = $2::uuid
   ${shapeReturningColumns}
 `;
@@ -862,6 +942,16 @@ const insertShapeSQL = `
   insert into scenario_shapes (
     scenario_id, description, kind, sort_order, display_color_hex, geom, radius_m,
     oxygen, lel, carbon_monoxide, hydrogen_sulfide, pid,
+    oxygen_high_sampling_mode, oxygen_high_feather_percent,
+    oxygen_low_sampling_mode, oxygen_low_feather_percent,
+    lel_high_sampling_mode, lel_high_feather_percent,
+    lel_low_sampling_mode, lel_low_feather_percent,
+    carbon_monoxide_high_sampling_mode, carbon_monoxide_high_feather_percent,
+    carbon_monoxide_low_sampling_mode, carbon_monoxide_low_feather_percent,
+    hydrogen_sulfide_high_sampling_mode, hydrogen_sulfide_high_feather_percent,
+    hydrogen_sulfide_low_sampling_mode, hydrogen_sulfide_low_feather_percent,
+    pid_high_sampling_mode, pid_high_feather_percent,
+    pid_low_sampling_mode, pid_low_feather_percent,
     dose_rate, background, shielding,
     rad_latitude, rad_longitude, rad_dose_unit, rad_exposure_unit,
     ph, properties_json
@@ -869,9 +959,12 @@ const insertShapeSQL = `
     $2::uuid, $3, $4::shape_kind, $5::int, $6,
     ST_SetSRID(ST_GeomFromGeoJSON($7), 4326), $8::float8,
     $9::numeric, $10::numeric, $11::numeric, $12::numeric, $13::numeric,
-    $14, $15, $16,
-    $17::float8, $18::float8, $19, $20,
-    $21::numeric, $22::jsonb
+    $14, $15::numeric, $16, $17::numeric, $18, $19::numeric, $20, $21::numeric,
+    $22, $23::numeric, $24, $25::numeric, $26, $27::numeric, $28, $29::numeric,
+    $30, $31::numeric, $32, $33::numeric,
+    $34, $35, $36,
+    $37::float8, $38::float8, $39, $40,
+    $41::numeric, $42::jsonb
   )
   ${shapeReturningColumns}
 `;
@@ -880,6 +973,16 @@ const insertShapeWithIDSQL = `
   insert into scenario_shapes (
     id, scenario_id, description, kind, sort_order, display_color_hex, geom, radius_m,
     oxygen, lel, carbon_monoxide, hydrogen_sulfide, pid,
+    oxygen_high_sampling_mode, oxygen_high_feather_percent,
+    oxygen_low_sampling_mode, oxygen_low_feather_percent,
+    lel_high_sampling_mode, lel_high_feather_percent,
+    lel_low_sampling_mode, lel_low_feather_percent,
+    carbon_monoxide_high_sampling_mode, carbon_monoxide_high_feather_percent,
+    carbon_monoxide_low_sampling_mode, carbon_monoxide_low_feather_percent,
+    hydrogen_sulfide_high_sampling_mode, hydrogen_sulfide_high_feather_percent,
+    hydrogen_sulfide_low_sampling_mode, hydrogen_sulfide_low_feather_percent,
+    pid_high_sampling_mode, pid_high_feather_percent,
+    pid_low_sampling_mode, pid_low_feather_percent,
     dose_rate, background, shielding,
     rad_latitude, rad_longitude, rad_dose_unit, rad_exposure_unit,
     ph, properties_json
@@ -887,9 +990,12 @@ const insertShapeWithIDSQL = `
     $1::uuid, $2::uuid, $3, $4::shape_kind, $5::int, $6,
     ST_SetSRID(ST_GeomFromGeoJSON($7), 4326), $8::float8,
     $9::numeric, $10::numeric, $11::numeric, $12::numeric, $13::numeric,
-    $14, $15, $16,
-    $17::float8, $18::float8, $19, $20,
-    $21::numeric, $22::jsonb
+    $14, $15::numeric, $16, $17::numeric, $18, $19::numeric, $20, $21::numeric,
+    $22, $23::numeric, $24, $25::numeric, $26, $27::numeric, $28, $29::numeric,
+    $30, $31::numeric, $32, $33::numeric,
+    $34, $35, $36,
+    $37::float8, $38::float8, $39, $40,
+    $41::numeric, $42::jsonb
   )
   ${shapeReturningColumns}
 `;
