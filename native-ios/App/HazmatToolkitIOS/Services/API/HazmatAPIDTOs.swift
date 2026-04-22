@@ -233,14 +233,6 @@ struct APIShapeDTO: Codable, Hashable, Sendable, Identifiable {
             hydrogenSulfide: hydrogenSulfide,
             pid: pid,
             chemicalReadings: chemicalReadings,
-            doseRate: doseRate,
-            background: background,
-            shielding: shielding,
-            radLatitude: radLatitude,
-            radLongitude: radLongitude,
-            radDoseUnit: radDoseUnit,
-            radExposureUnit: radExposureUnit,
-            pH: pH,
             oxygenHighSamplingMode: oxygenHighSamplingMode,
             oxygenHighFeatherPercent: oxygenHighFeatherPercent,
             oxygenLowSamplingMode: oxygenLowSamplingMode,
@@ -260,7 +252,15 @@ struct APIShapeDTO: Codable, Hashable, Sendable, Identifiable {
             pidHighSamplingMode: pidHighSamplingMode,
             pidHighFeatherPercent: pidHighFeatherPercent,
             pidLowSamplingMode: pidLowSamplingMode,
-            pidLowFeatherPercent: pidLowFeatherPercent
+            pidLowFeatherPercent: pidLowFeatherPercent,
+            doseRate: doseRate,
+            background: background,
+            shielding: shielding,
+            radLatitude: radLatitude,
+            radLongitude: radLongitude,
+            radDoseUnit: radDoseUnit,
+            radExposureUnit: radExposureUnit,
+            pH: pH
         )
     }
 }
