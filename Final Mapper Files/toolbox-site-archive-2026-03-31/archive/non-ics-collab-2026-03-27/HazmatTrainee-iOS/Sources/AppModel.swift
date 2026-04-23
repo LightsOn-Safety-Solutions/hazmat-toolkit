@@ -117,6 +117,9 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private var lowBandEnterThresholdDegrees: Double = 18
     private var highBandExitThresholdDegrees: Double = 10
     private var lowBandExitThresholdDegrees: Double = 10
+    private let requiredSamplingBandConfirmationSamples: Int = 4
+    private var pendingSamplingBand: AirMonitorSamplingBand?
+    private var pendingSamplingBandSampleCount: Int = 0
     private var hasPersistedDownloadedScenario = false
 
     let phFacts: [Int: String] = [
@@ -1313,6 +1316,8 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         lowBandEnterThresholdDegrees = 18
         highBandExitThresholdDegrees = 10
         lowBandExitThresholdDegrees = 10
+        pendingSamplingBand = nil
+        pendingSamplingBandSampleCount = 0
         airMonitorMotionManager.start()
     }
 
@@ -1331,6 +1336,8 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         lowBandEnterThresholdDegrees = 18
         highBandExitThresholdDegrees = 10
         lowBandExitThresholdDegrees = 10
+        pendingSamplingBand = nil
+        pendingSamplingBandSampleCount = 0
     }
 
     private func handleAirMonitorTiltAngleUpdate(_ angleRadians: Double) {
@@ -1356,22 +1363,44 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
 
         let deltaDegrees = (smoothed - baseline) * 180 / .pi
         let priorBand = currentSamplingBand
+        let proposedBand: AirMonitorSamplingBand
 
         switch currentSamplingBand {
         case .normal:
             if deltaDegrees >= highBandEnterThresholdDegrees {
-                currentSamplingBand = .high
+                proposedBand = .high
             } else if deltaDegrees <= -lowBandEnterThresholdDegrees {
-                currentSamplingBand = .low
+                proposedBand = .low
+            } else {
+                proposedBand = .normal
             }
         case .high:
             if deltaDegrees < highBandExitThresholdDegrees {
-                currentSamplingBand = .normal
+                proposedBand = .normal
+            } else {
+                proposedBand = .high
             }
         case .low:
             if deltaDegrees > -lowBandExitThresholdDegrees {
-                currentSamplingBand = .normal
+                proposedBand = .normal
+            } else {
+                proposedBand = .low
             }
+        }
+
+        if proposedBand == currentSamplingBand {
+            pendingSamplingBand = nil
+            pendingSamplingBandSampleCount = 0
+        } else if pendingSamplingBand == proposedBand {
+            pendingSamplingBandSampleCount += 1
+            if pendingSamplingBandSampleCount >= requiredSamplingBandConfirmationSamples {
+                currentSamplingBand = proposedBand
+                pendingSamplingBand = nil
+                pendingSamplingBandSampleCount = 0
+            }
+        } else {
+            pendingSamplingBand = proposedBand
+            pendingSamplingBandSampleCount = 1
         }
 
         if priorBand != currentSamplingBand, let zone = currentZone {
