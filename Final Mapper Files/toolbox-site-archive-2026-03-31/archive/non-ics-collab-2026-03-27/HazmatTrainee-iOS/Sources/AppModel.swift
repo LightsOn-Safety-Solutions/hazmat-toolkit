@@ -120,6 +120,9 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let requiredSamplingBandConfirmationSamples: Int = 4
     private var pendingSamplingBand: AirMonitorSamplingBand?
     private var pendingSamplingBandSampleCount: Int = 0
+    private let requiredGPSZoneConfirmationSamples: Int = 3
+    private var pendingGPSZoneName: String?
+    private var pendingGPSZoneSampleCount: Int = 0
     private var hasPersistedDownloadedScenario = false
 
     let phFacts: [Int: String] = [
@@ -403,6 +406,8 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         } else {
             selectedZoneName = scenario.zones.first?.name ?? "OUT"
         }
+        pendingGPSZoneName = nil
+        pendingGPSZoneSampleCount = 0
 
         if let zone = currentZone {
             gasReadings = adjustedGasReadings(for: zone)
@@ -529,18 +534,10 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private func applyGPSDrivenShapeSelection(using location: CLLocation) {
         guard !joinedSessionGeoShapes.isEmpty else { return }
         let hit = activeGeoShape(for: location.coordinate)
+        let candidateZoneName = hit?.description ?? "OUT"
 
-        if let hit {
-            if selectedZoneName != hit.description {
-                applyZoneToSimulators(zoneName: hit.description)
-            } else {
-                // Keep exact configured zone values during a live GPS-driven session.
-                applyZoneToSimulators(zoneName: hit.description)
-            }
-            // Radiation reading is computed below using nearest configured source,
-            // so trainees see realistic falloff even outside tiny point hit-zones.
-        } else if selectedZoneName != "OUT" {
-            applyZoneToSimulators(zoneName: "OUT")
+        if let confirmedZoneName = confirmedGPSZoneChange(candidateZoneName: candidateZoneName) {
+            applyZoneToSimulators(zoneName: confirmedZoneName)
         }
 
         if let sourceShape = nearestRadiationSourceShape(to: location.coordinate),
@@ -591,6 +588,28 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
 
         locationTrackingStatusMessage = "Queued \(pendingTrackingPoints.count) location point(s)."
+    }
+
+    private func confirmedGPSZoneChange(candidateZoneName: String) -> String? {
+        guard candidateZoneName != selectedZoneName else {
+            pendingGPSZoneName = nil
+            pendingGPSZoneSampleCount = 0
+            return nil
+        }
+
+        if pendingGPSZoneName == candidateZoneName {
+            pendingGPSZoneSampleCount += 1
+            if pendingGPSZoneSampleCount >= requiredGPSZoneConfirmationSamples {
+                pendingGPSZoneName = nil
+                pendingGPSZoneSampleCount = 0
+                return candidateZoneName
+            }
+            return nil
+        }
+
+        pendingGPSZoneName = candidateZoneName
+        pendingGPSZoneSampleCount = 1
+        return nil
     }
 
     private func activeGeoShape(for coordinate: CLLocationCoordinate2D) -> DataverseClient.JoinedSessionGeoShape? {
@@ -790,6 +809,8 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         phTransitionStartValue = 7
         phTransitionStartAt = nil
         selectedZoneName = "OUT"
+        pendingGPSZoneName = nil
+        pendingGPSZoneSampleCount = 0
     }
 
     func chooseScenario(_ scenario: Scenario) {
