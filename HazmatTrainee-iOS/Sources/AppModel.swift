@@ -1,6 +1,23 @@
 import Foundation
 import SwiftUI
 import CoreLocation
+import CoreMotion
+
+enum ExternalAppRoute: String {
+    case continueSession
+}
+
+enum AppIntentBridge {
+    static let pendingRouteKey = "THMGTrainee.PendingExternalRoute"
+    static let persistedScenarioKey = "THMGTrainee.PersistedSelectedScenario"
+    static let lastJoinCodeKey = "THMGTrainee.LastJoinCode"
+    static let lastTraineeNameKey = "THMGTrainee.LastTraineeName"
+}
+
+private struct PersistedDownloadedScenario: Codable {
+    var source: String
+    var scenario: Scenario
+}
 
 enum RadiationInstrumentMode: String, CaseIterable, Identifiable {
     case directional = "Directional"
@@ -16,6 +33,14 @@ enum RadiationShieldingMaterial: String, CaseIterable, Identifiable {
     case lead = "Lead"
 
     var id: String { rawValue }
+}
+
+enum AirMonitorCalibrationStep: Int, CaseIterable, Identifiable {
+    case normal
+    case high
+    case low
+
+    var id: Int { rawValue }
 }
 
 @MainActor
@@ -53,10 +78,17 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     @Published var phDisplay: Double = 7
     @Published var phTarget: Double = 7
+    @Published var isToolRunActive = false
+    @Published private(set) var currentSamplingBand: AirMonitorSamplingBand = .normal
+    @Published private(set) var isLearningAirMonitorBaseline = false
+    @Published private(set) var learnedAirMonitorBaselineTiltRadians: Double?
+    @Published private(set) var airMonitorCalibrationStep: AirMonitorCalibrationStep?
+    @Published private(set) var airMonitorCalibrationStatusMessage: String?
 
     @Published var navPath = NavigationPath()
 
     private let apiClient = DataverseClient()
+    private let airMonitorMotionManager = AirMonitorHeightSamplingMotionManager()
     private let locationManager = CLLocationManager()
     private var sessionAccessToken: String?
     private var joinedSessionID: String?
@@ -71,6 +103,30 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private var sessionStateRefreshTask: Task<Void, Never>?
     private let trackingCaptureInterval: TimeInterval = 5
     private let trackingUploadInterval: UInt64 = 15_000_000_000
+    private let phTransitionDuration: TimeInterval = 5
+    private let airMonitorTiltSmoothingAlpha: Double = 0.22
+    private let minimumCalibrationDeltaDegrees: Double = 8
+    private var phTransitionStartValue: Double = 7
+    private var phTransitionStartAt: Date?
+    private var pendingExternalRoute: ExternalAppRoute?
+    private var smoothedAirMonitorTiltRadians: Double?
+    private var calibratedNormalTiltRadians: Double?
+    private var calibratedHighTiltRadians: Double?
+    private var calibratedLowTiltRadians: Double?
+    private var highBandEnterThresholdDegrees: Double = 18
+    private var lowBandEnterThresholdDegrees: Double = 18
+    private var highBandExitThresholdDegrees: Double = 10
+    private var lowBandExitThresholdDegrees: Double = 10
+    private let requiredSamplingBandEntryConfirmationSamples: Int = 4
+    private let requiredSamplingBandReturnToNormalSamples: Int = 12
+    private let minimumSamplingBandDwellBeforeReturnSeconds: TimeInterval = 2.0
+    private var pendingSamplingBand: AirMonitorSamplingBand?
+    private var pendingSamplingBandSampleCount: Int = 0
+    private var lastSamplingBandChangeAt: Date = .distantPast
+    private let requiredGPSZoneConfirmationSamples: Int = 3
+    private var pendingGPSZoneName: String?
+    private var pendingGPSZoneSampleCount: Int = 0
+    private var hasPersistedDownloadedScenario = false
 
     let phFacts: [Int: String] = [
         0: "Hydrochloric acid - highly corrosive",
@@ -92,23 +148,16 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     override init() {
         super.init()
+        airMonitorMotionManager.onTiltAngleUpdate = { [weak self] angle in
+            self?.handleAirMonitorTiltAngleUpdate(angle)
+        }
         configureLocationManager()
-        loadSampleScenarios()
+        scenarios = []
         airMonitorSensors = defaultAirMonitorSensors(for: .fourGasPID)
         resetSimulatorDefaults()
-    }
-
-    func loadSampleScenarios() {
-        guard let url = Bundle.main.url(forResource: "SampleScenarios", withExtension: "json"),
-              let data = try? Data(contentsOf: url) else {
-            scenarios = []
-            return
-        }
-
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .formatted(Self.dateFormatter)
-        scenarios = (try? decoder.decode([Scenario].self, from: data)) ?? []
-        scenarios.sort { $0.date > $1.date }
+        restoreLastJoinCredentialsIfAvailable()
+        restorePersistedSelectedScenarioIfAvailable()
+        consumePendingExternalRoute()
     }
 
     func joinScenarioSessionFromBackend() async {
@@ -130,8 +179,7 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         do {
             let joined = try await apiClient.joinSession(joinCode: trimmedCode, traineeName: trimmedName)
 
-            scenarios.removeAll { $0.id == joined.scenario.id }
-            scenarios.insert(joined.scenario, at: 0)
+            scenarios = [joined.scenario]
             selectedScenario = joined.scenario
             sessionAccessToken = joined.accessToken
             joinedSessionID = joined.sessionID
@@ -143,8 +191,11 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                 if lhs.sortOrder != rhs.sortOrder { return lhs.sortOrder < rhs.sortOrder }
                 return lhs.description < rhs.description
             }
+            persistLastJoinCredentials(name: trimmedName, code: trimmedCode)
             resetSimulatorDefaults()
             chooseScenario(joined.scenario)
+            persistDownloadedScenario(joined.scenario)
+            hasPersistedDownloadedScenario = true
             backendErrorMessage = nil
             let trainerLabel = joined.trainerName?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
                 ? (joined.trainerName ?? "Trainer")
@@ -158,12 +209,102 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         }
     }
 
+    func continueSession() async {
+        if canAttemptSessionRefresh {
+            await joinScenarioSessionFromBackend()
+            return
+        }
+
+        guard hasDownloadedScenario else {
+            backendErrorMessage = "No downloaded session is available yet."
+            return
+        }
+        navPath.append(AppScreen.scenarios)
+    }
+
+    func freshJoinSession() async {
+        guard canAttemptSessionRefresh else {
+            backendErrorMessage = "Enter your name and join code to refresh the live session."
+            return
+        }
+        await joinScenarioSessionFromBackend()
+    }
+
     func clearBackendError() {
         backendErrorMessage = nil
     }
 
     func clearBackendStatus() {
         backendStatusMessage = nil
+    }
+
+    func finishSplash() {
+        didFinishSplash = true
+        processPendingExternalRouteIfPossible()
+    }
+
+    func setToolRunActive(_ isActive: Bool) {
+        isToolRunActive = isActive
+        refreshAirMonitorMotionState()
+    }
+
+    func beginAirMonitorCalibrationIfNeeded() {
+        guard isToolRunActive, selectedMonitor?.isAirMonitor == true else { return }
+        guard airMonitorCalibrationStep == nil, learnedAirMonitorBaselineTiltRadians == nil else { return }
+        airMonitorCalibrationStep = .normal
+        isLearningAirMonitorBaseline = true
+        airMonitorCalibrationStatusMessage = nil
+        currentSamplingBand = .normal
+    }
+
+    @discardableResult
+    func captureAirMonitorCalibrationStep() -> Bool {
+        guard let step = airMonitorCalibrationStep else { return false }
+        guard let currentTilt = smoothedAirMonitorTiltRadians else {
+            airMonitorCalibrationStatusMessage = "Hold the monitor steady and try again."
+            return false
+        }
+
+        switch step {
+        case .normal:
+            calibratedNormalTiltRadians = currentTilt
+            airMonitorCalibrationStep = .high
+            airMonitorCalibrationStatusMessage = nil
+            return true
+        case .high:
+            guard let normalTilt = calibratedNormalTiltRadians else {
+                airMonitorCalibrationStatusMessage = "Capture the normal position first."
+                airMonitorCalibrationStep = .normal
+                return false
+            }
+
+            let deltaDegrees = (currentTilt - normalTilt) * 180 / .pi
+            guard deltaDegrees >= minimumCalibrationDeltaDegrees else {
+                airMonitorCalibrationStatusMessage = "Raise the monitor higher and capture again."
+                return false
+            }
+
+            calibratedHighTiltRadians = currentTilt
+            airMonitorCalibrationStep = .low
+            airMonitorCalibrationStatusMessage = nil
+            return true
+        case .low:
+            guard let normalTilt = calibratedNormalTiltRadians else {
+                airMonitorCalibrationStatusMessage = "Capture the normal position first."
+                airMonitorCalibrationStep = .normal
+                return false
+            }
+
+            let deltaDegrees = (currentTilt - normalTilt) * 180 / .pi
+            guard deltaDegrees <= -minimumCalibrationDeltaDegrees else {
+                airMonitorCalibrationStatusMessage = "Lower the monitor farther and capture again."
+                return false
+            }
+
+            calibratedLowTiltRadians = currentTilt
+            finalizeAirMonitorCalibration()
+            return true
+        }
     }
 
     func applyScannedJoinPayload(_ payload: String) {
@@ -184,6 +325,15 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     var canSendTrackingPing: Bool {
         sessionAccessToken != nil && isSessionActiveForTracking && !isSendingTrackingPing
+    }
+
+    var hasDownloadedScenario: Bool {
+        hasPersistedDownloadedScenario || sessionAccessToken != nil
+    }
+
+    func enqueueExternalRoute(_ route: ExternalAppRoute) {
+        pendingExternalRoute = route
+        processPendingExternalRouteIfPossible()
     }
 
     var isGPSDrivenLiveSession: Bool {
@@ -259,6 +409,8 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         } else {
             selectedZoneName = scenario.zones.first?.name ?? "OUT"
         }
+        pendingGPSZoneName = nil
+        pendingGPSZoneSampleCount = 0
 
         if let zone = currentZone {
             gasReadings = adjustedGasReadings(for: zone)
@@ -385,18 +537,10 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private func applyGPSDrivenShapeSelection(using location: CLLocation) {
         guard !joinedSessionGeoShapes.isEmpty else { return }
         let hit = activeGeoShape(for: location.coordinate)
+        let candidateZoneName = hit?.description ?? "OUT"
 
-        if let hit {
-            if selectedZoneName != hit.description {
-                applyZoneToSimulators(zoneName: hit.description)
-            } else {
-                // Keep exact configured zone values during a live GPS-driven session.
-                applyZoneToSimulators(zoneName: hit.description)
-            }
-            // Radiation reading is computed below using nearest configured source,
-            // so trainees see realistic falloff even outside tiny point hit-zones.
-        } else if selectedZoneName != "OUT" {
-            applyZoneToSimulators(zoneName: "OUT")
+        if let confirmedZoneName = confirmedGPSZoneChange(candidateZoneName: candidateZoneName) {
+            applyZoneToSimulators(zoneName: confirmedZoneName)
         }
 
         if let sourceShape = nearestRadiationSourceShape(to: location.coordinate),
@@ -449,10 +593,33 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         locationTrackingStatusMessage = "Queued \(pendingTrackingPoints.count) location point(s)."
     }
 
-    private func activeGeoShape(for coordinate: CLLocationCoordinate2D) -> DataverseClient.JoinedSessionGeoShape? {
-        joinedSessionGeoShapes.first { shape in
-            shapeContainsCoordinate(shape, coordinate: coordinate)
+    private func confirmedGPSZoneChange(candidateZoneName: String) -> String? {
+        guard candidateZoneName != selectedZoneName else {
+            pendingGPSZoneName = nil
+            pendingGPSZoneSampleCount = 0
+            return nil
         }
+
+        if pendingGPSZoneName == candidateZoneName {
+            pendingGPSZoneSampleCount += 1
+            if pendingGPSZoneSampleCount >= requiredGPSZoneConfirmationSamples {
+                pendingGPSZoneName = nil
+                pendingGPSZoneSampleCount = 0
+                return candidateZoneName
+            }
+            return nil
+        }
+
+        pendingGPSZoneName = candidateZoneName
+        pendingGPSZoneSampleCount = 1
+        return nil
+    }
+
+    private func activeGeoShape(for coordinate: CLLocationCoordinate2D) -> DataverseClient.JoinedSessionGeoShape? {
+        let matches = joinedSessionGeoShapes.filter { shape in
+            isTrainerZoneShape(shape) && shapeContainsCoordinate(shape, coordinate: coordinate)
+        }
+        return matches.max { lhs, rhs in lhs.sortOrder < rhs.sortOrder }
     }
 
     private func nearestRadiationSourceShape(to coordinate: CLLocationCoordinate2D) -> DataverseClient.JoinedSessionGeoShape? {
@@ -533,6 +700,15 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         default:
             return false
         }
+    }
+
+    private func isTrainerZoneShape(_ shape: DataverseClient.JoinedSessionGeoShape) -> Bool {
+        shape.oxygen != nil ||
+        shape.lel != nil ||
+        shape.carbonMonoxide != nil ||
+        shape.hydrogenSulfide != nil ||
+        shape.pid != nil ||
+        shape.pH != nil
     }
 
     private func pointInPolygon(_ point: CLLocationCoordinate2D, ring: [DataverseClient.JoinedSessionGeoShape.Coordinate]) -> Bool {
@@ -618,6 +794,7 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     func resetSimulatorDefaults() {
+        stopAirMonitorSamplingMotion()
         gasReadings = .baseline
         doseRateRph = 0
         doseAt1mRph = 0.025
@@ -632,7 +809,11 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         radiationDistanceFromSourceM = nil
         phDisplay = 7
         phTarget = 7
+        phTransitionStartValue = 7
+        phTransitionStartAt = nil
         selectedZoneName = "OUT"
+        pendingGPSZoneName = nil
+        pendingGPSZoneSampleCount = 0
     }
 
     func chooseScenario(_ scenario: Scenario) {
@@ -648,6 +829,7 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
 
     func chooseMonitor(_ monitor: MonitorType) {
         selectedMonitor = monitor
+        refreshAirMonitorMotionState()
     }
 
     func prepareAirMonitorBuilder(for monitor: MonitorType) {
@@ -655,6 +837,7 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         airMonitorDeviceName = monitor == .fourGasPID ? "Custom 4 Gas + PID" : "Custom 4 Gas"
         editingAirMonitorProfileID = nil
         airMonitorSensors = defaultAirMonitorSensors(for: monitor)
+        refreshAirMonitorMotionState()
     }
 
     func beginEditingAirMonitorProfile(_ profile: TraineeAirMonitorProfile) {
@@ -662,6 +845,7 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         airMonitorDeviceName = profile.name
         editingAirMonitorProfileID = profile.id
         airMonitorSensors = profile.sensors
+        refreshAirMonitorMotionState()
     }
 
     func defaultAirMonitorSensors(for monitor: MonitorType) -> [TraineeAirMonitorSensorSlot] {
@@ -757,21 +941,15 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         airMonitorDeviceName = profile.name
         airMonitorSensors = profile.sensors
         editingAirMonitorProfileID = profile.id
+        refreshAirMonitorMotionState()
         navPath.append(AppScreen.gasSimulator)
     }
 
     func applyZoneToSimulators(zoneName: String) {
         selectedZoneName = zoneName
         guard let zone = currentZone else { return }
-        gasReadings = GasReadings(
-            oxygen: zone.oxygen,
-            lel: zone.lel,
-            co: zone.co,
-            h2s: zone.h2s,
-            pid: zone.pid
-        )
-        phTarget = zone.ph
-        phDisplay = zone.ph
+        gasReadings = adjustedGasReadings(for: zone)
+        beginPHTransition(to: zone.ph)
     }
 
     var currentZone: ScenarioZone? {
@@ -789,7 +967,7 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     var roundedPHFact: String {
-        phFacts[Int(phTarget.rounded())] ?? ""
+        phFacts[Int(phDisplay.rounded())] ?? ""
     }
 
     func routeForSelectedMonitor() -> AppScreen {
@@ -956,24 +1134,21 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     func simulateGasDrift() {
-        guard !isGPSDrivenLiveSession else {
+        // Trainer-provided sessions should stay on exact configured values.
+        // Do not add synthetic drift/noise when replaying a downloaded snapshot.
+        guard !isGPSDrivenLiveSession, !hasDownloadedScenario else {
             if let zone = currentZone {
-                gasReadings = GasReadings(
-                    oxygen: zone.oxygen,
-                    lel: zone.lel,
-                    co: zone.co,
-                    h2s: zone.h2s,
-                    pid: zone.pid
-                )
+                gasReadings = adjustedGasReadings(for: zone)
             }
             return
         }
         guard let zone = currentZone else { return }
-        gasReadings.oxygen = drift(from: gasReadings.oxygen, target: zone.oxygen, spread: 0.15, clamp: 0...30)
-        gasReadings.lel = drift(from: gasReadings.lel, target: zone.lel, spread: 1.2, clamp: 0...100)
-        gasReadings.co = drift(from: gasReadings.co, target: zone.co, spread: 3.0, clamp: 0...500)
-        gasReadings.h2s = drift(from: gasReadings.h2s, target: zone.h2s, spread: 1.0, clamp: 0...200)
-        gasReadings.pid = drift(from: gasReadings.pid, target: zone.pid, spread: 6.0, clamp: 0...2000)
+        let target = adjustedGasReadings(for: zone)
+        gasReadings.oxygen = drift(from: gasReadings.oxygen, target: target.oxygen, spread: 0.15, clamp: 0...30)
+        gasReadings.lel = drift(from: gasReadings.lel, target: target.lel, spread: 1.2, clamp: 0...100)
+        gasReadings.co = drift(from: gasReadings.co, target: target.co, spread: 3.0, clamp: 0...500)
+        gasReadings.h2s = drift(from: gasReadings.h2s, target: target.h2s, spread: 1.0, clamp: 0...200)
+        gasReadings.pid = drift(from: gasReadings.pid, target: target.pid, spread: 6.0, clamp: 0...2000)
     }
 
     func updateRadiation(distanceMeters: Double, guideBias: Double = 1.0) {
@@ -1019,16 +1194,35 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     }
 
     func syncPHDisplayTowardTarget() {
-        guard !isGPSDrivenLiveSession else {
+        guard let phTransitionStartAt else {
             phDisplay = phTarget
             return
         }
-        let delta = phTarget - phDisplay
-        guard abs(delta) > 0.01 else {
+        let elapsed = Date().timeIntervalSince(phTransitionStartAt)
+        let progress = min(max(elapsed / phTransitionDuration, 0), 1)
+        phDisplay = phTransitionStartValue + ((phTarget - phTransitionStartValue) * progress)
+
+        guard progress < 1 else {
             phDisplay = phTarget
+            self.phTransitionStartAt = nil
             return
         }
-        phDisplay += delta * 0.2
+    }
+
+    private func beginPHTransition(to targetPH: Double) {
+        let clampedTarget = min(max(targetPH, 0), 14)
+
+        if abs(phDisplay - clampedTarget) < 0.01 {
+            phTarget = clampedTarget
+            phDisplay = clampedTarget
+            phTransitionStartValue = clampedTarget
+            phTransitionStartAt = nil
+            return
+        }
+
+        phTransitionStartValue = phDisplay
+        phTransitionStartAt = Date()
+        phTarget = clampedTarget
     }
 
     private func drift(from current: Double, target: Double, spread: Double, clamp: ClosedRange<Double>) -> Double {
@@ -1121,4 +1315,331 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         formatter.timeZone = TimeZone(secondsFromGMT: 0)
         return formatter
     }()
+
+    private func refreshAirMonitorMotionState() {
+        let shouldRun = isToolRunActive && (selectedMonitor?.isAirMonitor == true)
+        if shouldRun {
+            startAirMonitorSamplingMotionIfNeeded()
+        } else {
+            stopAirMonitorSamplingMotion()
+        }
+    }
+
+    private func startAirMonitorSamplingMotionIfNeeded() {
+        guard !airMonitorMotionManager.isRunning else { return }
+        currentSamplingBand = .normal
+        isLearningAirMonitorBaseline = false
+        learnedAirMonitorBaselineTiltRadians = nil
+        airMonitorCalibrationStep = .normal
+        airMonitorCalibrationStatusMessage = nil
+        smoothedAirMonitorTiltRadians = nil
+        calibratedNormalTiltRadians = nil
+        calibratedHighTiltRadians = nil
+        calibratedLowTiltRadians = nil
+        highBandEnterThresholdDegrees = 18
+        lowBandEnterThresholdDegrees = 18
+        highBandExitThresholdDegrees = 10
+        lowBandExitThresholdDegrees = 10
+        pendingSamplingBand = nil
+        pendingSamplingBandSampleCount = 0
+        lastSamplingBandChangeAt = Date()
+        airMonitorMotionManager.start()
+    }
+
+    private func stopAirMonitorSamplingMotion() {
+        airMonitorMotionManager.stop()
+        currentSamplingBand = .normal
+        isLearningAirMonitorBaseline = false
+        learnedAirMonitorBaselineTiltRadians = nil
+        airMonitorCalibrationStep = nil
+        airMonitorCalibrationStatusMessage = nil
+        smoothedAirMonitorTiltRadians = nil
+        calibratedNormalTiltRadians = nil
+        calibratedHighTiltRadians = nil
+        calibratedLowTiltRadians = nil
+        highBandEnterThresholdDegrees = 18
+        lowBandEnterThresholdDegrees = 18
+        highBandExitThresholdDegrees = 10
+        lowBandExitThresholdDegrees = 10
+        pendingSamplingBand = nil
+        pendingSamplingBandSampleCount = 0
+        lastSamplingBandChangeAt = .distantPast
+    }
+
+    private func handleAirMonitorTiltAngleUpdate(_ angleRadians: Double) {
+        guard airMonitorMotionManager.isRunning else { return }
+
+        if let existing = smoothedAirMonitorTiltRadians {
+            smoothedAirMonitorTiltRadians = existing + ((angleRadians - existing) * airMonitorTiltSmoothingAlpha)
+        } else {
+            smoothedAirMonitorTiltRadians = angleRadians
+        }
+
+        guard let smoothed = smoothedAirMonitorTiltRadians else { return }
+
+        if airMonitorCalibrationStep != nil {
+            currentSamplingBand = .normal
+            return
+        }
+
+        guard let baseline = learnedAirMonitorBaselineTiltRadians else {
+            currentSamplingBand = .normal
+            return
+        }
+
+        let deltaDegrees = (smoothed - baseline) * 180 / .pi
+        let priorBand = currentSamplingBand
+        let proposedBand: AirMonitorSamplingBand
+
+        switch currentSamplingBand {
+        case .normal:
+            if deltaDegrees >= highBandEnterThresholdDegrees {
+                proposedBand = .high
+            } else if deltaDegrees <= -lowBandEnterThresholdDegrees {
+                proposedBand = .low
+            } else {
+                proposedBand = .normal
+            }
+        case .high:
+            if deltaDegrees < highBandExitThresholdDegrees {
+                proposedBand = .normal
+            } else {
+                proposedBand = .high
+            }
+        case .low:
+            if deltaDegrees > -lowBandExitThresholdDegrees {
+                proposedBand = .normal
+            } else {
+                proposedBand = .low
+            }
+        }
+
+        if proposedBand == currentSamplingBand {
+            pendingSamplingBand = nil
+            pendingSamplingBandSampleCount = 0
+        } else if pendingSamplingBand == proposedBand {
+            pendingSamplingBandSampleCount += 1
+            let requiredSamples = requiredSamplingBandSamples(
+                from: currentSamplingBand,
+                to: proposedBand
+            )
+            if pendingSamplingBandSampleCount >= requiredSamples {
+                if shouldDelaySamplingBandReturnToNormal(
+                    from: currentSamplingBand,
+                    to: proposedBand
+                ) {
+                    return
+                }
+                currentSamplingBand = proposedBand
+                lastSamplingBandChangeAt = Date()
+                pendingSamplingBand = nil
+                pendingSamplingBandSampleCount = 0
+            }
+        } else {
+            pendingSamplingBand = proposedBand
+            pendingSamplingBandSampleCount = 1
+        }
+
+        if priorBand != currentSamplingBand, let zone = currentZone {
+            gasReadings = adjustedGasReadings(for: zone)
+        }
+    }
+
+    private func requiredSamplingBandSamples(
+        from currentBand: AirMonitorSamplingBand,
+        to proposedBand: AirMonitorSamplingBand
+    ) -> Int {
+        if proposedBand == .normal && currentBand != .normal {
+            // Exiting HIGH/LOW requires a longer steady hold near center to avoid 50<->100 oscillation.
+            return requiredSamplingBandReturnToNormalSamples
+        }
+        return requiredSamplingBandEntryConfirmationSamples
+    }
+
+    private func shouldDelaySamplingBandReturnToNormal(
+        from currentBand: AirMonitorSamplingBand,
+        to proposedBand: AirMonitorSamplingBand
+    ) -> Bool {
+        guard currentBand != .normal, proposedBand == .normal else {
+            return false
+        }
+        return Date().timeIntervalSince(lastSamplingBandChangeAt) < minimumSamplingBandDwellBeforeReturnSeconds
+    }
+
+    private func adjustedGasReadings(for zone: ScenarioZone) -> GasReadings {
+        GasReadings(
+            oxygen: adjustedAirMonitorReading(base: zone.oxygen, channel: "O2", zone: zone, clamp: 0...30),
+            lel: adjustedAirMonitorReading(base: zone.lel, channel: "LEL", zone: zone, clamp: 0...100),
+            co: adjustedAirMonitorReading(base: zone.co, channel: "CO", zone: zone, clamp: 0...500),
+            h2s: adjustedAirMonitorReading(base: zone.h2s, channel: "H2S", zone: zone, clamp: 0...200),
+            pid: adjustedAirMonitorReading(base: zone.pid, channel: "VOC", zone: zone, clamp: 0...2000)
+        )
+    }
+
+    private func adjustedAirMonitorReading(
+        base: Double,
+        channel: String,
+        zone: ScenarioZone,
+        clamp: ClosedRange<Double>
+    ) -> Double {
+        let channelAdjustment = zone.airMonitorSampling?.adjustment(for: channel) ?? .unchanged
+        let bandAdjustment = effectiveBandAdjustment(for: channelAdjustment)
+
+        guard bandAdjustment.mode == .lower else {
+            return min(max(base, clamp.lowerBound), clamp.upperBound)
+        }
+
+        let feather = min(max(bandAdjustment.featherPercent, 0), 100)
+        let adjusted = base * (1 - (feather / 100))
+        return min(max(adjusted, clamp.lowerBound), clamp.upperBound)
+    }
+
+    private func effectiveBandAdjustment(
+        for channelAdjustment: AirMonitorSamplingChannelAdjustment
+    ) -> AirMonitorSamplingBandAdjustment {
+        switch currentSamplingBand {
+        case .high:
+            return channelAdjustment.high
+        case .low:
+            return channelAdjustment.low
+        case .normal:
+            return .unchanged
+        }
+    }
+
+    private func finalizeAirMonitorCalibration() {
+        guard let normalTilt = calibratedNormalTiltRadians,
+              let highTilt = calibratedHighTiltRadians,
+              let lowTilt = calibratedLowTiltRadians else {
+            airMonitorCalibrationStatusMessage = "Calibration could not be completed. Try again."
+            airMonitorCalibrationStep = .normal
+            isLearningAirMonitorBaseline = true
+            return
+        }
+
+        learnedAirMonitorBaselineTiltRadians = normalTilt
+
+        let highDeltaDegrees = max(((highTilt - normalTilt) * 180 / .pi) * 0.5, minimumCalibrationDeltaDegrees / 2)
+        let lowDeltaDegrees = max(((normalTilt - lowTilt) * 180 / .pi) * 0.5, minimumCalibrationDeltaDegrees / 2)
+
+        highBandEnterThresholdDegrees = max(4, highDeltaDegrees)
+        lowBandEnterThresholdDegrees = max(4, lowDeltaDegrees)
+        highBandExitThresholdDegrees = max(3, highBandEnterThresholdDegrees * 0.55)
+        lowBandExitThresholdDegrees = max(3, lowBandEnterThresholdDegrees * 0.55)
+
+        airMonitorCalibrationStep = nil
+        airMonitorCalibrationStatusMessage = nil
+        isLearningAirMonitorBaseline = false
+        currentSamplingBand = .normal
+
+        if let zone = currentZone {
+            gasReadings = adjustedGasReadings(for: zone)
+        }
+    }
+
+    private func processPendingExternalRouteIfPossible() {
+        guard didFinishSplash, let route = pendingExternalRoute else { return }
+        pendingExternalRoute = nil
+
+        switch route {
+        case .continueSession:
+            navPath = NavigationPath()
+            Task { [weak self] in
+                await self?.continueSession()
+            }
+        }
+    }
+
+    private func consumePendingExternalRoute() {
+        let defaults = UserDefaults.standard
+        guard let routeValue = defaults.string(forKey: AppIntentBridge.pendingRouteKey),
+              let route = ExternalAppRoute(rawValue: routeValue) else {
+            return
+        }
+        defaults.removeObject(forKey: AppIntentBridge.pendingRouteKey)
+        pendingExternalRoute = route
+    }
+
+    private func persistDownloadedScenario(_ scenario: Scenario) {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .formatted(Self.dateFormatter)
+        let payload = PersistedDownloadedScenario(source: "backend_join", scenario: scenario)
+        guard let data = try? encoder.encode(payload) else { return }
+        UserDefaults.standard.set(data, forKey: AppIntentBridge.persistedScenarioKey)
+    }
+
+    private func restorePersistedSelectedScenarioIfAvailable() {
+        let defaults = UserDefaults.standard
+        guard let data = defaults.data(forKey: AppIntentBridge.persistedScenarioKey) else { return }
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .formatted(Self.dateFormatter)
+        guard let payload = try? decoder.decode(PersistedDownloadedScenario.self, from: data),
+              payload.source == "backend_join" else {
+            defaults.removeObject(forKey: AppIntentBridge.persistedScenarioKey)
+            hasPersistedDownloadedScenario = false
+            return
+        }
+
+        hasPersistedDownloadedScenario = true
+        scenarios = [payload.scenario]
+        chooseScenario(payload.scenario)
+    }
+
+    private var canAttemptSessionRefresh: Bool {
+        !traineeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty &&
+        !joinCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+    }
+
+    private func persistLastJoinCredentials(name: String, code: String) {
+        let defaults = UserDefaults.standard
+        defaults.set(name, forKey: AppIntentBridge.lastTraineeNameKey)
+        defaults.set(code, forKey: AppIntentBridge.lastJoinCodeKey)
+    }
+
+    private func restoreLastJoinCredentialsIfAvailable() {
+        let defaults = UserDefaults.standard
+        if traineeName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let savedName = defaults.string(forKey: AppIntentBridge.lastTraineeNameKey) {
+            traineeName = savedName
+        }
+        if joinCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+           let savedCode = defaults.string(forKey: AppIntentBridge.lastJoinCodeKey) {
+            joinCode = savedCode
+        }
+    }
+}
+
+private final class AirMonitorHeightSamplingMotionManager {
+    var onTiltAngleUpdate: ((Double) -> Void)?
+
+    private let motionManager = CMMotionManager()
+    private let queue: OperationQueue = {
+        let queue = OperationQueue()
+        queue.name = "THMGTrainee.AirMonitorMotion"
+        queue.qualityOfService = .userInteractive
+        return queue
+    }()
+
+    var isRunning: Bool {
+        motionManager.isDeviceMotionActive
+    }
+
+    func start() {
+        guard motionManager.isDeviceMotionAvailable else { return }
+        guard !motionManager.isDeviceMotionActive else { return }
+
+        motionManager.deviceMotionUpdateInterval = 1.0 / 20.0
+        motionManager.startDeviceMotionUpdates(to: queue) { [weak self] motion, _ in
+            guard let gravity = motion?.gravity else { return }
+            let tiltAngle = atan2(gravity.z, -gravity.y)
+            DispatchQueue.main.async {
+                self?.onTiltAngleUpdate?(tiltAngle)
+            }
+        }
+    }
+
+    func stop() {
+        motionManager.stopDeviceMotionUpdates()
+    }
 }
