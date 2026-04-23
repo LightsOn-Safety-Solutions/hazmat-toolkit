@@ -1365,15 +1365,11 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                 currentSamplingBand = .low
             }
         case .high:
-            if deltaDegrees <= -lowBandEnterThresholdDegrees {
-                currentSamplingBand = .low
-            } else if deltaDegrees < highBandExitThresholdDegrees {
+            if deltaDegrees < highBandExitThresholdDegrees {
                 currentSamplingBand = .normal
             }
         case .low:
-            if deltaDegrees >= highBandEnterThresholdDegrees {
-                currentSamplingBand = .high
-            } else if deltaDegrees > -lowBandExitThresholdDegrees {
+            if deltaDegrees > -lowBandExitThresholdDegrees {
                 currentSamplingBand = .normal
             }
         }
@@ -1420,14 +1416,6 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         case .low:
             return channelAdjustment.low
         case .normal:
-            let high = channelAdjustment.high
-            let low = channelAdjustment.low
-            let highIsAdjusted = high != .unchanged
-            let lowIsAdjusted = low != .unchanged
-
-            if highIsAdjusted && !lowIsAdjusted { return high }
-            if lowIsAdjusted && !highIsAdjusted { return low }
-            if highIsAdjusted && lowIsAdjusted && high == low { return high }
             return .unchanged
         }
     }

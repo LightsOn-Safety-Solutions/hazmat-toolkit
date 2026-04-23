@@ -4,6 +4,14 @@ enum AirMonitorSamplingBand: String, Codable, Hashable {
     case low
     case normal
     case high
+
+    var displayLabel: String {
+        switch self {
+        case .low: return "LOW"
+        case .normal: return "NORMAL"
+        case .high: return "HIGH"
+        }
+    }
 }
 
 enum AirMonitorSamplingAdjustmentMode: String, Codable, Hashable {

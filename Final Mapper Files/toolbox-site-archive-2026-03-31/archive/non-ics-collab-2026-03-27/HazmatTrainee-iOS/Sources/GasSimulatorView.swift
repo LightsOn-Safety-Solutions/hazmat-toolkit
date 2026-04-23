@@ -23,10 +23,14 @@ struct GasSimulatorView: View {
                     ScrollView {
                         VStack(spacing: 14) {
                             if let scenario = model.selectedScenario {
-                                Text(scenario.name)
-                                    .font(.headline)
-                                    .foregroundStyle(.white)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                HStack(alignment: .center, spacing: 10) {
+                                    Text(scenario.name)
+                                        .font(.headline)
+                                        .foregroundStyle(.white)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                                    samplingBandBadge
+                                }
                             }
 
                             LazyVGrid(columns: columns, alignment: .leading, spacing: 10) {
@@ -112,6 +116,53 @@ struct GasSimulatorView: View {
             AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)
         case .normal:
             break
+        }
+    }
+
+    private var samplingBandBadge: some View {
+        Text(model.currentSamplingBand.displayLabel)
+            .font(.caption.weight(.bold))
+            .foregroundStyle(samplingBandTextColor)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 5)
+            .background(samplingBandBackground, in: Capsule())
+            .overlay {
+                Capsule()
+                    .stroke(samplingBandBorder, lineWidth: 1)
+            }
+            .accessibilityLabel("Sampling position \(model.currentSamplingBand.displayLabel)")
+    }
+
+    private var samplingBandTextColor: Color {
+        switch model.currentSamplingBand {
+        case .low:
+            return .black
+        case .normal:
+            return .green
+        case .high:
+            return .white
+        }
+    }
+
+    private var samplingBandBackground: Color {
+        switch model.currentSamplingBand {
+        case .low:
+            return THMGTheme.accentYellow
+        case .normal:
+            return THMGTheme.ok.opacity(0.2)
+        case .high:
+            return THMGTheme.warning
+        }
+    }
+
+    private var samplingBandBorder: Color {
+        switch model.currentSamplingBand {
+        case .low:
+            return THMGTheme.accentYellow.opacity(0.85)
+        case .normal:
+            return THMGTheme.ok.opacity(0.5)
+        case .high:
+            return THMGTheme.warning.opacity(0.85)
         }
     }
 

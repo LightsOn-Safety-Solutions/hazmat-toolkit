@@ -619,10 +619,10 @@ private struct JoinSessionResponse: Decodable {
 
         private static func makeBandAdjustment(mode: String?, feather: String?) -> AirMonitorSamplingBandAdjustment {
             let normalizedMode = (mode ?? "").trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            let usesLowering = normalizedMode == "low"
-                || normalizedMode == "down"
-                || normalizedMode.contains("lower")
-                || normalizedMode.contains("feather")
+            let usesLowering = !normalizedMode.isEmpty
+                && normalizedMode != "normal"
+                && normalizedMode != "none"
+                && normalizedMode != "off"
             let resolvedMode: AirMonitorSamplingAdjustmentMode = usesLowering ? .lower : .normal
 
             let percent = min(max(parseDoubleOptional(feather) ?? 0, 0), 100)
