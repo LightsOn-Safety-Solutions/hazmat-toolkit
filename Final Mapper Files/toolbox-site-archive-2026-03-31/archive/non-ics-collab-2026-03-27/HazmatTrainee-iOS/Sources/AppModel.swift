@@ -119,8 +119,10 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private var lowBandExitThresholdDegrees: Double = 10
     private let requiredSamplingBandEntryConfirmationSamples: Int = 4
     private let requiredSamplingBandReturnToNormalSamples: Int = 12
+    private let minimumSamplingBandDwellBeforeReturnSeconds: TimeInterval = 2.0
     private var pendingSamplingBand: AirMonitorSamplingBand?
     private var pendingSamplingBandSampleCount: Int = 0
+    private var lastSamplingBandChangeAt: Date = .distantPast
     private let requiredGPSZoneConfirmationSamples: Int = 3
     private var pendingGPSZoneName: String?
     private var pendingGPSZoneSampleCount: Int = 0
@@ -1340,6 +1342,7 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         lowBandExitThresholdDegrees = 10
         pendingSamplingBand = nil
         pendingSamplingBandSampleCount = 0
+        lastSamplingBandChangeAt = Date()
         airMonitorMotionManager.start()
     }
 
@@ -1360,6 +1363,7 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         lowBandExitThresholdDegrees = 10
         pendingSamplingBand = nil
         pendingSamplingBandSampleCount = 0
+        lastSamplingBandChangeAt = .distantPast
     }
 
     private func handleAirMonitorTiltAngleUpdate(_ angleRadians: Double) {
@@ -1420,7 +1424,14 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
                 to: proposedBand
             )
             if pendingSamplingBandSampleCount >= requiredSamples {
+                if shouldDelaySamplingBandReturnToNormal(
+                    from: currentSamplingBand,
+                    to: proposedBand
+                ) {
+                    return
+                }
                 currentSamplingBand = proposedBand
+                lastSamplingBandChangeAt = Date()
                 pendingSamplingBand = nil
                 pendingSamplingBandSampleCount = 0
             }
@@ -1443,6 +1454,16 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             return requiredSamplingBandReturnToNormalSamples
         }
         return requiredSamplingBandEntryConfirmationSamples
+    }
+
+    private func shouldDelaySamplingBandReturnToNormal(
+        from currentBand: AirMonitorSamplingBand,
+        to proposedBand: AirMonitorSamplingBand
+    ) -> Bool {
+        guard currentBand != .normal, proposedBand == .normal else {
+            return false
+        }
+        return Date().timeIntervalSince(lastSamplingBandChangeAt) < minimumSamplingBandDwellBeforeReturnSeconds
     }
 
     private func adjustedGasReadings(for zone: ScenarioZone) -> GasReadings {
