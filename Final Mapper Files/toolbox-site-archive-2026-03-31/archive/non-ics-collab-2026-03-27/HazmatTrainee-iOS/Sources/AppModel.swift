@@ -117,7 +117,8 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     private var lowBandEnterThresholdDegrees: Double = 18
     private var highBandExitThresholdDegrees: Double = 10
     private var lowBandExitThresholdDegrees: Double = 10
-    private let requiredSamplingBandConfirmationSamples: Int = 4
+    private let requiredSamplingBandEntryConfirmationSamples: Int = 4
+    private let requiredSamplingBandReturnToNormalSamples: Int = 12
     private var pendingSamplingBand: AirMonitorSamplingBand?
     private var pendingSamplingBandSampleCount: Int = 0
     private let requiredGPSZoneConfirmationSamples: Int = 3
@@ -1414,7 +1415,11 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
             pendingSamplingBandSampleCount = 0
         } else if pendingSamplingBand == proposedBand {
             pendingSamplingBandSampleCount += 1
-            if pendingSamplingBandSampleCount >= requiredSamplingBandConfirmationSamples {
+            let requiredSamples = requiredSamplingBandSamples(
+                from: currentSamplingBand,
+                to: proposedBand
+            )
+            if pendingSamplingBandSampleCount >= requiredSamples {
                 currentSamplingBand = proposedBand
                 pendingSamplingBand = nil
                 pendingSamplingBandSampleCount = 0
@@ -1427,6 +1432,17 @@ final class AppModel: NSObject, ObservableObject, CLLocationManagerDelegate {
         if priorBand != currentSamplingBand, let zone = currentZone {
             gasReadings = adjustedGasReadings(for: zone)
         }
+    }
+
+    private func requiredSamplingBandSamples(
+        from currentBand: AirMonitorSamplingBand,
+        to proposedBand: AirMonitorSamplingBand
+    ) -> Int {
+        if proposedBand == .normal && currentBand != .normal {
+            // Exiting HIGH/LOW requires a longer steady hold near center to avoid 50<->100 oscillation.
+            return requiredSamplingBandReturnToNormalSamples
+        }
+        return requiredSamplingBandEntryConfirmationSamples
     }
 
     private func adjustedGasReadings(for zone: ScenarioZone) -> GasReadings {
