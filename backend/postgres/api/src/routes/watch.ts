@@ -39,6 +39,9 @@ type WatchTrackingRow = {
   accuracy_m: number | null;
   active_shape_id: string | null;
   active_shape_sort_order: number | null;
+  meta_json: Record<string, unknown> | null;
+  sampling_band: string | null;
+  seconds_in_current_band: number | null;
   is_backfilled: boolean;
 };
 
@@ -234,6 +237,15 @@ async function listWatchTracking(
         t.accuracy_m,
         t.active_shape_id::text as active_shape_id,
         t.active_shape_sort_order,
+        t.meta_json,
+        coalesce(
+          t.meta_json ->> 'samplingBand',
+          t.meta_json ->> 'sampling_band'
+        ) as sampling_band,
+        coalesce(
+          nullif(t.meta_json ->> 'secondsInCurrentBand', '')::double precision,
+          nullif(t.meta_json ->> 'seconds_in_current_band', '')::double precision
+        ) as seconds_in_current_band,
         t.is_backfilled
       from tracking_points t
       where t.session_id = $1::uuid
@@ -253,6 +265,9 @@ async function listWatchTracking(
     accuracyM: row.accuracy_m,
     activeShapeId: row.active_shape_id,
     activeShapeSortOrder: row.active_shape_sort_order,
+    samplingBand: row.sampling_band,
+    secondsInCurrentBand: row.seconds_in_current_band,
+    meta_json: row.meta_json ?? {},
     isBackfilled: row.is_backfilled
   }));
 }
