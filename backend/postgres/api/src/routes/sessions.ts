@@ -28,6 +28,8 @@ type JoinBody = {
   traineeName: string;
   deviceType: 'air_monitor' | 'radiation_detection' | 'ph_paper';
 };
+
+export const PARTICIPANT_RUN_RECONNECT_MINUTES = 30;
 type LatestSessionQuery = { scenarioId?: string };
 type ScenarioSessionsQuery = { scenarioId?: string };
 
@@ -666,28 +668,61 @@ async function joinSessionByCode(
 
     const upserted = await client.query<DBParticipantInsertRow>(
       `
-        insert into session_participants (
-          session_id,
-          trainee_name,
-          device_type,
-          session_token_hash,
-          token_expires_at,
-          last_seen_at
+        with recent_run as (
+          select id
+          from session_participants
+          where session_id = $1::uuid
+            and lower(trainee_name) = lower($2)
+            and coalesce(last_seen_at, joined_at) >= now() - make_interval(mins => $6::int)
+          order by coalesce(last_seen_at, joined_at) desc
+          limit 1
+          for update
+        ),
+        updated as (
+          update session_participants
+          set
+            trainee_name = $2,
+            device_type = $3::device_type,
+            session_token_hash = $4,
+            token_expires_at = $5::timestamptz,
+            last_seen_at = now()
+          where id = (select id from recent_run)
+          returning
+            id::text as id,
+            trainee_name,
+            device_type::text as device_type,
+            token_expires_at
+        ),
+        inserted as (
+          insert into session_participants (
+            session_id,
+            trainee_name,
+            device_type,
+            session_token_hash,
+            token_expires_at,
+            last_seen_at
+          )
+          select $1::uuid, $2, $3::device_type, $4, $5::timestamptz, now()
+          where not exists (select 1 from updated)
+          returning
+            id::text as id,
+            trainee_name,
+            device_type::text as device_type,
+            token_expires_at
         )
-        values ($1::uuid, $2, $3::device_type, $4, $5::timestamptz, now())
-        on conflict (session_id, trainee_name)
-        do update set
-          device_type = excluded.device_type,
-          session_token_hash = excluded.session_token_hash,
-          token_expires_at = excluded.token_expires_at,
-          last_seen_at = now()
-        returning
-          id::text as id,
-          trainee_name,
-          device_type::text as device_type,
-          token_expires_at
+        select * from updated
+        union all
+        select * from inserted
+        limit 1
       `,
-      [session.session_id, normalizedTraineeName, params.deviceType, tokenHash, tokenExpiresAt]
+      [
+        session.session_id,
+        normalizedTraineeName,
+        params.deviceType,
+        tokenHash,
+        tokenExpiresAt,
+        PARTICIPANT_RUN_RECONNECT_MINUTES
+      ]
     );
     const participantRow = upserted.rows[0];
 
