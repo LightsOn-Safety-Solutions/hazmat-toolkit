@@ -43,7 +43,7 @@ export function loadConfig(): AppConfig {
     databaseUrl: env("DATABASE_URL", "postgres://postgres:postgres@localhost:5432/hazmat_toolkit"),
     logLevel: env("LOG_LEVEL", "info"),
     corsOrigin: env("CORS_ORIGIN", "*"),
-    joinCodeTtlMinutes: envInt("JOIN_CODE_TTL_MINUTES", 60),
+    joinCodeTtlMinutes: envInt("JOIN_CODE_TTL_MINUTES", 7 * 24 * 60),
     authTokenSecret: env("AUTH_TOKEN_SECRET", "hazmat-dev-secret-change-me"),
     supabaseUrl: envOptional("SUPABASE_URL"),
     supabaseAnonKey: envOptional("SUPABASE_ANON_KEY"),

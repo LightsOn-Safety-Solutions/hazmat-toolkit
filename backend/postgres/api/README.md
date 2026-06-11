@@ -15,7 +15,7 @@ Copy `.env.example` and set:
 - `DATABASE_URL`
 - `PORT`
 - `HOST`
-- `JOIN_CODE_TTL_MINUTES` (default short-lived join code TTL)
+- `JOIN_CODE_TTL_MINUTES` (defaults to 10,080 minutes / seven days; capped at seven days)
 
 ## Status
 

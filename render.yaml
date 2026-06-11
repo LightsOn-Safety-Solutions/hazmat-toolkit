@@ -15,7 +15,7 @@ services:
       - key: CORS_ORIGIN
         value: "*"
       - key: JOIN_CODE_TTL_MINUTES
-        value: "60"
+        value: "10080"
       - key: AUTH_TOKEN_SECRET
         sync: false
       - key: DATABASE_URL

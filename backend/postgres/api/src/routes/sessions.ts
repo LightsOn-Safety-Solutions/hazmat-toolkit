@@ -20,7 +20,7 @@ import {
 type CreateSessionBody = {
   scenarioId: string;
   sessionName?: string | null;
-  joinCodeTTLMinutes?: number;
+  joinCodeTtlMinutes?: number;
 };
 
 type JoinBody = {
@@ -48,7 +48,10 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
       return reply.code(400).send({ error: 'BAD_REQUEST', message: 'scenarioId is required.' });
     }
 
-    const ttlMinutes = clampTTLMinutes(request.body?.joinCodeTTLMinutes ?? app.config.joinCodeTtlMinutes);
+    const ttlMinutes = resolveJoinCodeTtlMinutes(
+      request.body?.joinCodeTtlMinutes,
+      app.config.joinCodeTtlMinutes
+    );
     const sessionName = request.body?.sessionName?.trim() || null;
 
     try {
@@ -356,9 +359,18 @@ function generateJoinCode(length = 6): string {
   return out;
 }
 
-function clampTTLMinutes(value: number): number {
-  if (!Number.isFinite(value)) return 30;
-  return Math.min(240, Math.max(1, Math.trunc(value)));
+export const MAX_JOIN_CODE_TTL_MINUTES = 7 * 24 * 60;
+
+export function resolveJoinCodeTtlMinutes(value: unknown, fallback = MAX_JOIN_CODE_TTL_MINUTES): number {
+  const requested = Number(value);
+  if (!Number.isFinite(requested) || requested <= 0) {
+    const normalizedFallback = Number(fallback);
+    if (!Number.isFinite(normalizedFallback) || normalizedFallback <= 0) {
+      return MAX_JOIN_CODE_TTL_MINUTES;
+    }
+    return Math.min(Math.trunc(normalizedFallback), MAX_JOIN_CODE_TTL_MINUTES);
+  }
+  return Math.min(Math.trunc(requested), MAX_JOIN_CODE_TTL_MINUTES);
 }
 
 type CreateSessionParams = {
@@ -802,7 +814,7 @@ async function rotateJoinCode(
   sessionID: string,
   ttlMinutes: number
 ): Promise<{ joinCode: string; joinCodeExpiresAt: string }> {
-  const normalizedTTL = clampTTLMinutes(ttlMinutes);
+  const normalizedTTL = resolveJoinCodeTtlMinutes(ttlMinutes);
   let lastError: unknown;
 
   for (let attempt = 0; attempt < 5; attempt += 1) {
