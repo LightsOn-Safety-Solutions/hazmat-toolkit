@@ -2215,7 +2215,7 @@ async function applyMutation(
     });
     const deletedPaths = listAttachmentPaths(object.fields_json);
     if (deletedPaths.length) {
-      await deleteAttachmentFiles(resolveAttachmentStorageConfig(appConfig), deletedPaths);
+      await deleteAttachmentFilesBestEffort(appConfig, deletedPaths);
     }
     return {
       mutationType: 'delete',
@@ -2279,7 +2279,7 @@ async function applyMutation(
   });
   const removedPaths = previousAttachmentPaths.filter((path) => !nextAttachmentPaths.includes(path));
   if (removedPaths.length) {
-    await deleteAttachmentFiles(resolveAttachmentStorageConfig(appConfig), removedPaths);
+    await deleteAttachmentFilesBestEffort(appConfig, removedPaths);
   }
   return {
     mutationType: 'update',
@@ -4460,6 +4460,17 @@ async function deleteAttachmentFiles(config: AttachmentStorageConfig, paths: str
   if (!response.ok) {
     const detail = await safeReadStorageError(response);
     throw new Error(detail || `Storage delete failed (${response.status}).`);
+  }
+}
+
+async function deleteAttachmentFilesBestEffort(config: AppConfig, paths: string[]) {
+  try {
+    await deleteAttachmentFiles(resolveAttachmentStorageConfig(config), paths);
+  } catch (error) {
+    console.warn('Attachment storage cleanup skipped after map mutation.', {
+      paths,
+      message: error instanceof Error ? error.message : String(error)
+    });
   }
 }
 
